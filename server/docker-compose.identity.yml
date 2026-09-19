@@ -1,0 +1,11 @@
+# Optional: docker compose -f docker-compose.yml -f docker-compose.identity.yml up -d --wait app
+# Requires a completed, ignored .env and a private signing key outside the repository.
+services:
+  app:
+    env_file:
+      - .env
+    volumes:
+      - type: bind
+        source: ${APPLE_PRIVATE_KEY_HOST_PATH:?Set the private Apple key host path in .env}
+        target: /run/secrets/apple-sign-in.p8
+        read_only: true

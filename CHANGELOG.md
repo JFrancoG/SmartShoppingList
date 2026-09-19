@@ -4,6 +4,7 @@
 
 ### Added
 
+- 2026-09-19 | ✨ feat(shared): add shared shopping flow
 - 2026-09-19 | ✨ feat(ios): add editable shopping drafts
 
 ### Documentation

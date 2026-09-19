@@ -302,6 +302,20 @@ final class ShoppingDraftViewModel {
         await saveTask?.value
     }
 
+    /// Remove only unchanged rows acknowledged by the server before clearing its retry envelope.
+    func consumeConfirmedItems(_ confirmed: [ShoppingDraftItem]) async -> Bool {
+        await load()
+        await flushPersistence()
+        guard !storageBlocked else { return false }
+        let originals = Dictionary(confirmed.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        cancelInterpretation()
+        items.removeAll { originals[$0.id] == $0 }
+        preparedItems = nil
+        queuePersistence()
+        await flushPersistence()
+        return persistenceNotice == nil
+    }
+
     private func stopForEditing() {
         cancelInterpretation()
         cancelDictation()

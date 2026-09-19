@@ -1,0 +1,441 @@
+import AuthenticationServices
+import Foundation
+import Testing
+@testable import SmartShoppingList
+
+@Suite(.tags(.fast)) @MainActor
+struct SharedShoppingViewModelTests {
+    @Test("A reopened uncertain batch retries its original intent and consumes only confirmed draft rows")
+    func persistedRetry() async throws {
+        let first = ShoppingDraftItem(name: "Leche sin lactosa", quantity: "2 litros", store: "Día")
+        let later = ShoppingDraftItem(name: "Pan", quantity: "", store: "Día")
+        let api = SharedFlowAPI()
+        let session = api.session
+        let group = try #require(session.user.group)
+        let request = AddItemsRequest(
+            operationId: UUID(),
+            items: [SharedNewItem(name: first.name, quantity: first.quantity, store: .newName(first.store))]
+        )
+        let original = PendingSharedOperation.addItems(
+            userID: session.user.id,
+            groupID: group.id,
+            request: request,
+            sourceDraft: ShoppingDraftSnapshot(items: [first])
+        )
+        let credentials = MemorySharedCredentialStore(session: session, operation: original)
+        let model = try makeModel(api: api, credentials: credentials, items: [first, later])
+        await model.load()
+        await model.retryPendingOperation()
+        #expect(model.pendingOperation == original)
+        #expect(model.draft.items == [first, later])
+        await model.retryPendingOperation()
+        #expect(await api.sentBatches == [request, request])
+        #expect(model.pendingOperation == nil)
+        #expect(await credentials.loadOperation() == nil)
+        #expect(model.draft.items == [later])
+    }
+
+    @Test("An uncertain operation from a different account cannot be replayed")
+    func anotherAccountCannotRetry() async throws {
+        let api = SharedFlowAPI()
+        let session = api.session
+        let operation = PendingSharedOperation.createGroup(
+            userID: UUID(),
+            request: CreateGroupRequest(operationId: UUID(), name: "Casa")
+        )
+        let credentials = MemorySharedCredentialStore(session: session, operation: operation)
+        let model = try makeModel(api: api, credentials: credentials)
+        await model.load()
+        await model.retryPendingOperation()
+        #expect(await api.createdGroups == 0)
+        #expect(model.pendingOperation == operation)
+        #expect(!model.canMutate)
+    }
+
+    @Test("A mismatched Apple state never sends credentials and preserves the pending invitation")
+    func wrongState() async throws {
+        let api = SharedFlowAPI()
+        let invitation = PendingInvitation(id: UUID(), token: String(repeating: "A", count: 43))
+        let credentials = MemorySharedCredentialStore(invitation: invitation)
+        let model = try makeModel(api: api, credentials: credentials)
+        await model.load()
+        await model.prepareAppleLogin()
+        let request = ASAuthorizationAppleIDProvider().createRequest()
+        model.configureAppleRequest(request)
+        await model.completeAppleLogin(
+            token: "token",
+            code: "code",
+            returnedState: "wrong",
+            displayName: nil
+        )
+        #expect(await api.loginRequests == 0)
+        #expect(await credentials.loadInvitation() == invitation)
+        #expect(model.session == nil)
+    }
+
+    @Test("Opening a trusted link before login persists it without accepting a group")
+    func invitationBeforeLogin() async throws {
+        let api = SharedFlowAPI()
+        let credentials = MemorySharedCredentialStore()
+        let model = try makeModel(api: api, credentials: credentials)
+        await model.load()
+        let id = UUID()
+        let url = try #require(URL(string: "https://links.test/invite/\(id.uuidString.lowercased())#token=\(String(repeating: "A", count: 43))"))
+        await model.receiveInvitation(url)
+        #expect(await credentials.loadInvitation()?.id == id)
+        #expect(await api.acceptedInvitations == 0)
+        #expect(model.group == nil)
+    }
+
+    @Test("A link received during startup is persisted before loading completes", .timeLimit(.minutes(1)))
+    func invitationDuringStartup() async throws {
+        let gate = SharedFlowGate()
+        let api = SharedFlowAPI(currentUserGate: gate)
+        let credentials = ObservedSharedCredentials(session: api.session)
+        let model = try makeModel(api: api, credentials: credentials)
+        let loading = Task {
+            await model.load()
+        }
+        await gate.waitUntilReached()
+        let invitation = PendingInvitation(id: UUID(), token: String(repeating: "A", count: 43))
+        await model.receiveInvitation(invitationURL(invitation))
+        let receivedBeforeLoad = await credentials.loadIncomingInvitation()
+        await gate.open()
+        await loading.value
+        try #require(receivedBeforeLoad == invitation)
+        await credentials.waitForSavedInvitation(invitation.id)
+        #expect(await credentials.loadInvitation() == invitation)
+        #expect(model.hasLoaded)
+        #expect(await api.acceptedInvitations == 0)
+    }
+
+    @Test("A link received while Apple's sheet is active survives login", .timeLimit(.minutes(1)))
+    func invitationDuringAppleLogin() async throws {
+        let api = SharedFlowAPI()
+        let credentials = ObservedSharedCredentials()
+        let model = try makeModel(api: api, credentials: credentials)
+        await model.load()
+        await model.prepareAppleLogin()
+        let appleRequest = ASAuthorizationAppleIDProvider().createRequest()
+        model.configureAppleRequest(appleRequest)
+        let invitation = PendingInvitation(id: UUID(), token: String(repeating: "A", count: 43))
+        await model.receiveInvitation(invitationURL(invitation))
+        let receivedDuringApple = await credentials.loadIncomingInvitation()
+        await model.completeAppleLogin(
+            token: "native-fixture", code: "single-use-fixture", returnedState: appleRequest.state, displayName: nil
+        )
+        try #require(receivedDuringApple == invitation)
+        await credentials.waitForSavedInvitation(invitation.id)
+        #expect(await credentials.loadInvitation() == invitation)
+        #expect(await api.loginRequests == 1)
+        #expect(await api.acceptedInvitations == 0)
+    }
+
+    @Test("A failed acceptance retains its original link and a newly received link separately", .timeLimit(.minutes(1)))
+    func incomingDoesNotReplaceUncertainAcceptance() async throws {
+        let gate = SharedFlowGate()
+        let api = SharedFlowAPI(acceptanceGate: gate, acceptanceError: .transport)
+        let original = PendingInvitation(id: UUID(), token: String(repeating: "A", count: 43))
+        let incoming = PendingInvitation(id: UUID(), token: String(repeating: "E", count: 43))
+        let credentials = MemorySharedCredentialStore(session: api.session, invitation: original)
+        let model = try makeModel(api: api, credentials: credentials)
+        await model.load()
+        let acceptance = Task {
+            await model.acceptInvitation()
+        }
+        await gate.waitUntilReached()
+        await model.receiveInvitation(invitationURL(incoming))
+        await gate.open()
+        await acceptance.value
+        #expect(await credentials.loadInvitation() == original)
+        #expect(await credentials.loadIncomingInvitation() == incoming)
+        #expect(model.pendingInvitation == original)
+        #expect(await api.acceptedInvitations == 1)
+    }
+
+    @Test("Promoting a link cannot erase a newer link received during its Keychain save", .timeLimit(.minutes(1)))
+    func newerIncomingSurvivesPromotion() async throws {
+        let gate = SharedFlowGate()
+        let api = SharedFlowAPI()
+        let credentials = ObservedSharedCredentials(invitationSaveGate: gate)
+        let model = try makeModel(api: api, credentials: credentials)
+        await model.load()
+        let original = PendingInvitation(id: UUID(), token: String(repeating: "A", count: 43))
+        let incoming = PendingInvitation(id: UUID(), token: String(repeating: "E", count: 43))
+        let receiving = Task {
+            await model.receiveInvitation(invitationURL(original))
+        }
+        await gate.waitUntilReached()
+        await model.receiveInvitation(invitationURL(incoming))
+        await gate.open()
+        await receiving.value
+        #expect(await credentials.loadInvitation() == original)
+        #expect(await credentials.loadIncomingInvitation() == incoming)
+    }
+
+    @Test("Unknown error bodies retain the original batch intent", arguments: ["invalid_response", "unknown_gateway_error"])
+    func unknownRejectionKeepsRetryEnvelope(_ code: String) async throws {
+        let error = SharedAPIError.server(
+            status: 409,
+            code: code,
+            requestID: nil,
+            retryAfter: nil
+        )
+        let api = SharedFlowAPI(firstBatchError: error)
+        let session = api.session
+        let group = try #require(session.user.group)
+        let request = AddItemsRequest(
+            operationId: UUID(),
+            items: [SharedNewItem(name: "Pan", quantity: nil, store: .newName("Día"))]
+        )
+        let operation = PendingSharedOperation.addItems(
+            userID: session.user.id, groupID: group.id, request: request, sourceDraft: ShoppingDraftSnapshot()
+        )
+        let credentials = MemorySharedCredentialStore(session: session, operation: operation)
+        let model = try makeModel(api: api, credentials: credentials)
+        await model.load()
+        await model.retryPendingOperation()
+        try #require(model.pendingOperation == operation)
+        #expect(await credentials.loadOperation() == operation)
+        await model.retryPendingOperation()
+        #expect(await api.sentBatches == [request, request])
+        #expect(await credentials.loadOperation() == nil)
+    }
+
+    @Test("An unrecognized preview rejection preserves the saved invitation", arguments: [404, 410])
+    func unknownPreviewKeepsInvitation(_ status: Int) async throws {
+        let error = SharedAPIError.server(
+            status: status,
+            code: "invalid_response",
+            requestID: nil,
+            retryAfter: nil
+        )
+        let api = SharedFlowAPI(previewError: error)
+        let invitation = PendingInvitation(id: UUID(), token: String(repeating: "A", count: 43))
+        let credentials = MemorySharedCredentialStore(session: api.session, invitation: invitation)
+        let model = try makeModel(api: api, credentials: credentials)
+        await model.load()
+        #expect(await credentials.loadInvitation() == invitation)
+        #expect(model.pendingInvitation == invitation)
+    }
+
+    private func invitationURL(_ invitation: PendingInvitation) -> URL {
+        URL(string: "https://links.test/invite/\(invitation.id.uuidString.lowercased())#token=\(invitation.token)")!
+    }
+
+    private func makeModel(
+        api: SharedFlowAPI,
+        credentials: any SharedCredentialStoring,
+        items: [ShoppingDraftItem] = []
+    ) throws -> SharedShoppingViewModel {
+        SharedShoppingViewModel(
+            api: api,
+            configuration: try SharedAPIConfiguration(
+                baseURL: "https://api.test",
+                invitationOrigin: "https://links.test"
+            ),
+            credentials: credentials,
+            draft: ShoppingDraftViewModel(
+                interpreter: UnavailableDraftInterpreter(),
+                speech: UnavailableSpeechCapture(),
+                persistence: MemoryDraftPersistence(),
+                initialDraft: ShoppingDraftSnapshot(items: items)
+            )
+        )
+    }
+}
+
+private actor SharedFlowAPI: SharedShoppingAPI {
+    let session: SharedSession
+    private(set) var sentBatches: [AddItemsRequest] = []
+    private(set) var createdGroups = 0
+    private(set) var loginRequests = 0
+    private(set) var acceptedInvitations = 0
+    let currentUserGate: SharedFlowGate?
+    let acceptanceGate: SharedFlowGate?
+    let acceptanceError: SharedAPIError?
+    let firstBatchError: SharedAPIError
+    let previewError: SharedAPIError
+
+    init(
+        currentUserGate: SharedFlowGate? = nil,
+        acceptanceGate: SharedFlowGate? = nil,
+        acceptanceError: SharedAPIError? = nil,
+        firstBatchError: SharedAPIError = .transport,
+        previewError: SharedAPIError = .transport
+    ) {
+        self.currentUserGate = currentUserGate
+        self.acceptanceGate = acceptanceGate
+        self.acceptanceError = acceptanceError
+        self.firstBatchError = firstBatchError
+        self.previewError = previewError
+        let userID = UUID()
+        let group = SharedGroup(
+            id: UUID(),
+            name: "Casa",
+            creatorUserId: userID,
+            createdAt: .distantPast
+        )
+        session = SharedSession(
+            accessToken: String(repeating: "A", count: 43),
+            tokenType: "Bearer",
+            expiresAt: .distantFuture,
+            user: SharedUser(id: userID, displayName: nil, group: group)
+        )
+    }
+
+    func createChallenge() async throws -> SharedChallenge {
+        SharedChallenge(id: UUID(), nonce: String(repeating: "A", count: 43), expiresAt: .distantFuture)
+    }
+
+    func loginWithApple(_ request: AppleLoginRequest) async throws -> SharedSession {
+        loginRequests += 1
+        return session
+    }
+
+    func currentUser(token: String) async throws -> SharedUser {
+        await currentUserGate?.pause()
+        return session.user
+    }
+    func logout(token: String) async throws {}
+
+    func createGroup(_ request: CreateGroupRequest, token: String) async throws -> SharedGroup {
+        createdGroups += 1
+        return try #require(session.user.group)
+    }
+
+    func stores(groupID: UUID, token: String) async throws -> [SharedStore] { [] }
+    func createInvitation(groupID: UUID, token: String) async throws -> CreatedInvitation {
+        throw SharedAPIError.transport
+    }
+    func invitations(groupID: UUID, token: String) async throws -> [SharedInvitation] { [] }
+    func revokeInvitation(groupID: UUID, invitationID: UUID, token: String) async throws {}
+    func previewInvitation(_ invitation: PendingInvitation, token: String) async throws -> InvitationPreview {
+        throw previewError
+    }
+    func acceptInvitation(_ invitation: PendingInvitation, token: String) async throws -> SharedGroup {
+        acceptedInvitations += 1
+        await acceptanceGate?.pause()
+        if let acceptanceError {
+            throw acceptanceError
+        }
+        return try #require(session.user.group)
+    }
+
+    func addItems(_ request: AddItemsRequest, groupID: UUID, token: String) async throws -> [SharedItem] {
+        sentBatches.append(request)
+        if sentBatches.count == 1 {
+            throw firstBatchError
+        }
+        return request.items.map {
+            SharedItem(
+                id: UUID(), groupId: groupID, storeId: UUID(), name: $0.name, quantity: $0.quantity,
+                status: "pending", version: 1, createdBy: session.user.id, createdAt: .distantPast,
+                purchasedBy: nil, purchasedAt: nil
+            )
+        }
+    }
+
+    func pendingItems(groupID: UUID, storeID: UUID, token: String) async throws -> [SharedItem] { [] }
+}
+
+private struct UnavailableDraftInterpreter: DraftInterpreting {
+    var availability: DraftInterpretationAvailability { .unavailable }
+    func interpret(_ text: String) async throws -> [SuggestedProduct] { throw SharedAPIError.transport }
+}
+
+private struct UnavailableSpeechCapture: SpeechCapturing {
+    func start() async throws -> AsyncThrowingStream<SpeechCaptureEvent, any Error> { throw SharedAPIError.transport }
+    func finish() async throws {}
+    func cancel() async {}
+}
+
+/// A deterministic observation point; tests release it explicitly instead of sleeping or polling.
+private actor SharedFlowGate {
+    private var reached = false
+    private var opened = false
+    private var arrivals: [CheckedContinuation<Void, Never>] = []
+    private var resumptions: [CheckedContinuation<Void, Never>] = []
+
+    func pause() async {
+        reached = true
+        arrivals.forEach {
+            $0.resume()
+        }
+        arrivals = []
+        guard !opened else { return }
+        await withCheckedContinuation {
+            resumptions.append($0)
+        }
+    }
+
+    func waitUntilReached() async {
+        guard !reached else { return }
+        await withCheckedContinuation {
+            arrivals.append($0)
+        }
+    }
+
+    func open() {
+        opened = true
+        resumptions.forEach {
+            $0.resume()
+        }
+        resumptions = []
+    }
+}
+
+/// Runs the production in-memory credential store, with an observable save boundary for startup and promotion races.
+private actor ObservedSharedCredentials: SharedCredentialStoring {
+    let base: MemorySharedCredentialStore
+    let invitationSaveGate: SharedFlowGate?
+    private var savedInvitations: Set<UUID> = []
+    private var saveObservers: [UUID: [CheckedContinuation<Void, Never>]] = [:]
+
+    init(session: SharedSession? = nil, invitationSaveGate: SharedFlowGate? = nil) {
+        base = MemorySharedCredentialStore(session: session)
+        self.invitationSaveGate = invitationSaveGate
+    }
+
+    func loadSession() async -> SharedSession? {
+        await base.loadSession()
+    }
+    func saveSession(_ session: SharedSession?) async {
+        await base.saveSession(session)
+    }
+    func loadInvitation() async -> PendingInvitation? {
+        await base.loadInvitation()
+    }
+    func loadIncomingInvitation() async -> PendingInvitation? {
+        await base.loadIncomingInvitation()
+    }
+    func saveIncomingInvitation(_ invitation: PendingInvitation) async {
+        await base.saveIncomingInvitation(invitation)
+    }
+    func clearIncomingInvitation(matching invitation: PendingInvitation) async -> Bool {
+        await base.clearIncomingInvitation(matching: invitation)
+    }
+    func loadOperation() async -> PendingSharedOperation? {
+        await base.loadOperation()
+    }
+    func saveOperation(_ operation: PendingSharedOperation?) async {
+        await base.saveOperation(operation)
+    }
+
+    func saveInvitation(_ invitation: PendingInvitation?) async {
+        await invitationSaveGate?.pause()
+        await base.saveInvitation(invitation)
+        guard let invitation else { return }
+        savedInvitations.insert(invitation.id)
+        saveObservers.removeValue(forKey: invitation.id)?.forEach {
+            $0.resume()
+        }
+    }
+
+    func waitForSavedInvitation(_ id: UUID) async {
+        guard !savedInvitations.contains(id) else { return }
+        await withCheckedContinuation {
+            saveObservers[id, default: []].append($0)
+        }
+    }
+}

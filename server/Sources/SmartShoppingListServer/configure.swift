@@ -13,8 +13,10 @@ func configure(
     databases suppliedDatabases: Databases? = nil,
     databaseConfiguration suppliedConfiguration: DatabaseConfigurationFactory? = nil
 ) async throws {
-    // uncomment to serve files from /Public folder
-    // app.middleware.use(FileMiddleware(publicDirectory: app.directory.publicDirectory))
+    // Vapor's low-level trace logs dump HTTP headers, including Authorization.
+    // Preserve operational diagnostics while preventing credential dumps even with LOG_LEVEL=trace.
+    app.logger.logLevel = max(app.logger.logLevel, .info)
+    app.http.server.configuration.logger.logLevel = max(app.http.server.configuration.logger.logLevel, .info)
 
     let databaseConfiguration: DatabaseConfigurationFactory
     if let suppliedConfiguration {
@@ -34,7 +36,13 @@ func configure(
     databases.use(databaseConfiguration, as: .psql)
 
     // Run migrations before boot; the lifecycle handler also closes database connections.
-    app.lifecycle.use(MigrateLifecycleHandler(databases: databases, migrations: CreateTodo()))
+    app.lifecycle.use(MigrateLifecycleHandler(
+        databases: databases,
+        migrations: CreateTodo(), CreateSharedShopping(), CreateAppleAuthentication()
+    ))
+
+    app.routes.defaultMaxBodySize = "128kb"
+    app.middleware.use(APIErrorMiddleware(), at: .beginning)
 
     // register routes
     try routes(app, databases: databases)

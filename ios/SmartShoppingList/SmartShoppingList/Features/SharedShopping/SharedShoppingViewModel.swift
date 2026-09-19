@@ -1,0 +1,610 @@
+import AuthenticationServices
+import Foundation
+import Observation
+import Security
+
+struct DraftStoreChoice: Identifiable {
+    let id: String
+    var selection = ""
+}
+
+@Observable @MainActor
+final class SharedShoppingViewModel {
+    private(set) var session: SharedSession?
+    private(set) var pendingInvitation: PendingInvitation?
+    private(set) var invitationPreview: InvitationPreview?
+    private(set) var pendingOperation: PendingSharedOperation?
+    private(set) var stores: [SharedStore] = []
+    private(set) var items: [SharedItem] = []
+    private(set) var invitations: [SharedInvitation] = []
+    private(set) var shareURL: URL?
+    private(set) var hasLoaded = false
+    private(set) var isBusy = false
+    private(set) var sessionIsVerified = false
+    private(set) var notice: LocalizedStringResource?
+    private(set) var challenge: SharedChallenge?
+    private(set) var reviewedItems: [PreparedDraftItem] = []
+    var storeChoices: [DraftStoreChoice] = []
+    var selectedStoreID: UUID?
+    var groupName = ""
+    var isReviewPresented = false
+    var isInvitationsPresented = false
+
+    @ObservationIgnored let draft: ShoppingDraftViewModel
+    @ObservationIgnored private let api: (any SharedShoppingAPI)?
+    @ObservationIgnored private let configuration: SharedAPIConfiguration?
+    @ObservationIgnored private let credentials: any SharedCredentialStoring
+    @ObservationIgnored private var appleState: String?
+    @ObservationIgnored private var storageFailed = false
+    @ObservationIgnored private var reviewSnapshot: ShoppingDraftSnapshot?
+    @ObservationIgnored private var retryNotBefore: Date?
+
+    init(
+        api: (any SharedShoppingAPI)?,
+        configuration: SharedAPIConfiguration?,
+        credentials: any SharedCredentialStoring,
+        draft: ShoppingDraftViewModel
+    ) {
+        self.api = api
+        self.configuration = configuration
+        self.credentials = credentials
+        self.draft = draft
+    }
+
+    var group: SharedGroup? { session?.user.group }
+    var isConfigured: Bool { api != nil && configuration != nil }
+    var canMutate: Bool { hasLoaded && sessionIsVerified && !isBusy && !storageFailed && pendingOperation == nil }
+    var draftIsLocked: Bool { !hasLoaded || pendingOperation != nil || isBusy || isReviewPresented }
+    var isCreator: Bool { group?.creatorUserId == session?.user.id && group != nil }
+    var canConfirmReview: Bool {
+        canMutate && !reviewedItems.isEmpty && storeChoices.allSatisfy { !$0.selection.isEmpty }
+    }
+    var canRetryOperation: Bool {
+        !isBusy && sessionIsVerified && pendingOperation?.userID == session?.user.id && !storageFailed
+    }
+    var selectedStoreName: String {
+        stores.first { $0.id == selectedStoreID }?.name ?? ""
+    }
+
+    func load() async {
+        guard !hasLoaded, !isBusy else { return }
+        await performAction {
+            defer {
+                hasLoaded = true
+            }
+            await draft.load()
+            do {
+                pendingOperation = try await credentials.loadOperation()
+                pendingInvitation = try await credentials.loadInvitation()
+                session = try await credentials.loadSession()
+            } catch {
+                storageFailed = true
+                notice = "No se ha podido recuperar el acceso guardado. Desbloquea el dispositivo y vuelve a abrir la app; conservamos los datos sin sobrescribirlos."
+                return
+            }
+            guard isConfigured else {
+                notice = "La conexión del grupo todavía no está configurada. Puedes preparar tu borrador a mano."
+                return
+            }
+            await refreshSessionAndLists()
+        }
+    }
+
+    func refresh() async {
+        guard hasLoaded, !isBusy, !storageFailed else { return }
+        await performAction {
+            await refreshSessionAndLists()
+        }
+    }
+
+    func prepareAppleLogin() async {
+        guard hasLoaded, !isBusy, !storageFailed, let api else { return }
+        await performAction {
+            challenge = nil
+            appleState = nil
+            notice = nil
+            do {
+                let result = try await api.createChallenge()
+                var bytes = [UInt8](repeating: 0, count: 32)
+                guard SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes) == errSecSuccess else {
+                    throw SharedAPIError.invalidResponse
+                }
+                appleState = Data(bytes).base64EncodedString()
+                challenge = result
+            } catch {
+                notice = SharedErrorMessage.message(for: error)
+            }
+        }
+    }
+
+    func configureAppleRequest(_ request: ASAuthorizationAppleIDRequest) {
+        guard let challenge, challenge.expiresAt > Date(), let appleState, !isBusy else {
+            request.state = UUID().uuidString
+            notice = "El intento ha caducado. Prepara de nuevo el acceso con Apple."
+            return
+        }
+        request.requestedScopes = [.fullName]
+        request.nonce = challenge.nonce
+        request.state = appleState
+        isBusy = true
+    }
+
+    func receiveAppleAuthorization(_ result: Result<ASAuthorization, any Error>) {
+        switch result {
+        case .success(let authorization):
+            guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
+                  let tokenData = credential.identityToken, let codeData = credential.authorizationCode,
+                  let token = String(data: tokenData, encoding: .utf8),
+                  let code = String(data: codeData, encoding: .utf8) else {
+                resetAppleAttempt()
+                notice = "Apple no ha devuelto las credenciales necesarias. Vuelve a iniciar el acceso."
+                Task {
+                    await finishAction()
+                }
+                return
+            }
+            let name = credential.fullName.map { PersonNameComponentsFormatter().string(from: $0) }
+            let state = credential.state
+            Task {
+                await completeAppleLogin(
+                    token: token,
+                    code: code,
+                    returnedState: state,
+                    displayName: name
+                )
+            }
+        case .failure:
+            resetAppleAttempt()
+            notice = "El acceso con Apple no se ha completado. El borrador y la invitación se conservan."
+            Task {
+                await finishAction()
+            }
+        }
+    }
+
+    func completeAppleLogin(
+        token: String,
+        code: String,
+        returnedState: String?,
+        displayName: String?
+    ) async {
+        guard let challenge, let appleState, returnedState == appleState, let api else {
+            resetAppleAttempt()
+            notice = "No se ha podido verificar este intento de acceso. Inícialo de nuevo."
+            await finishAction()
+            return
+        }
+        await performAction {
+            defer { resetAppleAttempt() }
+            do {
+                let request = AppleLoginRequest(
+                    challengeId: challenge.id,
+                    identityToken: token,
+                    authorizationCode: code,
+                    displayName: displayName?.isEmpty == false ? displayName : nil
+                )
+                let result = try await api.loginWithApple(request)
+                try await credentials.saveSession(result)
+                session = result
+                sessionIsVerified = true
+                notice = nil
+                await refreshSessionAndLists()
+            } catch {
+                notice = SharedErrorMessage.message(for: error)
+            }
+        }
+    }
+
+    func receiveInvitation(_ url: URL) async {
+        guard let configuration else {
+            notice = "No se puede abrir la invitación hasta configurar la conexión del grupo."
+            return
+        }
+        do {
+            let invitation = try configuration.invitation(from: url)
+            // Receiving a URL must remain durable even while startup, Apple or another request owns the UI.
+            try await credentials.saveIncomingInvitation(invitation)
+            await promoteIncomingInvitation()
+        } catch let error as SharedAPIError {
+            notice = SharedErrorMessage.message(for: error)
+        } catch {
+            notice = "No se ha podido guardar este enlace. Vuelve a abrirlo después de desbloquear el dispositivo."
+        }
+    }
+
+    func discardInvitation() async {
+        guard !isBusy else { return }
+        await performAction {
+            do {
+                try await credentials.saveInvitation(nil)
+                pendingInvitation = nil
+                invitationPreview = nil
+            } catch {
+                notice = SharedErrorMessage.message(for: error)
+            }
+        }
+    }
+
+    func acceptInvitation() async {
+        guard canMutate, let api, let session, let invitation = pendingInvitation else { return }
+        await performAction {
+            do {
+                let group = try await api.acceptInvitation(invitation, token: session.accessToken)
+                try await updateGroup(group)
+                try await credentials.saveInvitation(nil)
+                pendingInvitation = nil
+                invitationPreview = nil
+                await refreshSessionAndLists()
+            } catch {
+                await handle(error)
+            }
+        }
+    }
+
+    func createGroup() async {
+        guard canMutate, let session, session.user.group == nil else { return }
+        guard groupName.unicodeScalars.count <= 80,
+              let name = ShoppingDraftRules.normalized(groupName), !name.isEmpty,
+              name.unicodeScalars.count <= 80,
+              !name.unicodeScalars.contains(where: { $0.properties.generalCategory == .control }) else {
+            notice = "Escribe un nombre de grupo válido de hasta 80 caracteres Unicode."
+            return
+        }
+        await performAction {
+            do {
+                let operation = PendingSharedOperation.createGroup(
+                    userID: session.user.id,
+                    request: CreateGroupRequest(operationId: UUID(), name: name)
+                )
+                try await credentials.saveOperation(operation)
+                pendingOperation = operation
+                await performPendingOperation()
+            } catch {
+                notice = SharedErrorMessage.message(for: error)
+            }
+        }
+    }
+
+    func prepareReview() async {
+        guard canMutate, group != nil, let api, let session, let group else { return }
+        draft.reviewDraft()
+        guard let prepared = draft.preparedItems else { return }
+        await performAction {
+            do {
+                stores = try await api.stores(groupID: group.id, token: session.accessToken)
+                reviewedItems = prepared
+                reviewSnapshot = ShoppingDraftSnapshot(text: draft.text, items: draft.items)
+                var seen = Set<String>()
+                storeChoices = prepared.compactMap { item in
+                    seen.insert(item.store).inserted ? DraftStoreChoice(id: item.store) : nil
+                }
+                isReviewPresented = true
+            } catch {
+                await handle(error)
+            }
+        }
+    }
+
+    func confirmReviewedBatch() async {
+        guard canConfirmReview, let session, let group, let reviewSnapshot else { return }
+        await performAction {
+            do {
+                let entries = try reviewedItems.map { item -> SharedNewItem in
+                    guard let choice = storeChoices.first(where: { $0.id == item.store }) else {
+                        throw SharedAPIError.invalidResponse
+                    }
+                    let reference: SharedStoreReference
+                    if choice.selection == "new" {
+                        reference = .newName(item.store)
+                    } else if let id = UUID(uuidString: choice.selection), stores.contains(where: { $0.id == id }) {
+                        reference = .existing(id)
+                    } else {
+                        throw SharedAPIError.invalidResponse
+                    }
+                    return SharedNewItem(name: item.name, quantity: item.quantity, store: reference)
+                }
+                let operation = PendingSharedOperation.addItems(
+                    userID: session.user.id,
+                    groupID: group.id,
+                    request: AddItemsRequest(operationId: UUID(), items: entries),
+                    sourceDraft: reviewSnapshot
+                )
+                try await credentials.saveOperation(operation)
+                pendingOperation = operation
+                isReviewPresented = false
+                await performPendingOperation()
+            } catch {
+                notice = SharedErrorMessage.message(for: error)
+            }
+        }
+    }
+
+    func retryPendingOperation() async {
+        guard canRetryOperation else { return }
+        if let retryNotBefore, Date() < retryNotBefore {
+            notice = "El servicio ha pedido esperar antes de reintentar. Conservamos el envío original."
+            return
+        }
+        await performAction {
+            await performPendingOperation()
+        }
+    }
+
+    private func performPendingOperation() async {
+        guard let api, let session, let operation = pendingOperation, operation.userID == session.user.id else {
+            return
+        }
+        do {
+            switch operation {
+            case .createGroup(_, let request):
+                let group = try await api.createGroup(request, token: session.accessToken)
+                try await updateGroup(group)
+            case .addItems(_, let groupID, let request, let sourceDraft):
+                _ = try await api.addItems(request, groupID: groupID, token: session.accessToken)
+                guard await draft.consumeConfirmedItems(sourceDraft.items) else {
+                    notice = "El servidor confirmó el lote, pero falta guardar su resolución en el dispositivo. Reintenta para completar el mismo envío."
+                    return
+                }
+            }
+            try await credentials.saveOperation(nil)
+            pendingOperation = nil
+            reviewSnapshot = nil
+            reviewedItems = []
+            storeChoices = []
+            retryNotBefore = nil
+            await refreshSessionAndLists()
+            notice = "La operación se ha confirmado en el grupo."
+        } catch let error as SharedAPIError {
+            if case .server(let status, _, _, let retryAfter) = error {
+                if let retryAfter {
+                    retryNotBefore = Date().addingTimeInterval(Double(max(0, retryAfter)))
+                }
+                // Authentication failure keeps the exact envelope for the original account.
+                if [400, 403, 404, 409, 410, 413].contains(status), !error.isUncertain {
+                    do {
+                        try await credentials.saveOperation(nil)
+                        pendingOperation = nil
+                    } catch {
+                        notice = SharedErrorMessage.message(for: error)
+                        return
+                    }
+                }
+            }
+            await handle(error)
+        } catch {
+            // Cancellation and local storage failures cannot establish whether the server committed.
+            notice = SharedErrorMessage.message(for: error)
+        }
+    }
+
+    func loadSelectedStore() async {
+        guard !isBusy, sessionIsVerified, let api, let session, let group, let storeID = selectedStoreID else {
+            return
+        }
+        await performAction {
+            items = []
+            do {
+                items = try await api.pendingItems(groupID: group.id, storeID: storeID, token: session.accessToken)
+                notice = nil
+            } catch {
+                await handle(error)
+            }
+        }
+    }
+
+    func openInvitations() async {
+        guard canMutate, isCreator, let api, let session, let group else { return }
+        await performAction {
+            do {
+                invitations = try await api.invitations(groupID: group.id, token: session.accessToken)
+                isInvitationsPresented = true
+            } catch {
+                await handle(error)
+            }
+        }
+    }
+
+    func createInvitation() async {
+        guard canMutate, isCreator, let api, let session, let group else { return }
+        await performAction {
+            shareURL = nil
+            do {
+                let result = try await api.createInvitation(groupID: group.id, token: session.accessToken)
+                shareURL = result.url
+                invitations = try await api.invitations(groupID: group.id, token: session.accessToken)
+            } catch {
+                await handle(error)
+            }
+        }
+    }
+
+    func revokeInvitation(_ invitation: SharedInvitation) async {
+        guard canMutate, isCreator, let api, let session, let group else { return }
+        await performAction {
+            do {
+                try await api.revokeInvitation(
+                    groupID: group.id,
+                    invitationID: invitation.id,
+                    token: session.accessToken
+                )
+                shareURL = nil
+                invitations = try await api.invitations(groupID: group.id, token: session.accessToken)
+            } catch {
+                await handle(error)
+            }
+        }
+    }
+
+    func logout() async {
+        guard !isBusy, let api, let session else { return }
+        await performAction {
+            do {
+                try await api.logout(token: session.accessToken)
+                try await credentials.saveSession(nil)
+                clearSessionPresentation()
+            } catch {
+                notice = "No se ha podido confirmar el cierre de sesión. Conservamos el acceso para que puedas reintentarlo."
+            }
+        }
+    }
+
+    func dismissNotice() {
+        notice = nil
+    }
+
+    private func refreshSessionAndLists() async {
+        guard let api, var current = session else { return }
+        do {
+            current.user = try await api.currentUser(token: current.accessToken)
+            try await credentials.saveSession(current)
+            session = current
+            sessionIsVerified = true
+            notice = nil
+            if let group = current.user.group {
+                stores = try await api.stores(groupID: group.id, token: current.accessToken)
+                if let selectedStoreID, !stores.contains(where: { $0.id == selectedStoreID }) {
+                    self.selectedStoreID = nil
+                    items = []
+                }
+                if let storeID = selectedStoreID {
+                    items = try await api.pendingItems(groupID: group.id, storeID: storeID, token: current.accessToken)
+                }
+            }
+            await previewPendingInvitation()
+        } catch {
+            await handle(error)
+        }
+    }
+
+    private func previewPendingInvitation() async {
+        guard sessionIsVerified, let api, let session, let invitation = pendingInvitation else { return }
+        do {
+            invitationPreview = try await api.previewInvitation(invitation, token: session.accessToken)
+        } catch let error as SharedAPIError {
+            if case .server(let status, _, _, _) = error, status == 404 || status == 410, !error.isUncertain {
+                do {
+                    try await credentials.saveInvitation(nil)
+                    pendingInvitation = nil
+                    invitationPreview = nil
+                } catch {
+                    notice = SharedErrorMessage.message(for: error)
+                    return
+                }
+            }
+            await handle(error)
+        } catch {
+            notice = SharedErrorMessage.message(for: error)
+        }
+    }
+
+    private func updateGroup(_ group: SharedGroup) async throws {
+        guard var session else { throw SharedAPIError.invalidResponse }
+        session.user.group = group
+        try await credentials.saveSession(session)
+        self.session = session
+    }
+
+    private func handle(_ error: any Error) async {
+        if let apiError = error as? SharedAPIError, apiError.isSessionInvalid {
+            sessionIsVerified = false
+            do {
+                try await credentials.saveSession(nil)
+                clearSessionPresentation()
+            } catch {
+                storageFailed = true
+            }
+        }
+        notice = SharedErrorMessage.message(for: error)
+    }
+
+    /// Finishing a foreground action awaits its bounded inbox work; no background drain can swallow the next action.
+    private func performAction(_ action: @MainActor () async -> Void) async {
+        isBusy = true
+        await action()
+        await finishAction()
+    }
+
+    private func finishAction() async {
+        isBusy = false
+        await promoteIncomingInvitation()
+    }
+
+    private func promoteIncomingInvitation() async {
+        guard hasLoaded, !isBusy, !storageFailed else { return }
+        isBusy = true
+        defer { isBusy = false }
+        do {
+            // Each iteration consumes one received value. An unresolved active invitation stops promotion.
+            while let incoming = try await credentials.loadIncomingInvitation() {
+                if let pendingInvitation, pendingInvitation != incoming {
+                    notice = "Hay otra invitación guardada. Resuelve o descarta la anterior para revisar el nuevo enlace."
+                    return
+                }
+                if pendingInvitation == nil {
+                    try await credentials.saveInvitation(incoming)
+                    pendingInvitation = incoming
+                    invitationPreview = nil
+                }
+                // A second URL may arrive while the active value is saved; never delete that newer inbox value.
+                _ = try await credentials.clearIncomingInvitation(matching: incoming)
+                await previewPendingInvitation()
+            }
+        } catch {
+            notice = "No se ha podido preparar la invitación guardada. Desbloquea el dispositivo y vuelve a intentarlo."
+        }
+    }
+
+    private func resetAppleAttempt() {
+        challenge = nil
+        appleState = nil
+    }
+
+    private func clearSessionPresentation() {
+        session = nil
+        sessionIsVerified = false
+        stores = []
+        items = []
+        invitations = []
+        invitationPreview = nil
+        shareURL = nil
+        selectedStoreID = nil
+    }
+}
+
+#if DEBUG
+extension SharedShoppingViewModel {
+    /// Preview context caches values; every rendered preview owns a separately seeded model and dependencies.
+    convenience init(
+        preview: SharedPreviewPresentation,
+        api: (any SharedShoppingAPI)?,
+        configuration: SharedAPIConfiguration?,
+        credentials: any SharedCredentialStoring,
+        draft: ShoppingDraftViewModel
+    ) {
+        self.init(
+            api: api,
+            configuration: configuration,
+            credentials: credentials,
+            draft: draft
+        )
+        session = preview.session
+        pendingInvitation = preview.pendingInvitation
+        invitationPreview = preview.invitationPreview
+        pendingOperation = preview.pendingOperation
+        stores = preview.stores
+        items = preview.items
+        invitations = preview.invitations
+        shareURL = preview.shareURL
+        hasLoaded = true
+        isBusy = false
+        sessionIsVerified = preview.sessionIsVerified
+        notice = preview.notice
+        reviewedItems = preview.reviewedItems
+        storeChoices = preview.storeChoices
+        selectedStoreID = preview.selectedStoreID
+        isReviewPresented = preview.isReviewPresented
+        isInvitationsPresented = preview.isInvitationsPresented
+        reviewSnapshot = preview.reviewSnapshot
+    }
+}
+#endif

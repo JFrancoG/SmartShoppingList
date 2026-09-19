@@ -1,8 +1,10 @@
 # SmartShoppingListServer
 
-Servidor del MVP configurado con Vapor 4.122.2, Fluent/PostgreSQL y Swift 6.4. Se utiliza la alternativa Vapor 4 autorizada después de que la combinación evaluada con Vapor 5.0.0-beta.2 fallara al compilar PostgresNIO en Linux. El código funcional sigue siendo la plantilla Todo; este bloque comprueba la infraestructura necesaria antes de implementar el contrato del producto.
+Servidor del MVP configurado con Vapor 4.122.2, Fluent/PostgreSQL y Swift 6.4. Se utiliza la alternativa Vapor 4 autorizada después de que la combinación evaluada con Vapor 5.0.0-beta.2 fallara al compilar PostgresNIO en Linux. Implementa identidad Apple, sesiones, grupos, invitaciones, lotes confirmados y consultas del bloque 4. La plantilla Todo permanece como prueba local de infraestructura y no se registra en producción.
 
 El seguimiento está en [la issue #1](https://github.com/JFrancoG/SmartShoppingList/issues/1) y los resultados, entornos y límites en [el informe de validación](../docs/validation/issue-1-server-bootstrap.md). Se ha comprobado esta configuración en macOS y en un contenedor Linux arm64 local. El alcance del producto permanece en [la especificación](../docs/mvp-spec.md).
+
+El recorrido compartido se sigue en [#4](https://github.com/JFrancoG/SmartShoppingList/issues/4). Consultar su [configuración reproducible](../docs/setup/shared-shopping.md), [arquitectura](../docs/architecture/shared-shopping.md) e [informe de pruebas](../docs/validation/issue-4-shared-flow.md). HTTPS, Apple y los enlaces reales necesitan la configuración descrita allí.
 
 ## Requisitos
 
@@ -36,7 +38,7 @@ Son los valores por defecto. Para variar el puerto del contenedor de pruebas, ex
 
 Las pruebas nunca heredan `DATABASE_*` como conexión. Rechazan nombres sin sufijo `_testing`, un nombre igual al de desarrollo, hosts fuera del entorno local y puertos inválidos. `configure` exige una configuración de base explícita para aplicaciones `.testing`. No ejecutar varias suites de integración a la vez contra la misma base.
 
-La suite cubre operaciones HTTP con persistencia real, commit y rollback por fallo de restricción, propagación de errores de migración y guardas de configuración. Las pruebas de identidad usan tokens sintéticos firmados externamente, sin acceso a cuentas Apple. La ejecución de cada versión y sus resultados se acreditan en el informe enlazado.
+La suite cubre operaciones HTTP con persistencia real, commit y rollback por fallo de restricción, propagación de errores de migración, guardas de configuración, sesiones, invitaciones concurrentes, aislamiento e idempotencia. Las pruebas de identidad usan tokens y concesiones sintéticos, sin acceso a cuentas Apple. La ejecución de cada versión y sus resultados se acreditan en los informes enlazados.
 
 ## Ejecución nativa
 
@@ -59,11 +61,10 @@ El arranque aplica las migraciones registradas antes de servir peticiones; sus e
 docker compose build app
 docker compose up -d --wait app
 curl --fail http://127.0.0.1:8080/hello
-curl --fail http://127.0.0.1:8080/todos
 docker compose logs app
 ```
 
-Compose espera a que PostgreSQL esté saludable y `--wait` comprueba el healthcheck HTTP de la app en `/hello`. Si se retira esa ruta de la plantilla, debe actualizarse también el healthcheck del Dockerfile. El contenedor utiliza la misma base de desarrollo, por lo que comparte los registros creados desde la ejecución nativa.
+Compose espera a que PostgreSQL esté saludable y `--wait` comprueba el healthcheck HTTP de la app en `/hello`. Si se retira esa ruta, debe actualizarse también el healthcheck del Dockerfile. El contenedor utiliza la misma base de desarrollo, por lo que comparte los registros creados desde la ejecución nativa. En `--env production`, `/todos` devuelve 404; los datos del producto se consultan en `/v1` con una sesión válida.
 
 Las imágenes oficiales de compilación `swift:6.4.0-noble` y ejecución `swift:6.4.0-noble-slim`, y la imagen PostgreSQL, están fijadas por digest. El ejecutable usa enlace dinámico con el runtime Swift correspondiente; el ensayo de enlace estático falló en Foundation con el toolchain Linux evaluado. Se comprobaron las bibliotecas del ejecutable, el arranque HTTP y la persistencia tras reiniciar la app y PostgreSQL.
 
@@ -77,11 +78,11 @@ docker compose --profile testing stop
 
 Esto conserva el volumen de desarrollo y descarta los datos temporales de pruebas. La siguiente ejecución de tests vuelve a preparar sus migraciones. Evitar `down -v` salvo que se quiera borrar expresamente la base de desarrollo.
 
-## Verificación de identidad: alcance de esta prueba
+## Identidad Apple
 
 `AppleIdentityTokenVerifier` recibe una instantánea confiable de las claves públicas de Apple y verifica firma RS256, identificador de clave, issuer, audience, caducidad, nonce y subject. Devuelve errores genéricos sin incluir el token.
 
-Esta prueba no autentica todavía usuarios reales. Obtención y rotación de JWKS, nonce de un solo uso, intercambio del código, sesión y revocación se integrarán conforme al contrato y al recorrido de [la issue #4](https://github.com/JFrancoG/SmartShoppingList/issues/4).
+El bloque 4 añade obtención y rotación de JWKS, challenge de un solo uso, canje del código, cifrado de refresh tokens, sesión persistente y revalidación diferida. La [guía de configuración](../docs/setup/shared-shopping.md) describe los secretos necesarios y el límite de una réplica. Las pruebas automáticas usan un gateway de Apple controlado; no acreditan acceso con dos Apple IDs reales.
 
 JWTKit 5.7.1 emite un warning de deprecación en su manifiesto Swift 6.4 por declarar watchOS 8. El responsable del proyecto aceptó el 19 de septiembre la excepción temporal [EXC-001](../docs/dependency-exceptions.md), limitada a ese diagnóstico. El warning sigue visible y los targets propios mantienen warnings como errores. No se ha modificado el checkout ni se declara una resolución global libre de warnings.
 

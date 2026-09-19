@@ -3,6 +3,7 @@ import SwiftUI
 struct AddItemsView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Bindable var viewModel: ShoppingDraftViewModel
+    var shared: SharedShoppingViewModel? = nil
 
     var body: some View {
         NavigationStack {
@@ -11,7 +12,12 @@ struct AddItemsView: View {
                     ProgressView("Recuperando el borrador…")
                 }
 
+                if let shared {
+                    SharedOperationSection(viewModel: shared)
+                }
+
                 DraftInputSection(viewModel: viewModel)
+                    .disabled(shared?.draftIsLocked == true)
 
                 Section {
                     Button("Añadir producto a mano", systemImage: "plus") {
@@ -36,6 +42,7 @@ struct AddItemsView: View {
                 } footer: {
                     Text("Revisa cada producto, su cantidad y la tienda. Puedes añadir hasta 50 productos por lote.")
                 }
+                .disabled(shared?.draftIsLocked == true)
 
                 Section {
                     Button("Revisar borrador", systemImage: "checklist") {
@@ -45,10 +52,22 @@ struct AddItemsView: View {
 
                     if viewModel.preparedItems != nil {
                         Text("Borrador revisado. Todavía no se ha enviado al grupo.")
+                        if let shared {
+                            Button("Elegir tiendas y confirmar", systemImage: "person.2") {
+                                Task {
+                                    await shared.prepareReview()
+                                }
+                            }
+                            .disabled(!shared.canMutate || shared.group == nil)
+                            if shared.group == nil {
+                                Text("Accede a tu grupo en Comprar para enviar estos productos.")
+                            }
+                        }
                     }
                 } footer: {
                     Text("Los productos siguen siendo un borrador hasta que confirmes su incorporación al grupo.")
                 }
+                .disabled(shared?.draftIsLocked == true)
 
                 if let notice = viewModel.notice {
                     Section {

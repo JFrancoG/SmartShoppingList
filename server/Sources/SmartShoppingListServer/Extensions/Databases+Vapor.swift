@@ -10,7 +10,10 @@ extension Databases {
     }
 
     func database() throws(Error) -> any Database {
-        guard let database = self.database(logger: Logger.current, on: MultiThreadedEventLoopGroup.singleton.any()) else {
+        // The driver's SQL diagnostics include bind values (nonces and encrypted grants).
+        // Its configuration cannot disable query logging; isolate database diagnostics even at trace level.
+        let logger = Logger(label: "shopping.database") { _ in SwiftLogNoOpLogHandler() }
+        guard let database = self.database(logger: logger, on: MultiThreadedEventLoopGroup.singleton.any()) else {
             throw Error.noDatabaseConfigured
         }
         return database

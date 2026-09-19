@@ -1,6 +1,27 @@
 {
   "sourceLanguage" : "es",
   "strings" : {
+    "Accede a tu grupo en Comprar para enviar estos productos." : {
+
+    },
+    "Accede con Apple para crear un grupo o aceptar una invitación." : {
+
+    },
+    "Accede y actualiza para consultar el grupo antes de aceptar." : {
+
+    },
+    "Acceso al grupo" : {
+
+    },
+    "Acceso con Apple" : {
+
+    },
+    "Aceptada" : {
+
+    },
+    "Aceptar invitación" : {
+
+    },
     "Acorta el nombre del producto: admite hasta 160 caracteres Unicode." : {
 
     },
@@ -13,7 +34,13 @@
     "Activa Apple Intelligence en Ajustes para interpretar texto. La entrada manual sigue disponible." : {
 
     },
+    "Actualizar" : {
+
+    },
     "Añade al menos un producto para revisar el borrador." : {
+
+    },
+    "Añade todos los productos revisados al grupo con las tiendas elegidas." : {
 
     },
     "Añadir" : {
@@ -25,7 +52,13 @@
     "Aplicar" : {
 
     },
+    "Apple no ha devuelto las credenciales necesarias. Vuelve a iniciar el acceso." : {
+
+    },
     "Borrador revisado. Todavía no se ha enviado al grupo." : {
+
+    },
+    "Cada enlace permite que una persona se una durante 24 horas. Compártelo ahora: el enlace no se recupera al volver a abrir la app." : {
 
     },
     "Cancelar" : {
@@ -46,13 +79,55 @@
     "Cantidad: %@" : {
 
     },
+    "Cerrar" : {
+
+    },
     "Cerrar aviso" : {
+
+    },
+    "Cerrar sesión" : {
+
+    },
+    "Compartir invitación" : {
+
+    },
+    "Comprar" : {
 
     },
     "Comprobar disponibilidad" : {
 
     },
+    "Confirma las tiendas" : {
+
+    },
+    "Confirma una opción para cada nombre. Si ese nombre ya existe en el grupo, se usará la misma tienda." : {
+
+    },
+    "Confirmar el nombre «%@»" : {
+
+    },
+    "Confirmar incorporación al grupo" : {
+
+    },
     "Conservación del borrador" : {
+
+    },
+    "Consultando el grupo…" : {
+
+    },
+    "Creada el %@" : {
+
+    },
+    "Crear grupo" : {
+
+    },
+    "Crear invitación" : {
+
+    },
+    "Crear un grupo" : {
+
+    },
+    "Descartar invitación" : {
 
     },
     "Dictar" : {
@@ -64,10 +139,25 @@
     "Editar %@" : {
 
     },
+    "El acceso con Apple no se ha completado. El borrador y la invitación se conservan." : {
+
+    },
     "El borrador admite hasta 50 productos." : {
 
     },
     "El campo contiene caracteres de control que no se admiten." : {
+
+    },
+    "El enlace de invitación no es válido para esta app." : {
+
+    },
+    "El envío es demasiado grande. Revisa el borrador antes de confirmarlo." : {
+
+    },
+    "El envío tiene un conflicto. Actualiza y revisa los datos antes de volver a confirmar." : {
+
+    },
+    "El intento ha caducado. Prepara de nuevo el acceso con Apple." : {
 
     },
     "El micrófono no tiene permiso. Puedes permitirlo en Ajustes o escribir los productos a mano." : {
@@ -76,7 +166,25 @@
     "El modelo aún no está listo. Puedes continuar a mano y volver a comprobarlo después." : {
 
     },
+    "El recurso no está disponible o no tienes acceso. Actualiza e inténtalo de nuevo." : {
+
+    },
+    "El servicio ha pedido esperar antes de reintentar. Conservamos el envío original." : {
+
+    },
+    "El servicio no está disponible ahora. Conservamos los datos pendientes para reintentarlo." : {
+
+    },
+    "El servidor confirmó el lote, pero falta guardar su resolución en el dispositivo. Reintenta para completar el mismo envío." : {
+
+    },
     "El texto es demasiado largo. Interpreta una lista más corta; tu texto se conserva." : {
+
+    },
+    "Elegir tiendas y confirmar" : {
+
+    },
+    "Elige una tienda del grupo o confirma el nombre que has revisado." : {
 
     },
     "Escribe el nombre del producto." : {
@@ -85,10 +193,40 @@
     "Escribe o dicta" : {
 
     },
+    "Escribe un nombre de grupo válido de hasta 80 caracteres Unicode." : {
+
+    },
     "Escuchando…" : {
 
     },
+    "Esta lista muestra la última consulta. Actualiza para ver los cambios del grupo." : {
+
+    },
+    "Estado del grupo" : {
+
+    },
     "Este dispositivo no admite Apple Intelligence. Puedes añadir los productos a mano." : {
+
+    },
+    "Este intento de acceso ya no es válido. Inicia de nuevo el acceso con Apple." : {
+
+    },
+    "Gestionar invitaciones" : {
+
+    },
+    "Grupo" : {
+
+    },
+    "Hay demasiados intentos. Espera un momento antes de reintentar." : {
+
+    },
+    "Hay otra invitación guardada. Resuelve o descarta la anterior para revisar el nuevo enlace." : {
+
+    },
+    "Hay un envío pendiente de confirmación. Conservamos sus datos para reintentarlo sin duplicarlo." : {
+
+    },
+    "Impide que alguien utilice esta invitación para unirse al grupo." : {
 
     },
     "Incluye las variantes que necesitas, por ejemplo sin lactosa." : {
@@ -106,6 +244,21 @@
     "Interpretar texto" : {
 
     },
+    "Invitación pendiente" : {
+
+    },
+    "Invitaciones" : {
+
+    },
+    "Invitaciones creadas" : {
+
+    },
+    "La conexión del grupo todavía no está configurada. Puedes preparar productos en Añadir." : {
+
+    },
+    "La conexión del grupo todavía no está configurada. Puedes preparar tu borrador a mano." : {
+
+    },
     "La grabación se ha interrumpido. El texto reconocido se conserva; puedes continuar a mano o volver a dictar." : {
 
     },
@@ -115,19 +268,52 @@
     "La interpretación no está disponible ahora. Puedes continuar a mano." : {
 
     },
+    "La invitación ha caducado. Pide un enlace nuevo." : {
+
+    },
+    "La invitación se ha revocado. Pide un enlace nuevo." : {
+
+    },
+    "La operación se ha confirmado en el grupo." : {
+
+    },
     "La propuesta superaría los 50 productos. No se ha añadido ninguno; divide el texto y revisa el borrador." : {
+
+    },
+    "La sesión ha caducado o se ha revocado. Accede de nuevo con la misma cuenta de Apple." : {
 
     },
     "La transcripción en español no está disponible en este dispositivo. Puedes escribir el texto o añadir los productos a mano." : {
 
     },
+    "Los productos se compartirán únicamente al confirmar este envío." : {
+
+    },
     "Los productos siguen siendo un borrador hasta que confirmes su incorporación al grupo." : {
+
+    },
+    "No hay invitaciones cargadas." : {
+
+    },
+    "No hay tiendas cargadas. Puedes confirmar una tienda al incorporar productos." : {
 
     },
     "No hay un micrófono disponible. Puedes continuar a mano." : {
 
     },
+    "No se ha podido completar la operación. Los datos pendientes se conservan; vuelve a intentarlo." : {
+
+    },
+    "No se ha podido confirmar el cierre de sesión. Conservamos el acceso para que puedas reintentarlo." : {
+
+    },
+    "No se ha podido confirmar el resultado. Conservamos el envío original para reintentarlo sin duplicar productos." : {
+
+    },
     "No se ha podido guardar el borrador en este dispositivo. Conserva la app abierta; volveremos a intentarlo con el siguiente cambio." : {
+
+    },
+    "No se ha podido guardar este enlace. Vuelve a abrirlo después de desbloquear el dispositivo." : {
 
     },
     "No se ha podido interpretar el texto. El borrador se conserva; puedes reintentar o continuar a mano." : {
@@ -136,19 +322,52 @@
     "No se ha podido interpretar este texto. Puedes añadir los productos a mano." : {
 
     },
+    "No se ha podido preparar la invitación guardada. Desbloquea el dispositivo y vuelve a intentarlo." : {
+
+    },
+    "No se ha podido recuperar el acceso guardado. Desbloquea el dispositivo y vuelve a abrir la app; conservamos los datos sin sobrescribirlos." : {
+
+    },
     "No se ha podido recuperar el borrador guardado. Lo conservamos sin modificar. Los cambios de esta sesión no se guardarán al cerrar la app." : {
+
+    },
+    "No se ha podido verificar este intento de acceso. Inícialo de nuevo." : {
 
     },
     "No se han encontrado productos. Puedes reformular el texto o añadirlos a mano." : {
 
     },
+    "No se puede abrir la invitación hasta configurar la conexión del grupo." : {
+
+    },
+    "Nombre del grupo" : {
+
+    },
     "Nombre: hasta 160 caracteres. Cantidad y tienda: hasta 80. La cantidad es opcional." : {
+
+    },
+    "Nuevo enlace" : {
+
+    },
+    "Otra persona ya ha utilizado esta invitación. Pide un enlace nuevo." : {
+
+    },
+    "Para corregir productos o cantidades, vuelve al borrador antes de confirmar." : {
+
+    },
+    "Para recuperar el envío, accede con la misma cuenta de Apple que lo inició." : {
+
+    },
+    "Pendientes · %@" : {
 
     },
     "Por ejemplo: jabón, cerveza y yogures en Mercadona" : {
 
     },
     "Preparando el dictado…" : {
+
+    },
+    "Preparar acceso con Apple" : {
 
     },
     "Producto" : {
@@ -158,6 +377,9 @@
 
     },
     "Productos · %lld" : {
+
+    },
+    "Productos revisados · %lld" : {
 
     },
     "Puedes interpretar el texto y revisar los productos antes de añadirlos al grupo." : {
@@ -172,13 +394,55 @@
     "Recuperando el borrador…" : {
 
     },
+    "Reintentar envío" : {
+
+    },
+    "Repite el mismo envío que quedó pendiente de confirmar." : {
+
+    },
     "Revisa cada producto, su cantidad y la tienda. Puedes añadir hasta 50 productos por lote." : {
 
     },
     "Revisa la cantidad del producto." : {
 
     },
+    "Revisa los datos del formulario antes de volver a enviarlos." : {
+
+    },
     "Revisar borrador" : {
+
+    },
+    "Revisar envío" : {
+
+    },
+    "Revocada" : {
+
+    },
+    "Revocar enlace" : {
+
+    },
+    "Selecciona una opción" : {
+
+    },
+    "Selecciona una tienda" : {
+
+    },
+    "Sesión" : {
+
+    },
+    "Sin aceptar" : {
+
+    },
+    "Sin productos cargados. Actualiza para consultar esta tienda." : {
+
+    },
+    "Solo la persona que creó el grupo puede gestionar invitaciones." : {
+
+    },
+    "Supermercado" : {
+
+    },
+    "También puedes abrir una invitación para unirte a otro grupo. Cada cuenta pertenece a un solo grupo." : {
 
     },
     "Terminando el dictado…" : {
@@ -193,7 +457,31 @@
     "Tienda" : {
 
     },
+    "Tienda indicada: %@" : {
+
+    },
+    "Tienda para «%@»" : {
+
+    },
     "Todavía no hay productos en el borrador." : {
+
+    },
+    "Tu borrador y la invitación pendiente se conservan durante el acceso." : {
+
+    },
+    "Tu cuenta ya pertenece a un grupo. Actualiza para consultar su estado." : {
+
+    },
+    "Tu grupo" : {
+
+    },
+    "Vence el %@" : {
+
+    },
+    "Volver" : {
+
+    },
+    "Ya has aceptado esta invitación." : {
 
     }
   },
