@@ -47,7 +47,7 @@ El MVP debe completar este recorrido con dos usuarios reales. Los datos simulado
 - Si hay que iniciar sesión, se conserva la invitación pendiente hasta completar el flujo.
 - Con la app instalada, el enlace debe abrir la incorporación mediante un enlace universal. Sin la app, una página mínima informa de esa necesidad; no se implementa incorporación web ni un flujo automático posterior a la instalación.
 
-La duración exacta de las invitaciones y los detalles de sesión se concretarán en el contrato técnico. No cambian el alcance funcional.
+La duración de las invitaciones y los detalles de sesión se concretan en el [contrato técnico](contracts/mvp-api.md). No cambian el alcance funcional.
 
 ## 3. Pestaña «Añadir»
 
@@ -115,7 +115,7 @@ Historial mínimo por entrada:
 | Estado pendiente, comprado o cancelado | Separar necesidad, compra y cancelación |
 | Comprador y fecha de compra | Registrar la compra efectiva |
 
-La forma física de las tablas se definirá en el contrato técnico. No se compromete una pantalla analítica de historial, un catálogo maestro ni un registro de cada edición.
+El [contrato técnico](contracts/mvp-api.md) define el modelo lógico para las migraciones y los conflictos. No se compromete una pantalla analítica de historial, un catálogo maestro ni un registro de cada edición.
 
 ## 6. Conectividad y errores
 
