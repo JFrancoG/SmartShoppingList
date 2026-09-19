@@ -68,6 +68,20 @@ Logs de referencia: `.../ActionArtifacts/default/BuildProject/BuildProject-Log-2
 
 Swift 6.4 también falló internamente al compilar el override asíncrono Objective-C de redirección de URLSession. Se usa el callback oficial `@Sendable`, con rechazo inmediato, manteniendo async/await en el transporte. No se rebaja la concurrencia ni se añade `@unchecked Sendable`.
 
+## Preparación del alojamiento después del punto de control
+
+Tras publicar [e446b8e](https://github.com/JFrancoG/SmartShoppingList/commit/e446b8efc88a3ea74982cfddc8ef892fe14c6fe0), se adaptaron dos entradas de configuración necesarias para Railway: `APPLE_PRIVATE_KEY_PEM` como alternativa excluyente al archivo `.p8`, y `DATABASE_CA_CERTIFICATE_PEM` para exigir TLS y verificar la CA y el hostname de PostgreSQL. Se retiró el cache mount del Dockerfile que requería un ID específico del servicio y se concretaron puerto, referencias entre servicios y variables en la guía de entorno. No se cambiaron paquetes, pins ni contrato HTTP.
+
+- Auditoría independiente de los cuatro Swift modificados o añadidos: perfil maintenance, estilo y pruebas de comportamiento, sin hallazgos.
+- Build Xcode del servidor con tests: PASS, log `BuildProject-Log-20260919-164216.txt`. Conserva únicamente el diagnóstico de metadatos ya descrito; no hay nuevos warnings Swift identificados.
+- Swift Testing del servidor: **61 tests únicos / 98 invocaciones**, cero fallos y cero runtime warnings. Bundle nativo: `/Users/jesusf/Library/Developer/Xcode/DerivedData/SmartShoppingListServer-gglgzaxldexmsodyegvupaqgkklo/Logs/Test/Test-SmartShoppingListServer-2026.09.19_16-42-36-+0200.xcresult`.
+- Las nuevas pruebas verifican firma ES256 y claims con PEM directo y archivo, rechazos de configuración incompleta/ambigua/inválida y rechazo de CA inválida. La pareja de claves de pruebas es sintética y pública. No se atribuye un ciclo RED observado a estas pruebas.
+- Probe TLS real con el ejecutable macOS recién compilado y PostgreSQL 18.6 en un contenedor temporal: arranque, migraciones y `/hello` con CA correcta; rechazo al arrancar con CA ajena (`CERTIFICATE_VERIFY_FAILED`), nombre incorrecto (`failedToValidateHostname`) y servidor sin TLS (`sslUnsupported`). El caso sin TLS no vuelve a texto plano. Probe: `/tmp/smartshoppinglist-block4-tls-probe.py`; resultado final: cuatro PASS. Se retiraron contenedor, base y certificados sintéticos.
+- Docker Release Linux arm64: PASS con el Dockerfile ajustado, log `/tmp/smartshoppinglist-block4-railway-linux-build.log`. No acredita aún amd64 ni un despliegue en Railway.
+- Se reutilizan las pruebas iOS del punto de control: estas adaptaciones no modifican cliente ni contrato.
+
+Se preparó [EXC-002](../dependency-exceptions.md#exc-002--extracción-de-metadatos-app-intents-sin-adopción) como **propuesta pendiente de aceptación**. El aviso permanece visible; no se ha introducido una excepción aceptada ni un flag de silencio. Estas comprobaciones resuelven la preparación local, no las credenciales, la contratación ni las pruebas reales siguientes.
+
 ## Pendiente para acreditar el bloque completo
 
 - Dominio y servicio HTTPS, presupuesto de alojamiento y configuración Apple del backend. La solicitud no autorizó gastos ni suministró esos valores.

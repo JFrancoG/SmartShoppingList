@@ -10,21 +10,22 @@ En Apple Developer, comprobar que el App ID `com.plusprojects.SmartShoppingList`
 
 El entitlement Sign in with Apple está incorporado al proyecto; habilitarlo en el portal y actualizar la firma sigue requiriendo la cuenta del equipo. La clave `.p8` nunca se incorpora al target iOS ni a la imagen Docker.
 
-Copiar `server/.env.example` a `server/.env`, reemplazar los marcadores y activar estas variables conjuntamente:
+Para ejecución local, copiar `server/.env.example` a `server/.env` y reemplazar los marcadores. En el alojamiento, configurar las variables desde su gestor de secretos. Activar los tres identificadores, una única fuente de clave y las dos variables de cifrado:
 
 | Variable | Valor |
 |---|---|
 | `APPLE_CLIENT_ID` | `com.plusprojects.SmartShoppingList` |
 | `APPLE_TEAM_ID` | Team ID real de diez caracteres |
 | `APPLE_KEY_ID` | ID de diez caracteres de la clave Sign in with Apple |
-| `APPLE_PRIVATE_KEY_PATH` | Archivo `.p8` legible por el proceso, fuera de Git |
+| `APPLE_PRIVATE_KEY_PATH` | Archivo `.p8` legible por el proceso, fuera de Git; alternativa excluyente con `APPLE_PRIVATE_KEY_PEM` |
+| `APPLE_PRIVATE_KEY_PEM` | Contenido PEM multilínea de la clave, como secreto del alojamiento; alternativa excluyente con `APPLE_PRIVATE_KEY_PATH` |
 | `APPLE_REFRESH_ACTIVE_KEY_VERSION` | Versión activa, inicialmente `v1` |
 | `APPLE_REFRESH_KEYS_JSON` | Objeto JSON que asocia versiones a claves aleatorias de 32 bytes codificadas en base64 |
 | `INVITATION_ORIGIN` | Origen público HTTPS del servidor de enlaces; por ejemplo el dominio real de la API, sin `/v1` |
 
 Generar la clave de cifrado con un generador criptográfico, guardarla en el gestor de secretos del alojamiento y conservarla junto con las copias de seguridad autorizadas. No regenerarla en cada arranque: sin ella no se pueden revalidar las concesiones existentes. Al rotar, añadir una versión, cambiar la activa y conservar las versiones anteriores hasta que todas sus concesiones se hayan recifrado o revocado. La revalidación correcta recifra con la clave activa.
 
-Vapor carga `.env` desde su directorio de trabajo. Con todas las variables Apple ausentes, el bootstrap local arranca, pero el acceso real devuelve indisponibilidad. Las cuatro variables de firma y las dos de cifrado se validan como familias independientes: una familia parcial o una clave ilegible impide arrancar; activar ambas familias completas para habilitar el acceso. No existe una autenticación alternativa de producción.
+Vapor carga `.env` desde su directorio de trabajo. Con todas las variables Apple ausentes, el bootstrap local arranca, pero el acceso real devuelve indisponibilidad. La configuración de firma y la de cifrado se validan como familias independientes: una familia parcial, dos fuentes de clave simultáneas o una clave inválida impiden arrancar; activar ambas familias completas para habilitar el acceso. El PEM directo se consume en memoria, sin materializar un archivo. No existe una autenticación alternativa de producción.
 
 Para el contenedor local con identidad, fijar `APPLE_PRIVATE_KEY_PATH=/run/secrets/apple-sign-in.p8` y `APPLE_PRIVATE_KEY_HOST_PATH` a la ruta privada del host. La clave debe ser legible por el usuario del contenedor mediante permisos acotados o un montaje de secretos adecuado; no hacerla pública. Ejecutar desde `server/`:
 
@@ -36,11 +37,25 @@ El override opcional carga `.env` y monta la clave solo para lectura. El Compose
 
 ## HTTPS y alojamiento
 
-Antes de contratar Railway, acordar presupuesto y alertas. La preparación de código y archivos no activa servicios de pago. Para desplegar el contenedor, usar `server/` como raíz de construcción, su Dockerfile y `/hello` como healthcheck. El proceso escucha en `0.0.0.0:8080`; configurar ese puerto de destino y TLS en el proxy del alojamiento.
+Antes de contratar Railway, acordar presupuesto y alertas. La preparación de código y archivos no activa servicios de pago. Para desplegar el contenedor, usar `server/` como raíz de construcción, su Dockerfile y `/hello` como healthcheck. El proceso escucha en `0.0.0.0:8080`; fijar **`PORT=8080`**, además del puerto de destino 8080 del dominio: Railway usa esa variable para sus [healthchecks](https://docs.railway.com/deployments/healthchecks).
 
-Preparar PostgreSQL persistente y sus variables `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_USERNAME`, `DATABASE_PASSWORD` y `DATABASE_NAME`. El servidor usa TLS preferente para la conexión PostgreSQL: restringirla a la red privada del proveedor o exigir TLS mediante la configuración específica del entorno antes de exponerla fuera de esa red. El arranque aplica migraciones automáticamente; conservar la base entre versiones y verificar su copia de seguridad antes de actualizar un entorno con datos reales.
+Railway puede generar un dominio con [HTTPS automático](https://docs.railway.com/networking/public-networking); no es necesario comprar uno para el ensayo. Su URL concreta se usa después en `INVITATION_ORIGIN`, los dos ajustes iOS y Associated Domains. El Dockerfile prescinde del cache mount de Swift porque Railway exige un [ID literal específico del servicio](https://docs.railway.com/builds/dockerfiles#cache-mounts); se conserva el mismo comando de compilación y se pierde esa caché entre builds. Los digests fijados admiten arm64 y amd64. La validación local arm64 no acredita la ejecución amd64 del alojamiento.
 
-Configurar **una sola réplica de la app** para este MVP. La coordinación de revalidación de una concesión Apple reside en el proceso; ampliar réplicas requiere coordinación persistente adicional. Proporcionar el archivo privado de Apple mediante un montaje de secretos o un archivo privado del entorno, accesible por el proceso, y las claves de cifrado como secretos. No incluirlos en el Dockerfile, en argumentos de build, Git ni logs.
+Preparar PostgreSQL con volumen persistente en el mismo proyecto y entorno. Referenciar sus variables desde el servicio de la API, sustituyendo `Postgres` por el nombre real del servicio:
+
+| Variable de la API | Referencia Railway |
+|---|---|
+| `DATABASE_HOST` | `${{Postgres.PGHOST}}`, comprobando que es el dominio privado |
+| `DATABASE_PORT` | `${{Postgres.PGPORT}}` |
+| `DATABASE_USERNAME` | `${{Postgres.PGUSER}}` |
+| `DATABASE_PASSWORD` | `${{Postgres.PGPASSWORD}}` |
+| `DATABASE_NAME` | `${{Postgres.PGDATABASE}}` |
+
+El [template PostgreSQL](https://docs.railway.com/databases/postgresql) genera su propia CA. Copiar **solo el certificado público** `root.crt` del servicio real a `DATABASE_CA_CERTIFICATE_PEM`; nunca copiar `root.key` ni `server.key`. Al configurar esa variable, la API exige TLS y verifica cadena y nombre del host; un PEM vacío o inválido impide arrancar. Comprobar que el certificado del servidor incluye el dominio privado en sus SAN: el [template actual](https://github.com/railwayapp-templates/postgres-ssl/blob/main/init-ssl.sh) lo incorpora desde `RAILWAY_PRIVATE_DOMAIN`, pero una base existente puede conservar un certificado anterior. No desactivar la verificación para sortear un certificado incorrecto; corregirlo en la base. Actualizar la CA de la API si se renueva la CA del servicio.
+
+Sin esa variable, el desarrollo local conserva TLS preferente con la confianza del sistema. La red privada por sí sola no hace confiable una CA propia. El arranque aplica migraciones automáticamente; conservar la base entre versiones y verificar su copia de seguridad antes de actualizar un entorno con datos reales.
+
+Configurar **una sola réplica de la app** para este MVP. La coordinación de revalidación de una concesión Apple reside en el proceso; ampliar réplicas requiere coordinación persistente adicional. En Railway, usar `APPLE_PRIVATE_KEY_PEM` como [variable multilínea sellada](https://docs.railway.com/variables), con saltos de línea reales, y omitir `APPLE_PRIVATE_KEY_PATH`. Definir una ruta no crea un archivo de secretos en el alojamiento. Sellar también las claves de cifrado. No incluir secretos en el Dockerfile, argumentos de build, Git ni logs.
 
 Publicar en el dominio de enlaces, sin redirecciones:
 

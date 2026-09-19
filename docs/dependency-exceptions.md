@@ -1,4 +1,4 @@
-# Excepciones de dependencias
+# Excepciones de dependencias y herramientas
 
 Las excepciones requieren un acuerdo explícito y se limitan al diagnóstico, versión y entorno indicados. No desactivan la política de warnings como errores de los targets propios ni permiten aceptar otros avisos.
 
@@ -17,3 +17,18 @@ Aceptada por el responsable del proyecto el 19 de septiembre de 2026 para entreg
 La corrección que se puede proponer al proyecto original es declarar `.watchOS(.v9)` en su manifiesto específico de Swift 6.4. Documentar esta propuesta no implica que se haya enviado una issue o PR a ese repositorio.
 
 Referencias: [manifiesto de la versión fijada](https://github.com/vapor/jwt-kit/blob/5.7.1/Package%40swift-6.4.swift#L10), [release 5.7.1](https://github.com/vapor/jwt-kit/releases/tag/5.7.1) e [informe de validación](validation/issue-1-server-bootstrap.md).
+
+## EXC-002 · Extracción de metadatos App Intents sin adopción
+
+**Estado: propuesta del 19 de septiembre de 2026, pendiente de aceptación explícita.** Esta propuesta no habilita la entrega ni modifica EXC-001.
+
+- **Diagnóstico propuesto:** `Metadata extraction skipped, no AppIntents.framework dependency found`, emitido por `appintentsmetadataprocessor` de Xcode 27.0 (27A266a).
+- **Alcance:** exclusivamente ese mensaje en los targets `SmartShoppingList`, `SmartShoppingListTests` y el bundle de pruebas de `SmartShoppingListServer`, mientras no utilicen App Intents. No abarca otros diagnósticos, otras versiones de Xcode ni errores de extracción de una funcionalidad real.
+- **Motivo:** estos targets no declaran App Intents ni dependen del framework. SwiftBuild prepara la extracción para targets compatibles que contienen Swift, sin exigir una adopción previa de App Intents. No hay metadatos de esa funcionalidad que generar en el MVP actual. El aviso también aparece en el log del bloque 3; no se atribuye su introducción al bloque 4.
+- **Evidencia:** las compilaciones y pruebas nativas del bloque 4 completaron, sin warnings Swift propios identificados. Los logs completos y sus límites constan en el [informe de validación](validation/issue-4-shared-flow.md#compilación-y-diagnósticos). El resumen MCP omite este diagnóstico y no sustituye esos logs.
+- **Tratamiento propuesto:** conservar el aviso visible y warnings-as-errors en el código propio. No añadir una dependencia ficticia de AppIntents, flags de silencio ni cambios globales del entorno. No describir el resultado como una compilación global sin avisos.
+- **Alternativas evaluadas:** `LM_FILTER_WARNINGS=YES` pasa `--quiet-warnings` al procesador y solo oculta avisos. `LM_SKIP_METADATA_EXTRACTION=YES` evita la tarea completa, pero la herramienta oficial de configuración de Xcode lo rechaza como ajuste desconocido; tampoco proporciona una configuración persistente equivalente para el target de pruebas generado por SwiftPM. No se ha aplicado ninguna de estas opciones.
+- **Efecto si se acepta:** únicamente este aviso dejaría de bloquear el criterio de entrega del bloque 4. Seguirían pendientes HTTPS, Apple real, enlaces y pruebas de dos clientes; su aceptación no completa la issue.
+- **Revisión y retirada:** revisar al cambiar Xcode, antes de incorporar App Intents a cualquiera de esos targets y durante la revisión de entrega del 26 de septiembre. Retirar cuando la herramienta deje de emitirlo o exista una configuración oficial aplicable que elimine la tarea innecesaria; comprobar los logs completos tras compilar y ejecutar las suites afectadas. Cualquier ampliación requiere nuevo acuerdo.
+
+Referencias primarias: [creación de tareas en SwiftBuild](https://github.com/swiftlang/swift-build/blob/main/Sources/SWBApplePlatform/AppIntentsMetadataCompiler.swift#L70-L74) y [condición de extracción](https://github.com/swiftlang/swift-build/blob/12ac09ae1e3e344ce4dc085ee79306b2ccecb3e9/Sources/SWBApplePlatform/AppIntentsMetadataTaskProducer.swift#L50-L57). La especificación `AppIntentsMetadata.xcspec` instalada con Xcode confirma el argumento `--quiet-warnings` de `LM_FILTER_WARNINGS`.

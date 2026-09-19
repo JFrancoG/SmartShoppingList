@@ -29,8 +29,8 @@ RUN mkdir /staging
 
 # Build Release with the matching dynamic Swift runtime and jemalloc.
 # Static Swift linking fails in Foundation with the evaluated 6.4.0 Linux toolchain.
-RUN --mount=type=cache,id=smartshoppinglist-vapor4-swift-6.4.0,target=/build/.build \
-    swift build -c release --jobs "$SWIFT_JOBS" --force-resolved-versions \
+# Keep the build portable: Railway cache mounts require a service-specific literal ID.
+RUN swift build -c release --jobs "$SWIFT_JOBS" --force-resolved-versions \
         --product SmartShoppingListServer \
         -Xlinker -ljemalloc && \
     # Copy main executable to staging area

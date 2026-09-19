@@ -30,14 +30,34 @@ struct AppleSignInConfiguration: Sendable {
     }
 
     static func load(environment: (String) -> String? = Environment.get) throws -> Self? {
-        let names = ["APPLE_CLIENT_ID", "APPLE_TEAM_ID", "APPLE_KEY_ID", "APPLE_PRIVATE_KEY_PATH"]
+        let names = [
+            "APPLE_CLIENT_ID",
+            "APPLE_TEAM_ID",
+            "APPLE_KEY_ID",
+            "APPLE_PRIVATE_KEY_PATH",
+            "APPLE_PRIVATE_KEY_PEM"
+        ]
         let values = names.map(environment)
         guard values.contains(where: { $0 != nil }) else { return nil }
-        guard let clientID = values[0], let teamID = values[1], let keyID = values[2], let path = values[3] else {
+        guard let clientID = values[0], let teamID = values[1], let keyID = values[2] else {
             throw AppleGatewayError.invalidConfiguration
         }
         do {
-            let key = try String(contentsOfFile: path, encoding: .utf8)
+            let key: String
+            switch (values[3], values[4]) {
+            case (let path?, nil):
+                guard !path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                    throw AppleGatewayError.invalidConfiguration
+                }
+                key = try String(contentsOfFile: path, encoding: .utf8)
+            case (nil, let pem?):
+                guard !pem.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                    throw AppleGatewayError.invalidConfiguration
+                }
+                key = pem
+            default:
+                throw AppleGatewayError.invalidConfiguration
+            }
             return try Self(
                 clientID: clientID,
                 teamID: teamID,
