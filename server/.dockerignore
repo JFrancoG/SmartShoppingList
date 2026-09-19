@@ -1,2 +1,6 @@
 .build/
 .swiftpm/
+.env
+.env.*
+!.env.example
+*.xcresult/

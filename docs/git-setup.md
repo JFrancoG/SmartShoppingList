@@ -2,14 +2,14 @@
 
 Un único repositorio en la raíz contiene `ios/`, `server/` y `docs/`. Los comandos siguientes se ejecutan desde esa raíz; las dos ventanas de Xcode pueden seguir abiertas.
 
-Los archivos están preparados. La inicialización, el primer commit y la publicación se ejecutan por separado mediante los comandos de esta guía.
+La inicialización y publicación de este repositorio se completaron el 19 de septiembre de 2026 con el commit `c19d087`, disponible en [GitHub](https://github.com/JFrancoG/SmartShoppingList/commit/c19d0872de623a712f2d640c3b0e31b7be27c623). Los comandos de inicialización y primer envío se conservan como referencia; no son tareas pendientes ni deben repetirse en este checkout.
 
 ## Archivos compartidos
 
 - `.gitignore`: excluye compilaciones, estado personal de Xcode, configuración local y material de firma. Conserva el proyecto iOS, los assets y `Package.resolved`.
 - `.gitattributes`: normaliza texto a LF y mantiene los archivos binarios como binarios.
 - `.gitconfig`: configuración opcional y local de este repositorio. No se carga automáticamente por estar versionada; se activa con `include.path`.
-- `CHANGELOG.md`: entrada preparada para el primer commit.
+- `CHANGELOG.md`: registro de cambios del repositorio.
 
 El `.gitignore` de la plantilla de Vapor sigue limitado a `server/`. No se debe copiar su regla `*.xcodeproj` a la raíz, porque ocultaría el proyecto iOS.
 

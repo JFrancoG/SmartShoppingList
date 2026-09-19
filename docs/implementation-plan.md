@@ -2,38 +2,32 @@
 
 Fecha de creación: 18 de septiembre de 2026. Última revisión: 19 de septiembre de 2026.
 
-Especificación de referencia: [MVP aprobado](mvp-spec.md). Este documento organiza la ejecución; no amplía el contrato funcional.
+Especificación de referencia: [MVP aprobado](mvp-spec.md). Este documento conserva las fases, dependencias y condiciones para avanzar; no amplía el contrato funcional ni registra el progreso de cada tarea.
 
-## Estado actual
-
-- [x] Elegir SmartShoppingList como proyecto del MVP.
-- [x] Cerrar el alcance funcional con el usuario.
-- [x] Elegir inicio de sesión con Apple e invitación mediante enlace compartido.
-- [x] Persistir la especificación y este plan.
-- [x] Incorporar a la especificación checks provisionales y confirmación al finalizar; mantener pendientes los no seleccionados.
-- [x] Fijar iOS 27 con confirmación del usuario sobre la autorización de los organizadores; preferir Vapor 5 con alternativa Vapor 4.
-- [x] Crear las plantillas de iOS y Vapor y comprobar la compilación macOS del servidor y sus targets de pruebas con Swift 6.4.
-- [x] Preparar archivos de versionado y [guía de Git](git-setup.md) para un repositorio común en la raíz.
-- [ ] Confirmar entorno, dispositivos y configuración de servicios.
-- [ ] Preparar repositorio y proyectos ejecutables.
-- [ ] Implementar y validar los recorridos técnicos iniciales.
-
-Existen las plantillas de iOS y Vapor, todavía con la pantalla inicial y el ejemplo `Todo`. Se ha comprobado Xcode 27, SDK iOS 27 y Swift 6.4. `swift build --build-tests --force-resolved-versions` compila el servidor y sus targets de pruebas en macOS sin warnings ni errores reportados; no ejecuta los tests ni valida PostgreSQL, Linux o los recorridos del MVP.
-
-La inicialización de Git y el primer commit quedan para ejecución manual siguiendo la guía. No se ha contratado Railway, desplegado servicios, creado un repositorio remoto, activado un tracker ni ejecutado validación funcional.
-
-## Organización
+## Organización y seguimiento
 
 Una persona desarrolla con ayuda de Codex, con jornadas disponibles de 4–8 horas. La planificación no depende de disponer siempre de ocho horas ni trata la generación de código como sustituto de las comprobaciones reales.
 
-Se mantiene un único alcance, descrito en la spec, y una sola lista operativa de trabajo. La elección de tracker se resolverá al preparar el repositorio; no se introducirán simultáneamente GitHub Issues y Linear ni se crearán tareas externas por cada conversación.
+| Lugar | Responsabilidad |
+|---|---|
+| [Especificación](mvp-spec.md) | Alcance aprobado, reglas funcionales y criterios de aceptación |
+| Este plan | Fases, ventanas objetivo, dependencias y resultados esperados |
+| [GitHub Issues](https://github.com/JFrancoG/SmartShoppingList/issues) | Plan de cada bloque, situación, bloqueos, decisiones de ejecución y evidencia de cierre |
+
+GitHub Issues es el único seguimiento operativo. El [hito «MVP · 27 septiembre»](https://github.com/JFrancoG/SmartShoppingList/milestone/1) agrupa el trabajo de la entrega. Su fecha es un objetivo de planificación; el canal y la hora oficial de entrega deben confirmarse. El porcentaje del hito sólo representa las issues creadas, no todo el alcance del MVP.
+
+Se detallan las unidades del bloque inmediato. Las fases posteriores permanecen aquí hasta que corresponda concretarlas en issues. No se crean tareas por conversación, archivo o commit, ni issues retrospectivas para trabajos ya entregados. Tampoco se mantiene una segunda lista de estados en un archivo de progreso.
+
+Cada issue contiene resultado, fuentes, alcance, plan vigente identificado como Draft o Approved, dependencias, criterios de aceptación y validación prevista. Su descripción identifica si está pendiente, en curso o bloqueada; crearla no significa empezar la implementación. Al cambiar materialmente el plan se actualiza la descripción y se añade un comentario fechado con la decisión, su motivo y evidencia. Las decisiones duraderas se reflejan en la spec o en el documento técnico correspondiente.
+
+La evidencia se registra en la issue con fecha, entorno, resultados y referencia al commit o PR. Los informes extensos pueden guardarse en archivos enlazados. Una issue se cierra cuando cumple sus criterios, se valida y sus cambios están entregados en `main`; compilar pruebas, abrir una PR o escribir un plan no equivale a completar el trabajo.
 
 ## Fases y resultados
 
 | Fase | Ventana objetivo | Resultado verificable |
 |---|---|---|
-| 0. Definición | 18–19 septiembre | Spec aprobada y requisitos técnicos de arranque identificados |
-| 1. Preparación y pruebas iniciales | 19–20 septiembre | Interpretación por voz en dispositivo y colaboración mínima desplegada por HTTPS |
+| 0. Definición | 18–19 septiembre | Spec aprobada, requisitos de arranque y organización del trabajo concretados |
+| 1. Preparación y pruebas iniciales | 19–20 septiembre | Entrada manual en físico, voz/IA con evidencia de su entorno y colaboración mínima desplegada por HTTPS |
 | 2. Recorrido funcional | 21–23 septiembre | Las dos pestañas completan los flujos del grupo y las compras |
 | 3. Validación y acabado | 24–25 septiembre | Casos de error, concurrencia, accesibilidad y persistencia comprobados |
 | 4. Preparación de entrega | 26 septiembre | Código congelado, instrucciones verificadas y demostración reproducible |
@@ -41,95 +35,52 @@ Se mantiene un único alcance, descrito en la spec, y una sola lista operativa d
 
 Estas fechas son objetivos, no evidencia de trabajo realizado. Las pruebas acompañan a la implementación desde la fase 1. Se congelan funcionalidades al finalizar el 25; el 27 no se reserva para añadir nada nuevo.
 
-## Fase 0: cierre técnico breve
+## Bloques iniciales: fases 0 y 1
 
-- [ ] Identificar iPhone de demo con iOS 27, disponibilidad de Apple Intelligence y segundo cliente compatible para colaboración.
-- [ ] Verificar acceso a la configuración necesaria de Sign in with Apple y enlaces universales.
-- [ ] Comprobar Xcode/SDK para iOS 27 y el toolchain necesario para el servidor. Elegir el perfil de desarrollo con evidencia del entorno real; no dar por instalada una herramienta por haber aprobado el objetivo.
-- [ ] Evaluar Vapor 5 durante un bloque de hasta cuatro horas: resolución de dependencias, arranque, PostgreSQL/transacciones, verificación de identidad Apple y compilación del contenedor Linux. Fijar versión exacta si pasa; usar Vapor 4 si aparecen bloqueos que exceden ese bloque, sin abrir una tarea de mantenimiento del framework.
-- [ ] Concretar esquema mínimo, contrato de API y pertenencia al grupo.
-- [ ] Fijar caducidad y revocación de invitaciones, sesión segura y contrato de finalización con IDs explícitos, transacción, reintentos y conflictos concurrentes.
-- [ ] Elegir límites razonables de entrada y tratamiento de tiendas ambiguas a partir de ejemplos reales.
-- [ ] Preparar repositorio y organización de trabajo siguiendo las instrucciones que se establezcan para él.
+| Issue | Resultado | Dependencias |
+|---|---|---|
+| [#1: viabilidad de Vapor y PostgreSQL](https://github.com/JFrancoG/SmartShoppingList/issues/1) | Arranque, persistencia, pruebas ejecutadas, verificación técnica de identidad Apple y contenedor Linux | Entorno local y toolchain compatibles; coordinar identidad con #2 |
+| [#2: contrato mínimo](https://github.com/JFrancoG/SmartShoppingList/issues/2) | Esquema y contrato de identidad, grupos, invitaciones y productos | Puede avanzar junto a #1; concreta reglas de sesión, reintentos y conflictos |
+| [#3: entrada e interpretación en iOS](https://github.com/JFrancoG/SmartShoppingList/issues/3) | Borrador editable, prueba manual física y voz/IA verificadas en su entorno | Dispositivo y modelos disponibles; coordinar tipos y límites con #2 |
+| [#4: recorrido compartido con dos usuarios](https://github.com/JFrancoG/SmartShoppingList/issues/4) | Identidad, invitación y producto compartido persistente, comprobados por HTTPS | #1 y #2; #3 para cerrar la integración del borrador; capacidades Apple y alojamiento |
 
-### Evidencia para elegir Vapor
+El primer bloque técnico es [#1](https://github.com/JFrancoG/SmartShoppingList/issues/1). El estado vigente y el siguiente paso concreto se consultan en cada issue.
 
-Comprobación documental del 19 de septiembre; todavía no es evidencia de compilación o despliegue:
+La evaluación de Vapor 5 tiene un límite máximo de cuatro horas de trabajo técnico acumulado: resolución de dependencias, arranque, PostgreSQL/transacciones, viabilidad de verificar identidad Apple y ejecución Linux. Ante un bloqueo de compatibilidad confirmado se puede adoptar antes la alternativa Vapor 4 aprobada, manteniendo iOS 27 y el alcance. El bloque 1 fija Vapor 4.122.2; la decisión se conserva en [su informe de validación](validation/issue-1-server-bootstrap.md) y el seguimiento en #1. No se actualizan betas durante el cierre.
 
-- La versión candidata es [Vapor 5.0.0-beta.2](https://github.com/vapor/vapor/releases/tag/5.0.0-beta.2), publicada el 16 de septiembre. Corrige un problema de resolución de dependencias de la beta anterior. Su [manifiesto](https://github.com/vapor/vapor/blob/5.0.0-beta.2/Package.swift) exige Swift 6.4.
-- La [plantilla oficial para Vapor 5](https://github.com/vapor/template/blob/1bda1eb08dfeec76ffa6d7078c5d95c7134628ca/Package.swift) integra FluentKit y el driver de base de datos directamente. No se trasladará automáticamente la configuración de paquetes de Vapor 4.
-- El [paquete vapor/jwt 5.1.2](https://github.com/vapor/jwt/blob/5.1.2/Package.swift) todavía depende de Vapor 4. Para Vapor 5 se evaluará JWTKit directamente y se verificará la integración de Sign in with Apple; compartir el número mayor de versión no acredita compatibilidad.
-- Existe un [Dockerfile oficial de referencia](https://github.com/vapor/template/blob/1bda1eb08dfeec76ffa6d7078c5d95c7134628ca/Dockerfile). Compilar y ejecutar nuestra combinación concreta en Linux sigue pendiente; no se da por compatible sólo por existir la plantilla.
+La preparación confirma el iPhone de prueba, un segundo cliente, firma/capacidades, Sign in with Apple, enlaces universales y disponibilidad de modelos. La estrategia de [validación acordada](mvp-spec.md#estrategia-de-validación-acordada) usa entrada manual en el iPhone físico sin Apple Intelligence y Foundation Models en un simulador compatible del Mac. La captura/transcripción de voz se comprueba por separado, identificando el entorno real. La prueba manual no sustituye voz/IA ni los resultados del simulador se atribuyen al iPhone.
 
-El bloque inicial limita el tiempo dedicado a resolver estas incertidumbres. Si se activa la alternativa Vapor 4, el objetivo iOS 27 y el alcance funcional permanecen iguales. Se registrará la versión finalmente probada y fijada, sin actualizar betas durante el cierre de la entrega.
+Railway se contrata/configura cuando existe un backend mínimo listo para desplegar. Se acuerda el presupuesto antes de contratar y se configuran alertas; un límite estricto de gasto puede detener los servicios. La preparación de las issues no autoriza gastos.
 
-## Fase 1: demostrar lo incierto
-
-### Recorrido A: voz y revisión
-
-- [ ] Capturar una frase en español en el dispositivo real.
-- [ ] Transcribirla y generar productos/tienda mediante Foundation Models.
-- [ ] Revisar y corregir el borrador, sin guardado compartido previo.
-- [ ] Comprobar nombres de tiendas, cantidades, variantes de productos y datos ausentes.
-- [ ] Verificar entrada manual cuando no están disponibles micrófono o IA.
-- [ ] Registrar resultados y tiempos observados; no atribuir al dispositivo mediciones obtenidas sólo en simulador.
-
-### Recorrido B: identidad, invitación y datos compartidos
-
-- [ ] Ejecutar Vapor y persistencia localmente.
-- [ ] Validar identidad Apple y crear grupo para el primer usuario.
-- [ ] Crear enlace, conservarlo durante autenticación y aceptar la invitación con el segundo usuario.
-- [ ] Incorporar y consultar un producto desde ambos clientes.
-- [ ] Desplegar la prueba en Railway y repetirla por HTTPS.
-- [ ] Comprobar persistencia después de reiniciar el servidor.
-
-Railway se contrata/configura cuando existe un backend mínimo listo para desplegar. Se acuerda el presupuesto antes de contratar y se configuran alertas; un límite estricto de gasto puede detener los servicios. No es necesario contratar alojamiento para la definición ni para el desarrollo local.
-
-**Punto de decisión al finalizar el segundo día técnico:** ambos recorridos deben estar demostrados. Si fallan, se informa con evidencia y se acuerda la corrección o reducción necesaria. No se oculta el problema desarrollando pantallas alrededor ni se retira una funcionalidad aprobada unilateralmente.
+**Condición para avanzar al finalizar el segundo día técnico:** demostrar tanto el borrador y su interpretación como identidad, invitación y datos compartidos persistentes por HTTPS. Si falla un recorrido, se registra la evidencia y se acuerda la corrección o reducción necesaria, sin retirar funcionalidades aprobadas unilateralmente.
 
 ## Fase 2: completar el MVP
 
-- [ ] Completar onboarding, sesión conservada e invitaciones válidas/inválidas/revocadas.
-- [ ] Integrar guardado del lote confirmado, transacción e identificador de reintento.
-- [ ] Consultar tiendas por voz y selector, con datos reales del grupo.
-- [ ] Editar pendientes y diferenciar compra de cancelación.
-- [ ] Implementar checks locales reversibles, contador y «Finalizar compra» para confirmar sólo los productos seleccionados.
-- [ ] Mantener pendientes los no seleccionados; conservar la selección ante error y evitar duplicados en reintentos.
-- [ ] Conservar historial por entrada y tratar correctamente nuevas compras del mismo producto.
-- [ ] Incorporar carga, vacío, error, refresco y consulta de última lista recuperada.
+El resultado de esta fase es el recorrido completo descrito en la spec:
+
+- Onboarding y sesión conservada, invitaciones válidas e inválidas y guardado atómico del lote confirmado con reintentos seguros.
+- Consulta de tiendas por voz y selector sobre datos reales del grupo; edición de pendientes y distinción entre compra y cancelación.
+- Checks locales reversibles, contador y finalización con IDs explícitos: mantener pendientes los no seleccionados, conservar selección ante errores y resolver conflictos sin duplicar compras.
+- Historial mínimo por entrada y nueva entrada para una nueva necesidad; estados de carga, vacío y error, refresco y consulta de la última lista recuperada.
+
+Las issues de esta fase se concretan al cerrar las incertidumbres iniciales, con dependencias y criterios de aceptación propios.
 
 ## Fase 3: validar y corregir
 
-Comprobaciones centradas en comportamiento:
+Las comprobaciones acompañan al desarrollo y se consolidan antes de congelar funcionalidades:
 
-- [ ] Swift Testing para reglas y contratos críticos; sin pruebas que sólo reproduzcan la implementación.
-- [ ] Accesos sin pertenencia e invitaciones caducadas, revocadas, consumidas o abiertas sin sesión.
-- [ ] Dos altas simultáneas conservadas, un envío reintentado sin duplicados y dos finalizaciones sobre el mismo artículo sin doble compra.
-- [ ] Marcar/desmarcar no escribe en el servidor. Finalizar tres de cinco pendientes registra tres compras y conserva los otros dos.
-- [ ] Las altas posteriores de otros miembros quedan intactas. Los conflictos con productos editados, comprados o cancelados durante la selección se presentan sin sobrescribirlos.
-- [ ] Cambiar de tienda no mezcla selecciones; una finalización fallida conserva los checks y permite un reintento seguro.
-- [ ] Guardado atómico, correcciones respetadas y conservación del borrador ante error.
-- [ ] Persistencia tras cierre/reapertura y reinicio del servidor.
-- [ ] Micrófono/IA no disponibles, tienda ambigua, pérdida de red y recuperación mediante reintento explícito.
-- [ ] VoiceOver, texto grande y uso manual de los controles principales en la interfaz real.
-- [ ] Compilación sin warnings y revisión del código conforme al alcance aprobado.
+- Swift Testing para reglas y contratos críticos, sin pruebas que sólo reproduzcan la implementación; compilación sin warnings propios y únicamente con las [excepciones externas aceptadas](dependency-exceptions.md).
+- Autorización por grupo e invitaciones caducadas, revocadas, consumidas o abiertas sin sesión.
+- Altas concurrentes, lotes atómicos y reintentos sin duplicados. Finalizar tres de cinco pendientes compra sólo tres; las altas posteriores y los otros dos quedan intactos. Ediciones, compras o cancelaciones concurrentes no se sobrescriben ni generan doble compra.
+- Checks sin escrituras, selección separada por tienda, conservación del borrador/selección ante errores y correcciones del usuario respetadas. Persistencia tras cierre/reapertura y reinicio del servidor.
+- Micrófono/IA no disponibles, tiendas ambiguas, pérdida de red y reintento explícito; VoiceOver, texto grande y uso manual en la interfaz real.
 
-La evidencia se añadirá a este plan o a un registro enlazado cuando se ejecute. Ninguna casilla pendiente equivale a un resultado satisfactorio.
+Las evidencias y limitaciones se enlazan desde las issues correspondientes, distinguiendo ejecución física, simulador, macOS y Linux.
 
-## Fase 4: hacer la entrega reproducible
+## Fases 4 y 5: entrega reproducible y margen
 
-- [ ] README con requisitos, ejecución, firma/capacidades, variables y servicios; sin credenciales.
-- [ ] Reproducir la compilación y arranque a partir de las instrucciones.
-- [ ] Verificar la configuración y recuperación de los datos persistentes.
-- [ ] Ensayar con dos usuarios el recorrido de invitación, alta por voz, consulta, selección y finalización de compra, dejando productos pendientes para la siguiente visita.
-- [ ] Preparar una grabación breve de apoyo si resulta útil; no tratarla como requisito publicado del evento ni sustituto del código funcional.
-- [ ] Documentar límites conocidos y diferenciar funcionamiento real de ejemplos o datos de demostración.
-- [ ] Confirmar canal de entrega y hora con margen; verificar el repositorio antes de enviarlo.
+El README debe permitir reproducir compilación, arranque, firma/capacidades, variables, servicios y recuperación de los datos persistentes, sin credenciales. La demostración con dos usuarios cubre invitación, alta, consulta, selección y finalización, conservando pendientes para otra visita. Se documentan voz/IA en el entorno acordado, el recorrido físico manual y los límites conocidos.
 
-Publicar el repositorio y enviar su enlace son acciones de entrega, no realizadas por escribir este plan.
+Una grabación breve puede servir de apoyo; no se trata como requisito publicado del evento ni sustituto del código funcional. Se confirma el canal y la hora de entrega, se comprueba el repositorio y se registra el envío efectivo. Que el repositorio ya sea público no acredita la entrega por el canal oficial.
 
-## Siguiente trabajo
-
-Confirmar los requisitos materiales del arranque y diseñar el contrato mínimo de identidad, grupo, invitación y productos. A continuación, preparar los proyectos y ejecutar los dos recorridos de la fase 1.
-
-Las propuestas posteriores a la entrega permanecen en la sección de futuro de la spec. No se convierten en tareas de este plan.
+Las propuestas posteriores al 27 permanecen en la sección de futuro de la spec. No se convierten en tareas de este MVP.

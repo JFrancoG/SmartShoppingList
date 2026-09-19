@@ -74,7 +74,7 @@ Reglas:
 - Dos altas voluntarias son distintas de un reintento del mismo envío; la deduplicación semántica queda fuera del MVP.
 - Sólo se comunica «guardado» cuando existe confirmación del servidor.
 - Un error conserva el borrador y permite reintentar. La transcripción y la interpretación no autorizan por sí mismas cambios en los datos compartidos.
-- La entrada manual permite continuar si el usuario no concede permiso de micrófono o la IA no está disponible. Esa alternativa no sustituye la validación de la voz y la IA comprometidas.
+- La entrada manual permite indicar productos, cantidades cuando proceda y tienda sin depender de la IA, también si el usuario no concede permiso de micrófono. Esa alternativa no sustituye la validación de la voz y la IA comprometidas.
 
 ## 4. Pestaña «Comprar»
 
@@ -134,14 +134,22 @@ La forma física de las tablas se definirá en el contrato técnico. No se compr
 - Voz: evaluar SpeechAnalyzer/SpeechTranscriber en el dispositivo e idioma reales.
 - Interpretación: Foundation Models con salida estructurada y revisión humana.
 - Comunicación: URLSession sobre HTTPS.
-- Backend: priorizar Vapor 5 pre-release si supera una prueba breve del conjunto necesario; si no, usar Vapor 4, alternativa autorizada expresamente por el usuario. Propuesta de persistencia PostgreSQL y alojamiento Railway.
+- Backend: Vapor 4.122.2 y PostgreSQL, tras comprobar el bloqueo de la combinación Vapor 5 evaluada en Linux y aplicar la alternativa autorizada. La decisión y sus límites se documentan en [la validación del bloque 1](validation/issue-1-server-bootstrap.md). Alojamiento propuesto: Railway.
 - Pruebas unitarias y de integración en Swift Testing; no introducir XCTest unitario ni Core Data.
-- Warnings tratados como errores.
+- Warnings tratados como errores en el código propio; las excepciones externas expresamente aceptadas se delimitan en [el registro de dependencias](dependency-exceptions.md).
 - Verificar Xcode/SDK, toolchain del servidor y dispositivos compatibles antes de implementar. El objetivo iOS 27 no determina por sí solo la versión de Swift disponible en Linux.
 
 La FAQ pública consultada el 19 de septiembre aún indica sistemas 26. El usuario confirma expresamente que dispone de autorización de los organizadores para exigir iOS 27; ésa es la aclaración aplicable a este proyecto. No se presenta como un cambio ya publicado en la FAQ.
 
 El cliente y el backend se implementan desde cero para el evento. La elección de una herramienta no acredita un despliegue ni una validación ya realizados.
+
+### Estrategia de validación acordada
+
+- En el iPhone físico sin Apple Intelligence se comprobará el recorrido mediante entrada manual de productos y tienda, con revisión del borrador y confirmación explícita del guardado.
+- Foundation Models se probará en un simulador compatible del Mac, tras comprobar que el entorno y el modelo están disponibles. La compatibilidad y disponibilidad no se dan por garantizadas.
+- La voz y la IA siguen dentro del alcance. Se registrará por separado la evidencia de captura y transcripción, interpretación con Foundation Models y funcionamiento del recorrido manual.
+- Cada resultado identificará el dispositivo o simulador utilizado. Una prueba de Foundation Models en simulador no acredita su funcionamiento ni sus tiempos en el iPhone físico; la entrada manual tampoco acredita voz ni interpretación.
+- Este reparto de pruebas no declara validado ninguno de los recorridos. Las comprobaciones que no puedan completarse quedarán identificadas con su limitación y evidencia disponible.
 
 ## 8. Criterios de aceptación de la entrega
 
@@ -175,3 +183,5 @@ Tras la entrega podrán estudiarse sugerencias de productos frecuentes por tiend
 Decisiones de la conversación del 18 de septiembre: el usuario elige Sign in with Apple e invitaciones compartidas mediante enlace, y aprueba el alcance funcional descrito para el día 27, dejando las ampliaciones para después.
 
 Decisiones del 19 de septiembre: el usuario sustituye la compra inmediata por check por una selección provisional y un envío al finalizar. Los no marcados se mantienen pendientes; se usa la simplificación expresamente permitida de omitir la pregunta de eliminación. También solicita iOS 27, confirma autorización de los organizadores para exigirlo, y elige Vapor 5 si es viable, o Vapor 4 en caso contrario.
+
+Acuerdo de validación del 19 de septiembre: utilizar entrada manual de productos y tienda en el iPhone físico sin Apple Intelligence y comprobar Foundation Models en un simulador compatible del Mac, distinguiendo las evidencias de ambos entornos y manteniendo voz e IA en el alcance.

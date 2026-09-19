@@ -1,8 +1,7 @@
 import FluentKit
-import RoutingKit
 import Vapor
 
-func routes(_ app: Application, databases: Databases) async throws {
+func routes(_ app: Application, databases: Databases) throws {
     app.get { req async in
         "It works!"
     }
@@ -11,5 +10,5 @@ func routes(_ app: Application, databases: Databases) async throws {
         "Hello, world!"
     }
 
-    try await app.register(collection: TodoController(databases: databases))
+    try app.register(collection: TodoController(databases: databases))
 }

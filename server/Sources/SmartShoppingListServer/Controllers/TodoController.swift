@@ -1,6 +1,4 @@
 import FluentKit
-import HTTPTypes
-import RoutingKit
 import Vapor
 
 #if canImport(FoundationEssentials)
@@ -31,12 +29,12 @@ struct TodoController: RouteCollection {
     }
 
     func create(_ req: Request) async throws -> TodoDTO {
-        let todo = try await req.content.decode(TodoDTO.self).toModel()
+        let todo = try req.content.decode(TodoDTO.self).toModel()
         try await todo.save(on: databases.database())
         return todo.toDTO()
     }
 
-    func delete(_ req: Request) async throws -> HTTPResponse.Status {
+    func delete(_ req: Request) async throws -> HTTPStatus {
         guard
             let idString = req.parameters.get("todoID"), let id = UUID(uuidString: idString)
         else {
