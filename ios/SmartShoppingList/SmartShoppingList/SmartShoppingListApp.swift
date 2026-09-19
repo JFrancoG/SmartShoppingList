@@ -1,17 +1,18 @@
-//
-//  SmartShoppingListApp.swift
-//  SmartShoppingList
-//
-//  Created by Jesús Franco on 19/09/2026.
-//
-
 import SwiftUI
 
 @main
 struct SmartShoppingListApp: App {
+    @State private var draft = ShoppingDraftViewModel(
+        interpreter: FoundationModelsDraftInterpreter(),
+        speech: SpeechCaptureService(),
+        persistence: FileDraftPersistence(
+            fileURL: URL.applicationSupportDirectory.appending(path: "SmartShoppingList/draft-v1.json")
+        )
+    )
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            ContentView(viewModel: draft)
         }
     }
 }

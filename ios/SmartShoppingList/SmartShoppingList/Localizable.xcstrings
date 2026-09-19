@@ -1,0 +1,201 @@
+{
+  "sourceLanguage" : "es",
+  "strings" : {
+    "Acorta el nombre del producto: admite hasta 160 caracteres Unicode." : {
+
+    },
+    "Acorta la cantidad: admite hasta 80 caracteres Unicode." : {
+
+    },
+    "Acorta la tienda: admite hasta 80 caracteres Unicode." : {
+
+    },
+    "Activa Apple Intelligence en Ajustes para interpretar texto. La entrada manual sigue disponible." : {
+
+    },
+    "Añade al menos un producto para revisar el borrador." : {
+
+    },
+    "Añadir" : {
+
+    },
+    "Añadir producto a mano" : {
+
+    },
+    "Aplicar" : {
+
+    },
+    "Borrador revisado. Todavía no se ha enviado al grupo." : {
+
+    },
+    "Cancelar" : {
+
+    },
+    "Cancelar dictado" : {
+
+    },
+    "Cancelar interpretación" : {
+
+    },
+    "Cantidad no indicada" : {
+
+    },
+    "Cantidad, opcional" : {
+
+    },
+    "Cantidad: %@" : {
+
+    },
+    "Cerrar aviso" : {
+
+    },
+    "Comprobar disponibilidad" : {
+
+    },
+    "Conservación del borrador" : {
+
+    },
+    "Dictar" : {
+
+    },
+    "Editar" : {
+
+    },
+    "Editar %@" : {
+
+    },
+    "El borrador admite hasta 50 productos." : {
+
+    },
+    "El campo contiene caracteres de control que no se admiten." : {
+
+    },
+    "El micrófono no tiene permiso. Puedes permitirlo en Ajustes o escribir los productos a mano." : {
+
+    },
+    "El modelo aún no está listo. Puedes continuar a mano y volver a comprobarlo después." : {
+
+    },
+    "El texto es demasiado largo. Interpreta una lista más corta; tu texto se conserva." : {
+
+    },
+    "Escribe el nombre del producto." : {
+
+    },
+    "Escribe o dicta" : {
+
+    },
+    "Escuchando…" : {
+
+    },
+    "Este dispositivo no admite Apple Intelligence. Puedes añadir los productos a mano." : {
+
+    },
+    "Incluye las variantes que necesitas, por ejemplo sin lactosa." : {
+
+    },
+    "Indica la tienda de cada producto antes de revisar el borrador." : {
+
+    },
+    "Indica una tienda" : {
+
+    },
+    "Interpretando el texto…" : {
+
+    },
+    "Interpretar texto" : {
+
+    },
+    "La grabación se ha interrumpido. El texto reconocido se conserva; puedes continuar a mano o volver a dictar." : {
+
+    },
+    "La interpretación en español no está disponible. Puedes continuar a mano." : {
+
+    },
+    "La interpretación no está disponible ahora. Puedes continuar a mano." : {
+
+    },
+    "La propuesta superaría los 50 productos. No se ha añadido ninguno; divide el texto y revisa el borrador." : {
+
+    },
+    "La transcripción en español no está disponible en este dispositivo. Puedes escribir el texto o añadir los productos a mano." : {
+
+    },
+    "Los productos siguen siendo un borrador hasta que confirmes su incorporación al grupo." : {
+
+    },
+    "No hay un micrófono disponible. Puedes continuar a mano." : {
+
+    },
+    "No se ha podido guardar el borrador en este dispositivo. Conserva la app abierta; volveremos a intentarlo con el siguiente cambio." : {
+
+    },
+    "No se ha podido interpretar el texto. El borrador se conserva; puedes reintentar o continuar a mano." : {
+
+    },
+    "No se ha podido interpretar este texto. Puedes añadir los productos a mano." : {
+
+    },
+    "No se ha podido recuperar el borrador guardado. Lo conservamos sin modificar. Los cambios de esta sesión no se guardarán al cerrar la app." : {
+
+    },
+    "No se han encontrado productos. Puedes reformular el texto o añadirlos a mano." : {
+
+    },
+    "Nombre: hasta 160 caracteres. Cantidad y tienda: hasta 80. La cantidad es opcional." : {
+
+    },
+    "Por ejemplo: jabón, cerveza y yogures en Mercadona" : {
+
+    },
+    "Preparando el dictado…" : {
+
+    },
+    "Producto" : {
+
+    },
+    "Producto sin nombre" : {
+
+    },
+    "Productos · %lld" : {
+
+    },
+    "Puedes interpretar el texto y revisar los productos antes de añadirlos al grupo." : {
+
+    },
+    "Quitar" : {
+
+    },
+    "Quitar %@" : {
+
+    },
+    "Recuperando el borrador…" : {
+
+    },
+    "Revisa cada producto, su cantidad y la tienda. Puedes añadir hasta 50 productos por lote." : {
+
+    },
+    "Revisa la cantidad del producto." : {
+
+    },
+    "Revisar borrador" : {
+
+    },
+    "Terminando el dictado…" : {
+
+    },
+    "Terminar dictado" : {
+
+    },
+    "Texto de la compra" : {
+
+    },
+    "Tienda" : {
+
+    },
+    "Todavía no hay productos en el borrador." : {
+
+    }
+  },
+  "version" : "1.0"
+}

@@ -13,6 +13,8 @@ Una persona dicta lo que necesita comprar y dónde. Revisa los productos interpr
 - [Hito MVP · 27 septiembre](https://github.com/JFrancoG/SmartShoppingList/milestone/1): trabajo de la entrega; los primeros bloques son [servidor #1](https://github.com/JFrancoG/SmartShoppingList/issues/1), [contrato #2](https://github.com/JFrancoG/SmartShoppingList/issues/2), [entrada iOS #3](https://github.com/JFrancoG/SmartShoppingList/issues/3) y [colaboración #4](https://github.com/JFrancoG/SmartShoppingList/issues/4).
 - [Preparación de Git](docs/git-setup.md): configuración local y referencia de la inicialización ya completada.
 - [Servidor](server/README.md): requisitos y comandos de PostgreSQL, compilación, pruebas y ejecución.
+- [Borrador iOS](docs/architecture/ios-draft.md): decisiones de entrada, revisión y conservación local.
+- [Validación del borrador](docs/validation/issue-3-ios-draft.md): pruebas, disponibilidad real de modelos y comprobaciones pendientes.
 - [Validación del arranque](docs/validation/issue-1-server-bootstrap.md): versiones evaluadas, resultados y límites de la prueba técnica del servidor.
 - [Excepciones de dependencias](docs/dependency-exceptions.md): diagnósticos externos aceptados expresamente, alcance y condiciones de retirada.
 
@@ -33,6 +35,12 @@ Marco técnico: iOS 27 como versión mínima, SwiftUI, Swift 6 con concurrencia 
 En ese punto de partida se comprobaron Xcode 27, SDK iOS 27 y Swift 6.4, con Vapor 5.0.0-beta.2 en `Package.resolved`. Se compiló el servidor junto con sus targets de pruebas en macOS, sin warnings ni errores reportados; esa comprobación no ejecutó las pruebas contra PostgreSQL.
 
 La validación acordada combina entrada manual en el iPhone físico sin Apple Intelligence y Foundation Models en un simulador compatible del Mac, previa comprobación de disponibilidad. Voz e IA siguen dentro del alcance; cada prueba identificará su entorno según la [estrategia de validación](docs/mvp-spec.md#estrategia-de-validación-acordada).
+
+## Compilación y pruebas iOS
+
+Abrir `ios/SmartShoppingList/SmartShoppingList.xcodeproj` con Xcode 27, seleccionar el esquema compartido `SmartShoppingList` y un iPhone o simulador con iOS 27. Ejecutar la app para preparar el borrador local. Para las pruebas, seleccionar el plan `Fast` o `Integration` y ejecutar Test; ambos usan Swift Testing y no requieren IA ni micrófono.
+
+La entrada manual permite añadir nombre, cantidad opcional y tienda. La revisión valida el borrador; todavía no lo envía al grupo. Las pruebas reales de voz, Foundation Models y físico tienen requisitos y evidencia separados en el informe enlazado.
 
 ## Compilación del servidor
 
