@@ -11,6 +11,7 @@ Una persona desarrolla con ayuda de Codex, con jornadas disponibles de 4–8 hor
 | Lugar | Responsabilidad |
 |---|---|
 | [Especificación](mvp-spec.md) | Alcance aprobado, reglas funcionales y criterios de aceptación |
+| [Contrato técnico](contracts/mvp-api.md) | Tipos y operaciones compartidos, integridad, sesiones, invitaciones y conflictos; ejemplos verificables |
 | Este plan | Fases, ventanas objetivo, dependencias y resultados esperados |
 | [GitHub Issues](https://github.com/JFrancoG/SmartShoppingList/issues) | Plan de cada bloque, situación, bloqueos, decisiones de ejecución y evidencia de cierre |
 
@@ -44,7 +45,7 @@ Estas fechas son objetivos, no evidencia de trabajo realizado. Las pruebas acomp
 | [#3: entrada e interpretación en iOS](https://github.com/JFrancoG/SmartShoppingList/issues/3) | Borrador editable, prueba manual física y voz/IA verificadas en su entorno | Dispositivo y modelos disponibles; coordinar tipos y límites con #2 |
 | [#4: recorrido compartido con dos usuarios](https://github.com/JFrancoG/SmartShoppingList/issues/4) | Identidad, invitación y producto compartido persistente, comprobados por HTTPS | #1 y #2; #3 para cerrar la integración del borrador; capacidades Apple y alojamiento |
 
-El primer bloque técnico es [#1](https://github.com/JFrancoG/SmartShoppingList/issues/1). El estado vigente y el siguiente paso concreto se consultan en cada issue.
+El primer bloque técnico es [#1](https://github.com/JFrancoG/SmartShoppingList/issues/1). El [contrato de #2](contracts/mvp-api.md) incluye OpenAPI, ejemplos y una matriz de aceptación para los bloques de implementación. El estado vigente y el siguiente paso concreto se consultan en cada issue.
 
 La evaluación de Vapor 5 tiene un límite máximo de cuatro horas de trabajo técnico acumulado: resolución de dependencias, arranque, PostgreSQL/transacciones, viabilidad de verificar identidad Apple y ejecución Linux. Ante un bloqueo de compatibilidad confirmado se puede adoptar antes la alternativa Vapor 4 aprobada, manteniendo iOS 27 y el alcance. El bloque 1 fija Vapor 4.122.2; la decisión se conserva en [su informe de validación](validation/issue-1-server-bootstrap.md) y el seguimiento en #1. No se actualizan betas durante el cierre.
 

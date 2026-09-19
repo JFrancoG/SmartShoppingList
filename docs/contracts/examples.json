@@ -1,0 +1,1974 @@
+{
+  "contractVersion": "0.1.0",
+  "cases": [
+    {
+      "id": "challenge-fresh",
+      "operationId": "createChallenge",
+      "request": {
+        "path": {},
+        "query": {},
+        "body": {}
+      },
+      "response": {
+        "status": 201,
+        "body": {
+          "id": "00000000-0000-4000-8000-000000000050",
+          "nonce": "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNM",
+          "expiresAt": "2026-09-19T10:05:00Z"
+        }
+      }
+    },
+    {
+      "id": "apple-session",
+      "operationId": "loginWithApple",
+      "request": {
+        "path": {},
+        "query": {},
+        "body": {
+          "challengeId": "00000000-0000-4000-8000-000000000050",
+          "identityToken": "FAKE_NATIVE_ID_TOKEN",
+          "authorizationCode": "FAKE_ONE_USE_CODE",
+          "displayName": "Alex"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "accessToken": "SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSQ",
+          "tokenType": "Bearer",
+          "expiresAt": "2026-10-19T10:00:00Z",
+          "user": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "displayName": "Alex",
+            "group": null
+          }
+        }
+      }
+    },
+    {
+      "id": "apple-invalid-nonce",
+      "operationId": "loginWithApple",
+      "request": {
+        "path": {},
+        "query": {},
+        "body": {
+          "challengeId": "00000000-0000-4000-8000-000000000050",
+          "identityToken": "FAKE_WRONG_NONCE_TOKEN",
+          "authorizationCode": "FAKE_ONE_USE_CODE"
+        }
+      },
+      "response": {
+        "status": 401,
+        "body": {
+          "code": "invalid_apple_credentials",
+          "message": "No se ha podido validar el acceso con Apple.",
+          "requestId": "00000000-0000-4000-8000-000000000900"
+        }
+      }
+    },
+    {
+      "id": "challenge-consumed",
+      "operationId": "loginWithApple",
+      "request": {
+        "path": {},
+        "query": {},
+        "body": {
+          "challengeId": "00000000-0000-4000-8000-000000000050",
+          "identityToken": "FAKE_NATIVE_ID_TOKEN",
+          "authorizationCode": "FAKE_USED_CODE"
+        }
+      },
+      "response": {
+        "status": 409,
+        "body": {
+          "code": "challenge_consumed",
+          "message": "Inicia de nuevo el acceso con Apple.",
+          "requestId": "00000000-0000-4000-8000-000000000900"
+        }
+      }
+    },
+    {
+      "id": "current-user",
+      "operationId": "getCurrentUser",
+      "request": {
+        "path": {},
+        "query": {}
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "displayName": "Alex",
+          "group": {
+            "id": "00000000-0000-4000-8000-000000000010",
+            "name": "Casa",
+            "creatorUserId": "00000000-0000-4000-8000-000000000001",
+            "createdAt": "2026-09-19T10:00:00Z"
+          }
+        }
+      }
+    },
+    {
+      "id": "session-expired",
+      "operationId": "getCurrentUser",
+      "request": {
+        "path": {},
+        "query": {}
+      },
+      "response": {
+        "status": 401,
+        "body": {
+          "code": "invalid_session",
+          "message": "Inicia sesión para continuar.",
+          "requestId": "00000000-0000-4000-8000-000000000900"
+        }
+      }
+    },
+    {
+      "id": "logout-current",
+      "operationId": "logout",
+      "request": {
+        "path": {},
+        "query": {}
+      },
+      "response": {
+        "status": 204
+      }
+    },
+    {
+      "id": "create-group",
+      "operationId": "createGroup",
+      "request": {
+        "path": {},
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000100",
+          "name": "Casa"
+        }
+      },
+      "response": {
+        "status": 201,
+        "body": {
+          "id": "00000000-0000-4000-8000-000000000010",
+          "name": "Casa",
+          "creatorUserId": "00000000-0000-4000-8000-000000000001",
+          "createdAt": "2026-09-19T10:00:00Z"
+        }
+      }
+    },
+    {
+      "id": "create-group-retry",
+      "operationId": "createGroup",
+      "request": {
+        "path": {},
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000100",
+          "name": "Casa"
+        }
+      },
+      "response": {
+        "status": 201,
+        "body": {
+          "id": "00000000-0000-4000-8000-000000000010",
+          "name": "Casa",
+          "creatorUserId": "00000000-0000-4000-8000-000000000001",
+          "createdAt": "2026-09-19T10:00:00Z"
+        }
+      }
+    },
+    {
+      "id": "already-grouped",
+      "operationId": "createGroup",
+      "request": {
+        "path": {},
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000103",
+          "name": "Otro grupo"
+        }
+      },
+      "response": {
+        "status": 409,
+        "body": {
+          "code": "already_in_group",
+          "message": "Ya perteneces a un grupo.",
+          "requestId": "00000000-0000-4000-8000-000000000900"
+        }
+      }
+    },
+    {
+      "id": "stores-real-group",
+      "operationId": "listStores",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {
+          "limit": 50
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "stores": [
+            {
+              "id": "00000000-0000-4000-8000-000000000020",
+              "groupId": "00000000-0000-4000-8000-000000000010",
+              "name": "Mercadona"
+            }
+          ],
+          "nextCursor": null
+        }
+      }
+    },
+    {
+      "id": "foreign-group",
+      "operationId": "listStores",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000099"
+        },
+        "query": {}
+      },
+      "response": {
+        "status": 404,
+        "body": {
+          "code": "not_found",
+          "message": "No se encuentra el recurso.",
+          "requestId": "00000000-0000-4000-8000-000000000900"
+        }
+      }
+    },
+    {
+      "id": "create-invite",
+      "operationId": "createInvitation",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "body": {}
+      },
+      "response": {
+        "status": 201,
+        "body": {
+          "invitation": {
+            "id": "00000000-0000-4000-8000-000000000040",
+            "groupId": "00000000-0000-4000-8000-000000000010",
+            "createdAt": "2026-09-19T10:01:00Z",
+            "expiresAt": "2026-09-20T10:01:00Z",
+            "revokedAt": null,
+            "acceptedAt": null,
+            "acceptedBy": null
+          },
+          "url": "https://links.smartshoppinglist.example/invite/00000000-0000-4000-8000-000000000040#token=IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII"
+        }
+      }
+    },
+    {
+      "id": "member-cannot-create-invite",
+      "operationId": "createInvitation",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "body": {}
+      },
+      "response": {
+        "status": 403,
+        "body": {
+          "code": "creator_required",
+          "message": "Solo el creador puede gestionar invitaciones.",
+          "requestId": "00000000-0000-4000-8000-000000000900"
+        }
+      }
+    },
+    {
+      "id": "list-invites-no-secrets",
+      "operationId": "listInvitations",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {}
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "invitations": [
+            {
+              "id": "00000000-0000-4000-8000-000000000040",
+              "groupId": "00000000-0000-4000-8000-000000000010",
+              "createdAt": "2026-09-19T10:01:00Z",
+              "expiresAt": "2026-09-20T10:01:00Z",
+              "revokedAt": null,
+              "acceptedAt": null,
+              "acceptedBy": null
+            }
+          ],
+          "nextCursor": null
+        }
+      }
+    },
+    {
+      "id": "revoke-invite",
+      "operationId": "revokeInvitation",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "invitationId": "00000000-0000-4000-8000-000000000040"
+        },
+        "query": {}
+      },
+      "response": {
+        "status": 204
+      }
+    },
+    {
+      "id": "revoke-invite-retry",
+      "operationId": "revokeInvitation",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "invitationId": "00000000-0000-4000-8000-000000000040"
+        },
+        "query": {}
+      },
+      "response": {
+        "status": 204
+      }
+    },
+    {
+      "id": "cannot-revoke-consumed",
+      "operationId": "revokeInvitation",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "invitationId": "00000000-0000-4000-8000-000000000040"
+        },
+        "query": {}
+      },
+      "response": {
+        "status": 409,
+        "body": {
+          "code": "invitation_consumed",
+          "message": "La invitación ya fue utilizada.",
+          "requestId": "00000000-0000-4000-8000-000000000900"
+        }
+      }
+    },
+    {
+      "id": "preview-does-not-consume",
+      "operationId": "previewInvitation",
+      "request": {
+        "path": {
+          "invitationId": "00000000-0000-4000-8000-000000000040"
+        },
+        "query": {},
+        "body": {
+          "token": "IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "group": {
+            "id": "00000000-0000-4000-8000-000000000010",
+            "name": "Casa",
+            "creatorUserId": "00000000-0000-4000-8000-000000000001",
+            "createdAt": "2026-09-19T10:00:00Z"
+          },
+          "expiresAt": "2026-09-20T10:01:00Z",
+          "alreadyAccepted": false
+        }
+      }
+    },
+    {
+      "id": "invalid-invite-secret",
+      "operationId": "previewInvitation",
+      "request": {
+        "path": {
+          "invitationId": "00000000-0000-4000-8000-000000000040"
+        },
+        "query": {},
+        "body": {
+          "token": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXA"
+        }
+      },
+      "response": {
+        "status": 404,
+        "body": {
+          "code": "not_found",
+          "message": "No se encuentra la invitación.",
+          "requestId": "00000000-0000-4000-8000-000000000900"
+        }
+      }
+    },
+    {
+      "id": "expired-invite",
+      "operationId": "previewInvitation",
+      "request": {
+        "path": {
+          "invitationId": "00000000-0000-4000-8000-000000000040"
+        },
+        "query": {},
+        "body": {
+          "token": "IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII"
+        }
+      },
+      "response": {
+        "status": 410,
+        "body": {
+          "code": "invitation_expired",
+          "message": "La invitación ha caducado.",
+          "requestId": "00000000-0000-4000-8000-000000000900"
+        }
+      }
+    },
+    {
+      "id": "accept-invite",
+      "operationId": "acceptInvitation",
+      "request": {
+        "path": {
+          "invitationId": "00000000-0000-4000-8000-000000000040"
+        },
+        "query": {},
+        "body": {
+          "token": "IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "id": "00000000-0000-4000-8000-000000000010",
+          "name": "Casa",
+          "creatorUserId": "00000000-0000-4000-8000-000000000001",
+          "createdAt": "2026-09-19T10:00:00Z"
+        }
+      }
+    },
+    {
+      "id": "accept-invite-retry-same-user",
+      "operationId": "acceptInvitation",
+      "request": {
+        "path": {
+          "invitationId": "00000000-0000-4000-8000-000000000040"
+        },
+        "query": {},
+        "body": {
+          "token": "IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "id": "00000000-0000-4000-8000-000000000010",
+          "name": "Casa",
+          "creatorUserId": "00000000-0000-4000-8000-000000000001",
+          "createdAt": "2026-09-19T10:00:00Z"
+        }
+      }
+    },
+    {
+      "id": "invite-consumed-by-other",
+      "operationId": "acceptInvitation",
+      "request": {
+        "path": {
+          "invitationId": "00000000-0000-4000-8000-000000000040"
+        },
+        "query": {},
+        "body": {
+          "token": "IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII"
+        }
+      },
+      "response": {
+        "status": 410,
+        "body": {
+          "code": "invitation_consumed",
+          "message": "La invitación ya fue utilizada.",
+          "requestId": "00000000-0000-4000-8000-000000000900"
+        }
+      }
+    },
+    {
+      "id": "invite-revoked",
+      "operationId": "acceptInvitation",
+      "request": {
+        "path": {
+          "invitationId": "00000000-0000-4000-8000-000000000040"
+        },
+        "query": {},
+        "body": {
+          "token": "IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII"
+        }
+      },
+      "response": {
+        "status": 410,
+        "body": {
+          "code": "invitation_revoked",
+          "message": "La invitación fue revocada.",
+          "requestId": "00000000-0000-4000-8000-000000000900"
+        }
+      }
+    },
+    {
+      "id": "invite-no-silent-group-transfer",
+      "operationId": "acceptInvitation",
+      "request": {
+        "path": {
+          "invitationId": "00000000-0000-4000-8000-000000000040"
+        },
+        "query": {},
+        "body": {
+          "token": "IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII"
+        }
+      },
+      "response": {
+        "status": 409,
+        "body": {
+          "code": "already_in_group",
+          "message": "Ya perteneces a un grupo.",
+          "requestId": "00000000-0000-4000-8000-000000000900"
+        }
+      }
+    },
+    {
+      "id": "add-confirmed-three",
+      "operationId": "addItems",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000101",
+          "items": [
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Cerveza",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Yogures sin lactosa",
+              "quantity": "4 unidades",
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            }
+          ]
+        }
+      },
+      "response": {
+        "status": 201,
+        "body": {
+          "items": [
+            {
+              "id": "00000000-0000-4000-8000-000000000030",
+              "groupId": "00000000-0000-4000-8000-000000000010",
+              "storeId": "00000000-0000-4000-8000-000000000020",
+              "name": "Jabón",
+              "quantity": null,
+              "status": "pending",
+              "version": 1,
+              "createdBy": "00000000-0000-4000-8000-000000000002",
+              "createdAt": "2026-09-19T10:10:00Z",
+              "purchasedBy": null,
+              "purchasedAt": null
+            },
+            {
+              "id": "00000000-0000-4000-8000-000000000031",
+              "groupId": "00000000-0000-4000-8000-000000000010",
+              "storeId": "00000000-0000-4000-8000-000000000020",
+              "name": "Cerveza",
+              "quantity": null,
+              "status": "pending",
+              "version": 1,
+              "createdBy": "00000000-0000-4000-8000-000000000002",
+              "createdAt": "2026-09-19T10:10:00Z",
+              "purchasedBy": null,
+              "purchasedAt": null
+            },
+            {
+              "id": "00000000-0000-4000-8000-000000000032",
+              "groupId": "00000000-0000-4000-8000-000000000010",
+              "storeId": "00000000-0000-4000-8000-000000000020",
+              "name": "Yogures sin lactosa",
+              "quantity": "4 unidades",
+              "status": "pending",
+              "version": 1,
+              "createdBy": "00000000-0000-4000-8000-000000000002",
+              "createdAt": "2026-09-19T10:10:00Z",
+              "purchasedBy": null,
+              "purchasedAt": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "add-lost-response-retry",
+      "operationId": "addItems",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000101",
+          "items": [
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Cerveza",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Yogures sin lactosa",
+              "quantity": "4 unidades",
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            }
+          ]
+        }
+      },
+      "response": {
+        "status": 201,
+        "body": {
+          "items": [
+            {
+              "id": "00000000-0000-4000-8000-000000000030",
+              "groupId": "00000000-0000-4000-8000-000000000010",
+              "storeId": "00000000-0000-4000-8000-000000000020",
+              "name": "Jabón",
+              "quantity": null,
+              "status": "pending",
+              "version": 1,
+              "createdBy": "00000000-0000-4000-8000-000000000002",
+              "createdAt": "2026-09-19T10:10:00Z",
+              "purchasedBy": null,
+              "purchasedAt": null
+            },
+            {
+              "id": "00000000-0000-4000-8000-000000000031",
+              "groupId": "00000000-0000-4000-8000-000000000010",
+              "storeId": "00000000-0000-4000-8000-000000000020",
+              "name": "Cerveza",
+              "quantity": null,
+              "status": "pending",
+              "version": 1,
+              "createdBy": "00000000-0000-4000-8000-000000000002",
+              "createdAt": "2026-09-19T10:10:00Z",
+              "purchasedBy": null,
+              "purchasedAt": null
+            },
+            {
+              "id": "00000000-0000-4000-8000-000000000032",
+              "groupId": "00000000-0000-4000-8000-000000000010",
+              "storeId": "00000000-0000-4000-8000-000000000020",
+              "name": "Yogures sin lactosa",
+              "quantity": "4 unidades",
+              "status": "pending",
+              "version": 1,
+              "createdBy": "00000000-0000-4000-8000-000000000002",
+              "createdAt": "2026-09-19T10:10:00Z",
+              "purchasedBy": null,
+              "purchasedAt": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "add-confirmed-new-store",
+      "operationId": "addItems",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000105",
+          "items": [
+            {
+              "name": "Leche sin lactosa",
+              "quantity": "2 litros",
+              "store": {
+                "newName": "Día"
+              }
+            }
+          ]
+        }
+      },
+      "response": {
+        "status": 201,
+        "body": {
+          "items": [
+            {
+              "id": "00000000-0000-4000-8000-000000000035",
+              "groupId": "00000000-0000-4000-8000-000000000010",
+              "storeId": "00000000-0000-4000-8000-000000000021",
+              "name": "Leche sin lactosa",
+              "quantity": "2 litros",
+              "status": "pending",
+              "version": 1,
+              "createdBy": "00000000-0000-4000-8000-000000000002",
+              "createdAt": "2026-09-19T10:10:00Z",
+              "purchasedBy": null,
+              "purchasedAt": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "operation-id-reused-different-body",
+      "operationId": "addItems",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000101",
+          "items": [
+            {
+              "name": "Otro producto",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            }
+          ]
+        }
+      },
+      "response": {
+        "status": 409,
+        "body": {
+          "code": "idempotency_key_reused",
+          "message": "Este identificador corresponde a otro envío.",
+          "requestId": "00000000-0000-4000-8000-000000000900"
+        }
+      }
+    },
+    {
+      "id": "list-five-pending",
+      "operationId": "listPendingItems",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "storeId": "00000000-0000-4000-8000-000000000020"
+        },
+        "query": {}
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "items": [
+            {
+              "id": "00000000-0000-4000-8000-000000000030",
+              "groupId": "00000000-0000-4000-8000-000000000010",
+              "storeId": "00000000-0000-4000-8000-000000000020",
+              "name": "Jabón",
+              "quantity": null,
+              "status": "pending",
+              "version": 1,
+              "createdBy": "00000000-0000-4000-8000-000000000002",
+              "createdAt": "2026-09-19T10:10:00Z",
+              "purchasedBy": null,
+              "purchasedAt": null
+            },
+            {
+              "id": "00000000-0000-4000-8000-000000000031",
+              "groupId": "00000000-0000-4000-8000-000000000010",
+              "storeId": "00000000-0000-4000-8000-000000000020",
+              "name": "Cerveza",
+              "quantity": null,
+              "status": "pending",
+              "version": 1,
+              "createdBy": "00000000-0000-4000-8000-000000000002",
+              "createdAt": "2026-09-19T10:10:00Z",
+              "purchasedBy": null,
+              "purchasedAt": null
+            },
+            {
+              "id": "00000000-0000-4000-8000-000000000032",
+              "groupId": "00000000-0000-4000-8000-000000000010",
+              "storeId": "00000000-0000-4000-8000-000000000020",
+              "name": "Yogures sin lactosa",
+              "quantity": "4 unidades",
+              "status": "pending",
+              "version": 1,
+              "createdBy": "00000000-0000-4000-8000-000000000002",
+              "createdAt": "2026-09-19T10:10:00Z",
+              "purchasedBy": null,
+              "purchasedAt": null
+            },
+            {
+              "id": "00000000-0000-4000-8000-000000000033",
+              "groupId": "00000000-0000-4000-8000-000000000010",
+              "storeId": "00000000-0000-4000-8000-000000000020",
+              "name": "Pan",
+              "quantity": null,
+              "status": "pending",
+              "version": 1,
+              "createdBy": "00000000-0000-4000-8000-000000000002",
+              "createdAt": "2026-09-19T10:10:00Z",
+              "purchasedBy": null,
+              "purchasedAt": null
+            },
+            {
+              "id": "00000000-0000-4000-8000-000000000034",
+              "groupId": "00000000-0000-4000-8000-000000000010",
+              "storeId": "00000000-0000-4000-8000-000000000020",
+              "name": "Tomates",
+              "quantity": null,
+              "status": "pending",
+              "version": 1,
+              "createdBy": "00000000-0000-4000-8000-000000000002",
+              "createdAt": "2026-09-19T10:10:00Z",
+              "purchasedBy": null,
+              "purchasedAt": null
+            }
+          ],
+          "nextCursor": null
+        }
+      }
+    },
+    {
+      "id": "edit-pending",
+      "operationId": "editItem",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "itemId": "00000000-0000-4000-8000-000000000030"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000106",
+          "expectedVersion": 1,
+          "name": "Jabón de manos",
+          "quantity": "2 unidades",
+          "store": {
+            "id": "00000000-0000-4000-8000-000000000020"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "id": "00000000-0000-4000-8000-000000000030",
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "storeId": "00000000-0000-4000-8000-000000000020",
+          "name": "Jabón de manos",
+          "quantity": "2 unidades",
+          "status": "pending",
+          "version": 2,
+          "createdBy": "00000000-0000-4000-8000-000000000002",
+          "createdAt": "2026-09-19T10:10:00Z",
+          "purchasedBy": null,
+          "purchasedAt": null
+        }
+      }
+    },
+    {
+      "id": "cancel-is-not-purchase",
+      "operationId": "cancelItem",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "itemId": "00000000-0000-4000-8000-000000000030"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000107",
+          "expectedVersion": 1
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "id": "00000000-0000-4000-8000-000000000030",
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "storeId": "00000000-0000-4000-8000-000000000020",
+          "name": "Jabón",
+          "quantity": null,
+          "status": "cancelled",
+          "version": 2,
+          "createdBy": "00000000-0000-4000-8000-000000000002",
+          "createdAt": "2026-09-19T10:10:00Z",
+          "purchasedBy": null,
+          "purchasedAt": null
+        }
+      }
+    },
+    {
+      "id": "finalize-three-of-five",
+      "operationId": "finalizePurchase",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000102",
+          "storeId": "00000000-0000-4000-8000-000000000020",
+          "items": [
+            {
+              "id": "00000000-0000-4000-8000-000000000030",
+              "expectedVersion": 1
+            },
+            {
+              "id": "00000000-0000-4000-8000-000000000031",
+              "expectedVersion": 1
+            },
+            {
+              "id": "00000000-0000-4000-8000-000000000032",
+              "expectedVersion": 1
+            }
+          ]
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "items": [
+            {
+              "id": "00000000-0000-4000-8000-000000000030",
+              "groupId": "00000000-0000-4000-8000-000000000010",
+              "storeId": "00000000-0000-4000-8000-000000000020",
+              "name": "Jabón",
+              "quantity": null,
+              "status": "purchased",
+              "version": 2,
+              "createdBy": "00000000-0000-4000-8000-000000000002",
+              "createdAt": "2026-09-19T10:10:00Z",
+              "purchasedBy": "00000000-0000-4000-8000-000000000001",
+              "purchasedAt": "2026-09-19T11:00:00Z"
+            },
+            {
+              "id": "00000000-0000-4000-8000-000000000031",
+              "groupId": "00000000-0000-4000-8000-000000000010",
+              "storeId": "00000000-0000-4000-8000-000000000020",
+              "name": "Cerveza",
+              "quantity": null,
+              "status": "purchased",
+              "version": 2,
+              "createdBy": "00000000-0000-4000-8000-000000000002",
+              "createdAt": "2026-09-19T10:10:00Z",
+              "purchasedBy": "00000000-0000-4000-8000-000000000001",
+              "purchasedAt": "2026-09-19T11:00:00Z"
+            },
+            {
+              "id": "00000000-0000-4000-8000-000000000032",
+              "groupId": "00000000-0000-4000-8000-000000000010",
+              "storeId": "00000000-0000-4000-8000-000000000020",
+              "name": "Yogures sin lactosa",
+              "quantity": "4 unidades",
+              "status": "purchased",
+              "version": 2,
+              "createdBy": "00000000-0000-4000-8000-000000000002",
+              "createdAt": "2026-09-19T10:10:00Z",
+              "purchasedBy": "00000000-0000-4000-8000-000000000001",
+              "purchasedAt": "2026-09-19T11:00:00Z"
+            }
+          ],
+          "confirmedAt": "2026-09-19T11:00:00Z"
+        }
+      }
+    },
+    {
+      "id": "finalize-lost-response-retry",
+      "operationId": "finalizePurchase",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000102",
+          "storeId": "00000000-0000-4000-8000-000000000020",
+          "items": [
+            {
+              "id": "00000000-0000-4000-8000-000000000030",
+              "expectedVersion": 1
+            },
+            {
+              "id": "00000000-0000-4000-8000-000000000031",
+              "expectedVersion": 1
+            },
+            {
+              "id": "00000000-0000-4000-8000-000000000032",
+              "expectedVersion": 1
+            }
+          ]
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "items": [
+            {
+              "id": "00000000-0000-4000-8000-000000000030",
+              "groupId": "00000000-0000-4000-8000-000000000010",
+              "storeId": "00000000-0000-4000-8000-000000000020",
+              "name": "Jabón",
+              "quantity": null,
+              "status": "purchased",
+              "version": 2,
+              "createdBy": "00000000-0000-4000-8000-000000000002",
+              "createdAt": "2026-09-19T10:10:00Z",
+              "purchasedBy": "00000000-0000-4000-8000-000000000001",
+              "purchasedAt": "2026-09-19T11:00:00Z"
+            },
+            {
+              "id": "00000000-0000-4000-8000-000000000031",
+              "groupId": "00000000-0000-4000-8000-000000000010",
+              "storeId": "00000000-0000-4000-8000-000000000020",
+              "name": "Cerveza",
+              "quantity": null,
+              "status": "purchased",
+              "version": 2,
+              "createdBy": "00000000-0000-4000-8000-000000000002",
+              "createdAt": "2026-09-19T10:10:00Z",
+              "purchasedBy": "00000000-0000-4000-8000-000000000001",
+              "purchasedAt": "2026-09-19T11:00:00Z"
+            },
+            {
+              "id": "00000000-0000-4000-8000-000000000032",
+              "groupId": "00000000-0000-4000-8000-000000000010",
+              "storeId": "00000000-0000-4000-8000-000000000020",
+              "name": "Yogures sin lactosa",
+              "quantity": "4 unidades",
+              "status": "purchased",
+              "version": 2,
+              "createdBy": "00000000-0000-4000-8000-000000000002",
+              "createdAt": "2026-09-19T10:10:00Z",
+              "purchasedBy": "00000000-0000-4000-8000-000000000001",
+              "purchasedAt": "2026-09-19T11:00:00Z"
+            }
+          ],
+          "confirmedAt": "2026-09-19T11:00:00Z"
+        }
+      }
+    },
+    {
+      "id": "selected-item-edited-reject-whole-selection",
+      "operationId": "finalizePurchase",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000108",
+          "storeId": "00000000-0000-4000-8000-000000000020",
+          "items": [
+            {
+              "id": "00000000-0000-4000-8000-000000000030",
+              "expectedVersion": 1
+            },
+            {
+              "id": "00000000-0000-4000-8000-000000000031",
+              "expectedVersion": 1
+            },
+            {
+              "id": "00000000-0000-4000-8000-000000000032",
+              "expectedVersion": 1
+            }
+          ]
+        }
+      },
+      "response": {
+        "status": 409,
+        "body": {
+          "code": "item_conflict",
+          "message": "La selección ha cambiado. Revísala antes de confirmar.",
+          "requestId": "00000000-0000-4000-8000-000000000900",
+          "conflicts": [
+            {
+              "itemId": "00000000-0000-4000-8000-000000000031",
+              "reason": "version_mismatch",
+              "current": {
+                "id": "00000000-0000-4000-8000-000000000031",
+                "groupId": "00000000-0000-4000-8000-000000000010",
+                "storeId": "00000000-0000-4000-8000-000000000020",
+                "name": "Cerveza sin alcohol",
+                "quantity": null,
+                "status": "pending",
+                "version": 2,
+                "createdBy": "00000000-0000-4000-8000-000000000002",
+                "createdAt": "2026-09-19T10:10:00Z",
+                "purchasedBy": null,
+                "purchasedAt": null
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "cannot-edit-purchased",
+      "operationId": "editItem",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "itemId": "00000000-0000-4000-8000-000000000030"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000109",
+          "expectedVersion": 1,
+          "name": "Jabón de manos",
+          "quantity": null,
+          "store": {
+            "id": "00000000-0000-4000-8000-000000000020"
+          }
+        }
+      },
+      "response": {
+        "status": 409,
+        "body": {
+          "code": "item_conflict",
+          "message": "El producto ya no está pendiente.",
+          "requestId": "00000000-0000-4000-8000-000000000900",
+          "conflicts": [
+            {
+              "itemId": "00000000-0000-4000-8000-000000000030",
+              "reason": "not_pending",
+              "current": {
+                "id": "00000000-0000-4000-8000-000000000030",
+                "groupId": "00000000-0000-4000-8000-000000000010",
+                "storeId": "00000000-0000-4000-8000-000000000020",
+                "name": "Jabón",
+                "quantity": null,
+                "status": "purchased",
+                "version": 2,
+                "createdBy": "00000000-0000-4000-8000-000000000002",
+                "createdAt": "2026-09-19T10:10:00Z",
+                "purchasedBy": "00000000-0000-4000-8000-000000000001",
+                "purchasedAt": "2026-09-19T11:00:00Z"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "pending-after-three-bought-plus-concurrent-add",
+      "operationId": "listPendingItems",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "storeId": "00000000-0000-4000-8000-000000000020"
+        },
+        "query": {}
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "items": [
+            {
+              "id": "00000000-0000-4000-8000-000000000033",
+              "groupId": "00000000-0000-4000-8000-000000000010",
+              "storeId": "00000000-0000-4000-8000-000000000020",
+              "name": "Pan",
+              "quantity": null,
+              "status": "pending",
+              "version": 1,
+              "createdBy": "00000000-0000-4000-8000-000000000002",
+              "createdAt": "2026-09-19T10:10:00Z",
+              "purchasedBy": null,
+              "purchasedAt": null
+            },
+            {
+              "id": "00000000-0000-4000-8000-000000000034",
+              "groupId": "00000000-0000-4000-8000-000000000010",
+              "storeId": "00000000-0000-4000-8000-000000000020",
+              "name": "Tomates",
+              "quantity": null,
+              "status": "pending",
+              "version": 1,
+              "createdBy": "00000000-0000-4000-8000-000000000002",
+              "createdAt": "2026-09-19T10:10:00Z",
+              "purchasedBy": null,
+              "purchasedAt": null
+            },
+            {
+              "id": "00000000-0000-4000-8000-000000000036",
+              "groupId": "00000000-0000-4000-8000-000000000010",
+              "storeId": "00000000-0000-4000-8000-000000000020",
+              "name": "Arroz",
+              "quantity": null,
+              "status": "pending",
+              "version": 1,
+              "createdBy": "00000000-0000-4000-8000-000000000002",
+              "createdAt": "2026-09-19T10:59:59Z",
+              "purchasedBy": null,
+              "purchasedAt": null
+            }
+          ],
+          "nextCursor": null
+        }
+      }
+    },
+    {
+      "id": "same-id-different-versions-invalid",
+      "operationId": "finalizePurchase",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000102",
+          "storeId": "00000000-0000-4000-8000-000000000020",
+          "items": [
+            {
+              "id": "00000000-0000-4000-8000-000000000030",
+              "expectedVersion": 1
+            },
+            {
+              "id": "00000000-0000-4000-8000-000000000030",
+              "expectedVersion": 2
+            }
+          ]
+        }
+      },
+      "response": {
+        "status": 400,
+        "body": {
+          "code": "invalid_request",
+          "message": "Los identificadores seleccionados deben ser distintos.",
+          "requestId": "00000000-0000-4000-8000-000000000900",
+          "fields": [
+            {
+              "path": "/items/1/id",
+              "reason": "duplicate_id"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "invalidRequests": [
+    {
+      "id": "empty-batch",
+      "operationId": "addItems",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000201",
+          "items": []
+        }
+      }
+    },
+    {
+      "id": "batch-over-limit",
+      "operationId": "addItems",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000201",
+          "items": [
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "blank-product-name",
+      "operationId": "addItems",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000201",
+          "items": [
+            {
+              "name": "",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "product-name-too-long",
+      "operationId": "addItems",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000201",
+          "items": [
+            {
+              "name": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "unknown-store-needs-choice",
+      "operationId": "addItems",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000201",
+          "items": [
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {}
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "store-id-and-new-name-exclusive",
+      "operationId": "addItems",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000201",
+          "items": [
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020",
+                "newName": "Mercadona"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "raw-transcript-not-an-input",
+      "operationId": "addItems",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000101",
+          "items": [
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Cerveza",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Yogures sin lactosa",
+              "quantity": "4 unidades",
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            }
+          ],
+          "transcript": "Añade automáticamente esto"
+        }
+      }
+    },
+    {
+      "id": "quantity-not-inferred-number",
+      "operationId": "addItems",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000101",
+          "items": [
+            {
+              "name": "Jabón",
+              "quantity": 2,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "purchase-empty-selection",
+      "operationId": "finalizePurchase",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000102",
+          "storeId": "00000000-0000-4000-8000-000000000020",
+          "items": []
+        }
+      }
+    },
+    {
+      "id": "purchase-needs-item-versions",
+      "operationId": "finalizePurchase",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000102",
+          "storeId": "00000000-0000-4000-8000-000000000020",
+          "items": [
+            {
+              "id": "00000000-0000-4000-8000-000000000030"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "exact-duplicate-selection",
+      "operationId": "finalizePurchase",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000102",
+          "storeId": "00000000-0000-4000-8000-000000000020",
+          "items": [
+            {
+              "id": "00000000-0000-4000-8000-000000000030",
+              "expectedVersion": 1
+            },
+            {
+              "id": "00000000-0000-4000-8000-000000000030",
+              "expectedVersion": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "cannot-write-purchase-status",
+      "operationId": "editItem",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "itemId": "00000000-0000-4000-8000-000000000030"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000202",
+          "expectedVersion": 1,
+          "name": "Jabón",
+          "quantity": null,
+          "store": {
+            "id": "00000000-0000-4000-8000-000000000020"
+          },
+          "status": "purchased"
+        }
+      }
+    },
+    {
+      "id": "zero-version",
+      "operationId": "cancelItem",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "itemId": "00000000-0000-4000-8000-000000000030"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000203",
+          "expectedVersion": 0
+        }
+      }
+    },
+    {
+      "id": "operation-id-not-uuid",
+      "operationId": "createGroup",
+      "request": {
+        "path": {},
+        "query": {},
+        "body": {
+          "operationId": "retry-1",
+          "name": "Casa"
+        }
+      }
+    },
+    {
+      "id": "invite-secret-too-short",
+      "operationId": "acceptInvitation",
+      "request": {
+        "path": {
+          "invitationId": "00000000-0000-4000-8000-000000000040"
+        },
+        "query": {},
+        "body": {
+          "token": "guess"
+        }
+      }
+    },
+    {
+      "id": "caller-cannot-supply-expected-nonce",
+      "operationId": "loginWithApple",
+      "request": {
+        "path": {},
+        "query": {},
+        "body": {
+          "challengeId": "00000000-0000-4000-8000-000000000050",
+          "identityToken": "FAKE",
+          "authorizationCode": "FAKE",
+          "expectedNonce": "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNM"
+        }
+      }
+    },
+    {
+      "id": "apple-code-required",
+      "operationId": "loginWithApple",
+      "request": {
+        "path": {},
+        "query": {},
+        "body": {
+          "challengeId": "00000000-0000-4000-8000-000000000050",
+          "identityToken": "FAKE"
+        }
+      }
+    },
+    {
+      "id": "pagination-bounded",
+      "operationId": "listStores",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {
+          "limit": 101
+        }
+      }
+    },
+    {
+      "id": "path-id-format",
+      "operationId": "listStores",
+      "request": {
+        "path": {
+          "groupId": "foreign-group"
+        },
+        "query": {}
+      }
+    }
+  ]
+}
