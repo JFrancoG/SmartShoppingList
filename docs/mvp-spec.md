@@ -134,9 +134,9 @@ La forma física de las tablas se definirá en el contrato técnico. No se compr
 - Voz: evaluar SpeechAnalyzer/SpeechTranscriber en el dispositivo e idioma reales.
 - Interpretación: Foundation Models con salida estructurada y revisión humana.
 - Comunicación: URLSession sobre HTTPS.
-- Backend: priorizar Vapor 5 pre-release si supera una prueba breve del conjunto necesario; si no, usar Vapor 4, alternativa autorizada expresamente por el usuario. Propuesta de persistencia PostgreSQL y alojamiento Railway.
+- Backend: Vapor 4.122.2 y PostgreSQL, tras comprobar el bloqueo de la combinación Vapor 5 evaluada en Linux y aplicar la alternativa autorizada. La decisión y sus límites se documentan en [la validación del bloque 1](validation/issue-1-server-bootstrap.md). Alojamiento propuesto: Railway.
 - Pruebas unitarias y de integración en Swift Testing; no introducir XCTest unitario ni Core Data.
-- Warnings tratados como errores.
+- Warnings tratados como errores en el código propio; las excepciones externas expresamente aceptadas se delimitan en [el registro de dependencias](dependency-exceptions.md).
 - Verificar Xcode/SDK, toolchain del servidor y dispositivos compatibles antes de implementar. El objetivo iOS 27 no determina por sí solo la versión de Swift disponible en Linux.
 
 La FAQ pública consultada el 19 de septiembre aún indica sistemas 26. El usuario confirma expresamente que dispone de autorización de los organizadores para exigir iOS 27; ésa es la aclaración aplicable a este proyecto. No se presenta como un cambio ya publicado en la FAQ.

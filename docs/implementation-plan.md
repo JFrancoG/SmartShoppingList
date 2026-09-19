@@ -46,7 +46,7 @@ Estas fechas son objetivos, no evidencia de trabajo realizado. Las pruebas acomp
 
 El primer bloque técnico es [#1](https://github.com/JFrancoG/SmartShoppingList/issues/1). El estado vigente y el siguiente paso concreto se consultan en cada issue.
 
-La evaluación de Vapor 5 tiene un límite de cuatro horas de trabajo técnico acumulado: resolución de dependencias, arranque, PostgreSQL/transacciones, viabilidad de verificar identidad Apple y ejecución Linux. Si los bloqueos exceden el límite, se usa la alternativa Vapor 4 aprobada, manteniendo iOS 27 y el alcance. Se registra y fija la versión probada; no se actualizan betas durante el cierre. Las referencias técnicas y la evidencia de esta decisión se conservan en #1.
+La evaluación de Vapor 5 tiene un límite máximo de cuatro horas de trabajo técnico acumulado: resolución de dependencias, arranque, PostgreSQL/transacciones, viabilidad de verificar identidad Apple y ejecución Linux. Ante un bloqueo de compatibilidad confirmado se puede adoptar antes la alternativa Vapor 4 aprobada, manteniendo iOS 27 y el alcance. El bloque 1 fija Vapor 4.122.2; la decisión se conserva en [su informe de validación](validation/issue-1-server-bootstrap.md) y el seguimiento en #1. No se actualizan betas durante el cierre.
 
 La preparación confirma el iPhone de prueba, un segundo cliente, firma/capacidades, Sign in with Apple, enlaces universales y disponibilidad de modelos. La estrategia de [validación acordada](mvp-spec.md#estrategia-de-validación-acordada) usa entrada manual en el iPhone físico sin Apple Intelligence y Foundation Models en un simulador compatible del Mac. La captura/transcripción de voz se comprueba por separado, identificando el entorno real. La prueba manual no sustituye voz/IA ni los resultados del simulador se atribuyen al iPhone.
 
@@ -69,7 +69,7 @@ Las issues de esta fase se concretan al cerrar las incertidumbres iniciales, con
 
 Las comprobaciones acompañan al desarrollo y se consolidan antes de congelar funcionalidades:
 
-- Swift Testing para reglas y contratos críticos, sin pruebas que sólo reproduzcan la implementación; compilación sin warnings.
+- Swift Testing para reglas y contratos críticos, sin pruebas que sólo reproduzcan la implementación; compilación sin warnings propios y únicamente con las [excepciones externas aceptadas](dependency-exceptions.md).
 - Autorización por grupo e invitaciones caducadas, revocadas, consumidas o abiertas sin sesión.
 - Altas concurrentes, lotes atómicos y reintentos sin duplicados. Finalizar tres de cinco pendientes compra sólo tres; las altas posteriores y los otros dos quedan intactos. Ediciones, compras o cancelaciones concurrentes no se sobrescriben ni generan doble compra.
 - Checks sin escrituras, selección separada por tienda, conservación del borrador/selección ante errores y correcciones del usuario respetadas. Persistencia tras cierre/reapertura y reinicio del servidor.

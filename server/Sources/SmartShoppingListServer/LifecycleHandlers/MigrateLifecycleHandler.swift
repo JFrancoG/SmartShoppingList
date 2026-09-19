@@ -13,21 +13,24 @@ struct MigrateLifecycleHandler: LifecycleHandler {
         self.migrations = migrations
     }
 
-    func willBoot(_ application: Application) async throws {
+    func willBootAsync(_ application: Application) async throws {
         let migrations = Migrations()
         migrations.add(self.migrations)
 
         let migrator = Migrator(
             databases: databases,
             migrations: migrations,
-            logger: Logger.current,
+            logger: application.logger,
             on: MultiThreadedEventLoopGroup.singleton.any()
         )
-        do {
-            try await migrator.setupIfNeeded().get()
-            try await migrator.prepareBatch().get()
-        } catch {
-            Logger.current.warning("Couldn't run migrations", metadata: ["error": "\(error)"])
-        }
+        try await migrator.setupIfNeeded().get()
+        try await migrator.prepareBatch().get()
+    }
+
+    func shutdownAsync(_ application: Application) async {
+        // Vapor shuts down lifecycle handlers before its stored ServeCommand.
+        // Drain HTTP while its requests can still use the database, then close the pools.
+        await application.server.shutdown()
+        await databases.shutdownAsync()
     }
 }
