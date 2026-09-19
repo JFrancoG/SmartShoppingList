@@ -1,0 +1,177 @@
+# Especificación del MVP
+
+Estado: **alcance funcional aprobado** por el usuario el 18 de septiembre de 2026.
+
+Revisión del 19 de septiembre: selección provisional de productos y confirmación al finalizar la compra; iOS 27 como versión mínima y preferencia por Vapor 5, con Vapor 4 como alternativa autorizada si la versión 5 no resulta viable.
+
+Entrega: **27 de septiembre de 2026**. Las bases publican las 23:00 CET; el plan reserva margen y no depende de interpretar esa hora como tiempo adicional en Madrid.
+
+Esta especificación recoge el acuerdo de la conversación. Las decisiones técnicas que aún requieren una prueba se distinguen del comportamiento comprometido.
+
+## 1. Objetivo
+
+Preparar y consultar una lista de compra compartida, organizada por tiendas, usando voz y revisión humana antes del guardado.
+
+Recorrido principal:
+
+1. La persona inicia sesión con Apple y crea un grupo o acepta una invitación.
+2. Dicta productos y tienda, o utiliza la entrada manual.
+3. Revisa y corrige el borrador interpretado.
+4. Confirma su incorporación a los pendientes del grupo.
+5. Cualquier miembro consulta una tienda, marca provisionalmente lo que va comprando y confirma los productos seleccionados al finalizar.
+
+El MVP debe completar este recorrido con dos usuarios reales. Los datos simulados no acreditan colaboración ni funcionamiento de la IA.
+
+## 2. Acceso y grupo
+
+- Autenticación mediante **Iniciar sesión con Apple**. No se implementan contraseñas propias.
+- El backend verifica la identidad recibida y mantiene la sesión de la aplicación.
+- La sesión se conserva de forma segura para evitar repetir el acceso en cada apertura. Si deja de ser válida, se solicita autenticación.
+- Una cuenta pertenece a un grupo en el MVP.
+- Una persona autenticada sin grupo puede crearlo, indicando su nombre, o incorporarse mediante una invitación.
+- La familia o grupo es una entidad propia de la app; no depende de «En familia» de Apple.
+- El creador gestiona las invitaciones. Los miembros pueden añadir, consultar, editar y marcar productos del grupo.
+- El backend comprueba pertenencia en las operaciones sobre datos compartidos. No basta con conocer un identificador de grupo, tienda o producto.
+- Una invitación a otro grupo no traslada silenciosamente a una persona que ya pertenece a uno. La gestión de múltiples grupos queda fuera.
+
+### Invitaciones
+
+- El creador solicita una invitación y comparte su enlace mediante la hoja nativa del sistema, por ejemplo por Mail o Mensajes.
+- La aplicación no envía correos automáticamente ni mantiene una infraestructura de email.
+- Cada invitación tiene un identificador secreto no predecible, caducidad y un único uso; el creador puede revocarla.
+- Quien abre el enlace se identifica con Apple si es necesario, ve el nombre del grupo y confirma la incorporación.
+- Abrir el enlace, o una previsualización del mismo, no consume la invitación. Se consume al aceptar la incorporación.
+- La invitación no se vincula al email destinatario. Quien posea un enlace válido puede aceptarlo; una vez utilizado no admite otro miembro.
+- Se usa la identidad estable de Apple para reconocer al usuario, sin exigir que su email coincida con el medio de entrega.
+- Los enlaces caducados, revocados o ya utilizados muestran un resultado comprensible y no conceden acceso.
+- Si hay que iniciar sesión, se conserva la invitación pendiente hasta completar el flujo.
+- Con la app instalada, el enlace debe abrir la incorporación mediante un enlace universal. Sin la app, una página mínima informa de esa necesidad; no se implementa incorporación web ni un flujo automático posterior a la instalación.
+
+La duración exacta de las invitaciones y los detalles de sesión se concretarán en el contrato técnico. No cambian el alcance funcional.
+
+## 3. Pestaña «Añadir»
+
+La voz forma parte del MVP. La persona inicia y termina la captura mediante un control visible; también puede escribir.
+
+Ejemplo de aceptación: «Comprar jabón, cerveza y yogures en Mercadona» produce tres productos asociados a Mercadona.
+
+Flujo:
+
+1. Speech transcribe el audio.
+2. Foundation Models interpreta el texto y propone productos, cantidades cuando se indiquen y tienda.
+3. La app muestra un borrador editable.
+4. La persona puede corregir productos, cantidades y tienda, o quitar una entrada.
+5. Un botón explícito, por ejemplo «Añadir 3 productos», confirma el lote.
+6. La app envía al backend los valores revisados; no vuelve a interpretarlos con el modelo.
+
+Reglas:
+
+- Antes de confirmar no se crean productos compartidos.
+- Los datos incompletos o ambiguos se hacen visibles para corregirlos; no se inventan cantidades, tiendas ni equivalencias entre unidades.
+- La app no fusiona silenciosamente productos distintos ni elimina variantes como «sin lactosa».
+- El backend valida el lote y lo guarda de forma atómica: completo o sin altas parciales.
+- Un mismo envío conserva su identificador al reintentarse. Un timeout o una doble pulsación no genera productos duplicados.
+- Dos altas voluntarias son distintas de un reintento del mismo envío; la deduplicación semántica queda fuera del MVP.
+- Sólo se comunica «guardado» cuando existe confirmación del servidor.
+- Un error conserva el borrador y permite reintentar. La transcripción y la interpretación no autorizan por sí mismas cambios en los datos compartidos.
+- La entrada manual permite continuar si el usuario no concede permiso de micrófono o la IA no está disponible. Esa alternativa no sustituye la validación de la voz y la IA comprometidas.
+
+## 4. Pestaña «Comprar»
+
+- La persona puede decir «Dame la lista de Mercadona» o elegir una tienda mediante un selector.
+- La interpretación identifica la tienda solicitada; los productos proceden de los datos del grupo, no de una respuesta inventada por el modelo.
+- Si hay ambigüedad, se ofrecen las coincidencias para elegir.
+- Se muestran los productos pendientes incorporados por todos los miembros.
+- La tienda reconocida permanece visible y puede corregirse sin volver a hablar.
+- La pantalla permite editar productos pendientes, seleccionarlos mediante checks y confirmar los seleccionados con «Finalizar compra».
+- Un producto seleccionado sigue visible, diferenciado del resto, hasta confirmar. Un contador y el botón, por ejemplo «Finalizar compra · 3 productos», hacen visible qué se enviará.
+- Se actualiza al entrar, tras las operaciones propias y mediante refresco explícito. No se promete presencia ni actualización instantánea entre dispositivos.
+
+## 5. Compra, cancelación e historial
+
+- Cada producto pendiente tiene un check de selección provisional. Marcar o desmarcar sólo cambia el borrador local de esa compra; no modifica todavía el estado compartido ni crea historial.
+- Antes de enviar, una pulsación accidental se corrige desmarcando el producto.
+- «Finalizar compra» envía los identificadores concretos de los productos seleccionados de esa tienda. El backend confirma sus cambios en una transacción; no se actualiza una tienda completa mediante un filtro general.
+- Los productos confirmados pasan a comprados y salen de pendientes, conservando sus registros. Se guarda quién confirmó la compra y cuándo; puede ser una persona distinta de quien los añadió.
+- Los productos no seleccionados permanecen pendientes para la próxima visita. Para el MVP se adopta la simplificación permitida por el usuario: mantenerlos automáticamente, sin preguntar en cada compra si se eliminan.
+- Sin productos seleccionados no se envía una finalización vacía.
+- La finalización conserva un identificador estable para reintentos del mismo envío. Una doble pulsación o una respuesta perdida no registra dos compras.
+- Un reintento repite exactamente la selección enviada. Modificarla no permite reutilizar el identificador anterior; si su resultado aún se desconoce, debe resolverse antes de iniciar una finalización distinta.
+- Un error de envío conserva la selección y permite reintentar. La pantalla sólo presenta la compra como confirmada cuando el servidor lo acredita.
+- Cambiar de pantalla o pasar a segundo plano no confirma la compra. La selección pertenece a una tienda y no se aplica a otra por cambiar el selector.
+- «Ya no lo necesitamos» es una cancelación, no una compra. No debe alimentar futuras estadísticas de compras.
+- Volver a necesitar el mismo producto crea una nueva entrada. No se recicla el registro de una compra anterior para representar otra distinta.
+- Dos finalizaciones concurrentes que contienen el mismo producto no generan dos compras ni sobrescriben al comprador de la primera transición válida. Si un miembro compró, canceló o editó un producto seleccionado entretanto, se concilia con el estado del servidor y se informa del conflicto; el contrato técnico concretará la respuesta.
+- Finalizar una compra no elimina ni marca como compradas las altas concurrentes de otros miembros ni los productos que no se enviaron expresamente.
+- **Se incluye la confirmación conjunta de los productos marcados; no se incluye «seleccionar todo», vaciar ni resetear la lista**.
+
+Historial mínimo por entrada:
+
+| Dato | Finalidad |
+|---|---|
+| Identificador, grupo y tienda | Pertenencia e identidad de la entrada |
+| Producto y cantidad si existe | Conservar lo que la persona confirmó |
+| Autor y fecha de incorporación | Origen de la petición |
+| Estado pendiente, comprado o cancelado | Separar necesidad, compra y cancelación |
+| Comprador y fecha de compra | Registrar la compra efectiva |
+
+La forma física de las tablas se definirá en el contrato técnico. No se compromete una pantalla analítica de historial, un catálogo maestro ni un registro de cada edición.
+
+## 6. Conectividad y errores
+
+- Las operaciones compartidas requieren conexión y confirmación del backend.
+- Puede consultarse la última lista recuperada, indicando que puede estar desactualizada.
+- Se conservan los borradores de entrada ante errores.
+- Los checks de una compra son un borrador local, separado del estado compartido. Marcar productos no promete reservarlos ni avisar a otros miembros; la sincronización ocurre al confirmar y recuperar datos del servidor.
+- No se implementa una cola general de modificaciones offline ni sincronización automática posterior de cualquier cambio.
+- Una operación fallida no se presenta como completada. Las actualizaciones optimistas, si se utilizan, deben reflejar el error y recuperar un estado coherente.
+- El cierre o reapertura de la app no pierde datos que el servidor ya confirmó.
+
+## 7. Marco técnico
+
+- App: iOS 27 como versión mínima, SwiftUI, Swift 6 y concurrencia estricta.
+- Sin dependencias de código de terceros en la app.
+- Voz: evaluar SpeechAnalyzer/SpeechTranscriber en el dispositivo e idioma reales.
+- Interpretación: Foundation Models con salida estructurada y revisión humana.
+- Comunicación: URLSession sobre HTTPS.
+- Backend: priorizar Vapor 5 pre-release si supera una prueba breve del conjunto necesario; si no, usar Vapor 4, alternativa autorizada expresamente por el usuario. Propuesta de persistencia PostgreSQL y alojamiento Railway.
+- Pruebas unitarias y de integración en Swift Testing; no introducir XCTest unitario ni Core Data.
+- Warnings tratados como errores.
+- Verificar Xcode/SDK, toolchain del servidor y dispositivos compatibles antes de implementar. El objetivo iOS 27 no determina por sí solo la versión de Swift disponible en Linux.
+
+La FAQ pública consultada el 19 de septiembre aún indica sistemas 26. El usuario confirma expresamente que dispone de autorización de los organizadores para exigir iOS 27; ésa es la aclaración aplicable a este proyecto. No se presenta como un cambio ya publicado en la FAQ.
+
+El cliente y el backend se implementan desde cero para el evento. La elección de una herramienta no acredita un despliegue ni una validación ya realizados.
+
+## 8. Criterios de aceptación de la entrega
+
+1. Dos usuarios distintos se identifican y comparten un grupo mediante una invitación válida.
+2. Invitaciones inválidas y accesos ajenos al grupo no conceden acceso.
+3. El ejemplo de voz genera un borrador corregible; ninguna alta llega al grupo antes de confirmar.
+4. Las correcciones prevalecen en los datos guardados y el lote no se duplica al reintentar.
+5. La consulta por voz y el selector muestran los pendientes reales de la tienda y del grupo.
+6. Altas concurrentes de distintos miembros se conservan.
+7. Marcar y desmarcar no modifica el backend; «Finalizar compra» confirma sólo los seleccionados. Por ejemplo, de cinco pendientes con tres checks, se registran tres compras y los otros dos siguen pendientes.
+8. Reintentar una finalización o confirmar concurrentemente un mismo producto no cuenta dos compras. Una nueva alta de otro miembro queda intacta; cancelar no cuenta como comprar. Los errores conservan la selección sin presentar éxito falso.
+9. Reiniciar app y servidor conserva los datos confirmados.
+10. Fallos de micrófono, IA o red tienen estados comprensibles y no presentan éxito falso.
+11. Los controles principales funcionan con VoiceOver y tamaños de texto grandes, comprobados en la interfaz real.
+12. El repositorio incluye instrucciones verificadas para ejecutar cliente y servidor, configurar servicios y reproducir la demostración, sin secretos.
+
+## 9. Fuera de la entrega del 27
+
+No forman parte del MVP: sugerencias, predicción de reposición, estadísticas de compra, recetas, precios, comparación comercial, inventario doméstico, múltiples grupos por persona, roles personalizados, varias plataformas, presencia en tiempo real, sincronización offline completa, envío automático de correos, seleccionar toda la tienda automáticamente, vaciar pendientes al terminar y órdenes de modificación o borrado por voz. La confirmación conjunta de los checks sí forma parte del MVP.
+
+Tras la entrega podrán estudiarse sugerencias de productos frecuentes por tienda, reutilización de compras anteriores y otras mejoras. Son posibilidades, no compromisos ni tareas activas. Cualquier ampliación anterior al cierre exige acordar explícitamente qué se sustituye o se retira del MVP.
+
+## 10. Fuentes y decisiones
+
+- [Bases públicas del evento](https://acoding.academy/hackaton26/).
+- Aclaración de organizadores aportada por el usuario: se admite cualquier plataforma Apple y consumir APIs propias o ajenas mediante networking nativo; la app no puede incorporar dependencias externas.
+- [SpeechAnalyzer, WWDC25](https://developer.apple.com/videos/play/wwdc2025/277/).
+- [Verificación de identidad Apple](https://developer.apple.com/documentation/signinwithapple/verifying-a-user).
+- [Dominios asociados y enlaces universales](https://developer.apple.com/documentation/xcode/supporting-associated-domains).
+
+Decisiones de la conversación del 18 de septiembre: el usuario elige Sign in with Apple e invitaciones compartidas mediante enlace, y aprueba el alcance funcional descrito para el día 27, dejando las ampliaciones para después.
+
+Decisiones del 19 de septiembre: el usuario sustituye la compra inmediata por check por una selección provisional y un envío al finalizar. Los no marcados se mantienen pendientes; se usa la simplificación expresamente permitida de omitir la pregunta de eliminación. También solicita iOS 27, confirma autorización de los organizadores para exigirlo, y elige Vapor 5 si es viable, o Vapor 4 en caso contrario.

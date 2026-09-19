@@ -1,0 +1,33 @@
+# macOS
+.DS_Store
+._*
+
+# Xcode: resultados de compilación y estado personal.
+# Se conservan los proyectos, workspaces y esquemas compartidos.
+DerivedData/
+build/
+xcuserdata/
+*.xcuserstate
+*.xccheckout
+*.xcscmblueprint
+*.xcresult
+*.xcarchive
+*.dSYM/
+*.ipa
+
+# Swift Package Manager y perfiles de ejecución.
+# Package.resolved se versiona para reproducir las dependencias.
+.build/
+*.profraw
+*.profdata
+
+# Configuración local y material de firma.
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.local.xcconfig
+*.p12
+*.p8
+*.mobileprovision
+*.provisionprofile

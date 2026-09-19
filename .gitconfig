@@ -1,0 +1,15 @@
+# Activación por repositorio, después de git init:
+# git config set --local include.path ../.gitconfig
+# La identidad, las credenciales y la firma permanecen en la configuración personal.
+
+[core]
+    autocrlf = false
+
+[pull]
+    ff = only
+
+[fetch]
+    prune = true
+
+[push]
+    default = simple

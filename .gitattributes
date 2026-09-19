@@ -1,0 +1,10 @@
+# Texto normalizado a LF; Git detecta automáticamente los archivos binarios.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.heic binary
+*.gif binary
+*.pdf binary
+*.zip binary
