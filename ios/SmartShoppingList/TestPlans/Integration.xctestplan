@@ -1,0 +1,34 @@
+{
+  "configurations": [
+    {
+      "id": "3AF1ABD4-A54D-42ED-B4A8-D6C6A667DC24",
+      "name": "Configuration 1",
+      "options": {}
+    }
+  ],
+  "defaultOptions": {
+    "codeCoverage": true,
+    "targetForVariableExpansion": {
+      "containerPath": "container:SmartShoppingList.xcodeproj",
+      "identifier": "E060492F305DF55F0015D66D",
+      "name": "SmartShoppingList"
+    }
+  },
+  "testTargets": [
+    {
+      "parallelizable": true,
+      "target": {
+        "containerPath": "container:SmartShoppingList.xcodeproj",
+        "identifier": "E060493C305DF5600015D66D",
+        "name": "SmartShoppingListTests"
+      },
+      "selectedTags": {
+        "mode": "or",
+        "tags": [
+          "integration"
+        ]
+      }
+    }
+  ],
+  "version": 1
+}

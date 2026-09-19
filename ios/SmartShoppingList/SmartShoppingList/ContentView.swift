@@ -1,24 +1,14 @@
-//
-//  ContentView.swift
-//  SmartShoppingList
-//
-//  Created by Jesús Franco on 19/09/2026.
-//
-
 import SwiftUI
 
 struct ContentView: View {
+    let viewModel: ShoppingDraftViewModel
+
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
-        }
-        .padding()
+        AddItemsView(viewModel: viewModel)
     }
 }
 
-#Preview {
-    ContentView()
+#Preview(traits: .shoppingDraft) {
+    @Previewable @Environment(ShoppingDraftViewModel.self) var viewModel
+    ContentView(viewModel: viewModel)
 }

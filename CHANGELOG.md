@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- 2026-09-19 | ✨ feat(ios): add editable shopping drafts
+
 ### Documentation
 
 - 2026-09-19 | 📝 docs(api): define the MVP contract and executable examples
