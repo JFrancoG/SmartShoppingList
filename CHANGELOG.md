@@ -14,6 +14,7 @@
 
 ### Maintenance
 
+- 2026-09-21 | 🔧 chore(ios): configure hosted shared shopping
 - 2026-09-19 | 🔧 chore(server): prepare hosted configuration
 - 2026-09-19 | 🔧 chore(server): validate Vapor bootstrap
 - 2026-09-19 | 🔧 chore: initialize iOS and Vapor workspace

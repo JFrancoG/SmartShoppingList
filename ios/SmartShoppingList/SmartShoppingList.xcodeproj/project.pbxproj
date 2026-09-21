@@ -409,6 +409,8 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
+				SHARED_API_BASE_URL = "https://smartshoppinglist-production.up.railway.app";
+				SHARED_INVITATION_ORIGIN = "https://smartshoppinglist-production.up.railway.app";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -460,6 +462,8 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
+				SHARED_API_BASE_URL = "https://smartshoppinglist-production.up.railway.app";
+				SHARED_INVITATION_ORIGIN = "https://smartshoppinglist-production.up.railway.app";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;

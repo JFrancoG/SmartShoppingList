@@ -1,6 +1,6 @@
-# Evidencia local del recorrido compartido
+# Evidencia del recorrido compartido
 
-Fecha: 19 de septiembre de 2026, CEST. Trabajo local en `codex/issue-4-shared-shopping-flow`, iniciado sobre `2f3ee14`. Seguimiento: [#4](https://github.com/JFrancoG/SmartShoppingList/issues/4). Este informe acredita implementación y comprobaciones locales; no acredita entrega en `main`, alojamiento HTTPS ni acceso con dos Apple IDs reales.
+Evidencia local inicial: 19 de septiembre de 2026, CEST; ensayo físico ampliado el 21 de septiembre. Trabajo en `codex/issue-4-shared-shopping-flow`, iniciado sobre `2f3ee14`. Seguimiento: [#4](https://github.com/JFrancoG/SmartShoppingList/issues/4). Las secciones distinguen pruebas locales, comprobaciones HTTP y resultados físicos comunicados por el usuario; no acreditan entrega en `main`.
 
 ## Resultado implementado
 
@@ -82,13 +82,34 @@ Tras publicar [e446b8e](https://github.com/JFrancoG/SmartShoppingList/commit/e44
 
 Se preparó [EXC-002](../dependency-exceptions.md#exc-002--extracción-de-metadatos-app-intents-sin-adopción) como **propuesta pendiente de aceptación**. El aviso permanece visible; no se ha introducido una excepción aceptada ni un flag de silencio. Estas comprobaciones resuelven la preparación local, no las credenciales, la contratación ni las pruebas reales siguientes.
 
+## Ensayo físico con Railway — 21 de septiembre de 2026
+
+Backend del punto de control `04ba09d`, con configuración de Railway ajustada por el usuario. Durante el ensayo, el cliente usó esa rama más cambios locales de URL y Associated Domains en el proyecto Xcode y los entitlements; esta configuración se incorpora al repositorio junto con el informe ampliado. Dispositivos comunicados por el usuario: primer cliente iPhone 11 con iOS 27; segundo cliente iPhone 14 con iOS 27. No se registraron los números de build del sistema.
+
+Consolidación autorizada por el usuario: resultados y criterios actualizados en [#4](https://github.com/JFrancoG/SmartShoppingList/issues/4#issuecomment-5763487624) y evidencia manual del borrador en [#7](https://github.com/JFrancoG/SmartShoppingList/issues/7#issuecomment-5763488486). Ambas issues permanecen abiertas. El usuario autorizó después commit y push de la configuración y la evidencia; el enlace definitivo de publicación se registra en las issues.
+
+- El usuario confirmó `Deployment successful` y `Hello, world!` en el endpoint HTTPS público `/hello`.
+- Comprobación HTTP directa: `/.well-known/apple-app-site-association` respondió 200, JSON con `NWN8JUE438.com.plusprojects.SmartShoppingList` y `/invite/*`.
+- El usuario confirmó dos dispositivos con Apple IDs distintos en el mismo grupo después del recorrido de invitación indicado. Precisó que compartió las invitaciones mediante AirDrop y que el recorrido funcionó sin problemas. Es evidencia manual de recepción y apertura mediante AirDrop; no se probó Mail/Mensajes ni se inspeccionó el nonce del canje real. No recuerda con certeza si el segundo cliente ya tenía sesión al recibir la primera invitación.
+- En un ensayo posterior, siguiendo los pasos de cerrar sesión en el iPhone 14, recibir por AirDrop una invitación nueva y volver a iniciar sesión, el usuario confirmó que la invitación seguía apareciendo. Acredita conservación del enlace durante el acceso con una cuenta ya miembro; no una nueva incorporación sin sesión previa.
+- Ambos incorporaron manualmente un producto a Mercadona y vieron los dos productos tras confirmar el envío y actualizar. La ausencia inicial de tiendas se resolvió completando la confirmación del borrador; no se acreditó un fallo de carga.
+- Tras cerrar completamente y reabrir ambas apps, el usuario confirmó la recuperación de sesión, grupo y consulta de productos.
+- Tras el ensayo indicado de cerrar sesión y volver a acceder con el mismo Apple ID en un iPhone, el usuario observó primero «Preparar acceso con Apple», después el botón de inicio de sesión y, al acceder, los productos anteriores. Acredita la recuperación visible de la lista tras autenticarse de nuevo; no se confirmó expresamente en este paso el estado de la sesión del segundo dispositivo.
+- Tras el reinicio indicado del servicio SmartShoppingList en Railway, manteniendo PostgreSQL en ejecución, el usuario confirmó que ambos clientes conservaron sesión, grupo y todos los productos sin duplicados al actualizar. Es evidencia manual comunicada por el usuario; no acredita un reinicio de PostgreSQL.
+- Después del ensayo indicado de crear, compartir y revocar una nueva invitación antes de abrirla en el segundo iPhone, el usuario confirmó el aviso de invitación revocada con indicación de solicitar un enlace nuevo. Se acredita el rechazo visible del enlace revocado con un usuario ya miembro; no una incorporación rechazada de una tercera identidad.
+- Ante el ensayo indicado de modo avión, confirmación sin red, recuperación de conexión y reintento, el usuario comunicó que todo fue correcto: operación conservada, producto compartido una sola vez y resolución del borrador. No equivale a una prueba de pérdida de respuesta después de que el servidor haya confirmado la escritura.
+- Borrador local en un iPhone: tras añadir dos productos, corregir uno, eliminar el otro y cerrar completamente sin enviar, el usuario confirmó que al reabrir se conservó únicamente el producto corregido. Al actualizar Comprar en el otro dispositivo, ese producto no apareció. Acredita edición/eliminación y persistencia física del borrador, y separación entre preparación local e incorporación explícita al grupo; aporta evidencia parcial a #7.
+
+**Hallazgo de interfaz:** al confirmar desde el final del formulario, el error se presentó arriba, fuera de la zona visible y con poco énfasis. El usuario tardó en localizarlo. Acordó aplazar su corrección junto con la revisión de interfaz a la fase 3; la comunicación del fallo debe ser visible desde el punto de interacción y accesible, sin depender únicamente de rojo. No se han implementado cambios de interfaz en este ensayo ni se dan por evaluados los demás ajustes que el usuario quiere revisar.
+
+**Segundo hallazgo de interfaz:** después de conservar la invitación durante el acceso, se ofrece «Aceptar invitación» aunque la cuenta ya pertenece a ese grupo. La inspección de `SharedGroupView` confirma que el botón no comprueba esa pertenencia. Para una invitación nueva, `ShoppingService` rechaza la aceptación con `already_in_group` antes de actualizar la membresía o consumir el enlace. Se anota para la revisión de fase 3: mostrar que ya pertenece al grupo y ofrecer descartar el enlace, sin una aceptación innecesaria. No se ha ejecutado ni se atribuye una prueba física de pulsar Aceptar en este caso.
+
 ## Pendiente para acreditar el bloque completo
 
-- Dominio y servicio HTTPS, presupuesto de alojamiento y configuración Apple del backend. La solicitud no autorizó gastos ni suministró esos valores.
-- Associated Domains para ese host, firma efectiva, AASA público y entrega real del fragmento desde Mail/Mensajes.
-- Acceso/canje con dos Apple IDs y verificación del nonce real, incorporación y lectura en dos clientes iOS sobre HTTPS.
-- Entrada física manual, voz/IA y accesibilidad con interacción, conservando la dependencia #7.
+- Completar la evidencia específica desde Mail/Mensajes y rechazos de invitaciones inválidas, caducadas o consumidas; conservar la distinción respecto de las pruebas automatizadas ya aprobadas, del enlace revocado y de la conservación durante el acceso mediante AirDrop descritos arriba.
+- Completar voz/IA, permisos y accesibilidad con interacción, conservando la dependencia #7 y la evidencia física del borrador ya descrita. Completar la reproducibilidad de la configuración sin secretos; hardware y versiones principales de los clientes constan arriba.
+- Mantener explícito el presupuesto del alojamiento antes de cualquier contratación o ampliación; el despliegue de prueba no autoriza gastos nuevos.
 - Resolución o aceptación explícita del diagnóstico de metadatos de Xcode.
-- PR y cierre, pospuestos hasta resolver los pendientes y recibir la autorización de entrega.
+- Revisión y merge de la PR, cierre de issues y retirada de rama pendientes de completar los criterios y recibir la autorización de entrega. Una PR en borrador permite revisar el trabajo sin acreditar esos pasos.
 
 La issue permanece abierta. El 19 de septiembre se autorizó guardar y publicar este punto de control mediante commit y push en `codex/issue-4-shared-shopping-flow`, y continuar con los pendientes antes de lanzar la PR. La publicación verificada y su commit se registran en la issue; este documento no acredita el cierre del bloque ni una excepción nueva para el aviso de Xcode.

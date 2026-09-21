@@ -78,6 +78,8 @@ Las comprobaciones acompañan al desarrollo y se consolidan antes de congelar fu
 - Altas concurrentes, lotes atómicos y reintentos sin duplicados. Finalizar tres de cinco pendientes compra sólo tres; las altas posteriores y los otros dos quedan intactos. Ediciones, compras o cancelaciones concurrentes no se sobrescriben ni generan doble compra.
 - Checks sin escrituras, selección separada por tienda, conservación del borrador/selección ante errores y correcciones del usuario respetadas. Persistencia tras cierre/reapertura y reinicio del servidor.
 - Micrófono/IA no disponibles, tiendas ambiguas, pérdida de red y reintento explícito; VoiceOver, texto grande y uso manual en la interfaz real.
+- Revisar la presentación de errores al confirmar un envío: el aviso debe percibirse desde la posición actual de la pantalla, aunque el usuario esté al final del formulario, sin depender únicamente del color. Hallazgo físico y aplazamiento acordado a esta fase en la [validación de #4](validation/issue-4-shared-flow.md#ensayo-físico-con-railway--21-de-septiembre-de-2026).
+- Ajustar la invitación pendiente cuando el usuario ya pertenece al grupo indicado: informar de esa pertenencia y permitir descartar el enlace, sin ofrecer una aceptación que el servidor rechazará. Evidencia y protección actual del servidor en la misma validación de #4.
 
 Las evidencias y limitaciones se enlazan desde las issues correspondientes, distinguiendo ejecución física, simulador, macOS y Linux.
 
