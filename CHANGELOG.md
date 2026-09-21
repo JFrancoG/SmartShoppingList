@@ -9,6 +9,7 @@
 
 ### Documentation
 
+- 2026-09-21 | 📝 docs: accept scoped App Intents warning exception
 - 2026-09-19 | 📝 docs(api): define the MVP contract and executable examples
 - 2026-09-19 | 📝 docs: organize MVP tracking
 

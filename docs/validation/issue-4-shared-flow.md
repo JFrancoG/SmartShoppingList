@@ -64,7 +64,7 @@ Una captura no prueba desplazamiento, orden de foco, VoiceOver ni entrega de enl
 
 Las compilaciones de iOS y servidor con targets de pruebas completaron correctamente. No se identificaron warnings del código Swift propio y se mantiene warnings-as-errors. **No se declara una compilación global sin avisos:** los logs completos de Xcode incluyen `Metadata extraction skipped, no AppIntents.framework dependency found`, emitido por `appintentsmetadataprocessor` para targets sin App Intents; el resumen MCP no lo enumeraba. También consta en el log previo del bloque 3 de las 14:08, con una tarea de las 13:57. Esto corrige la interpretación anterior basada en el resumen de herramientas.
 
-Logs de referencia: `.../ActionArtifacts/default/BuildProject/BuildProject-Log-20260919-152149.txt` para iOS y `BuildProject-Log-20260919-152155.txt` para servidor. El aviso sigue visible, sin nueva excepción aceptada ni flags de supresión. Requiere resolución o decisión explícita antes de acreditar el criterio de entrega sin avisos. La excepción [EXC-001](../dependency-exceptions.md) solo cubre el manifiesto de JWTKit 5.7.1 al resolver dependencias; no incluye este diagnóstico.
+Logs de referencia: `.../ActionArtifacts/default/BuildProject/BuildProject-Log-20260919-152149.txt` para iOS y `BuildProject-Log-20260919-152155.txt` para servidor. El aviso sigue visible, sin flags de supresión, y queda cubierto exclusivamente por [EXC-002](../dependency-exceptions.md#exc-002--extracción-de-metadatos-app-intents-sin-adopción), aceptada el 21 de septiembre. No se declara ausencia global de avisos. La excepción [EXC-001](../dependency-exceptions.md) solo cubre el manifiesto de JWTKit 5.7.1 al resolver dependencias; no incluye este diagnóstico.
 
 Swift 6.4 también falló internamente al compilar el override asíncrono Objective-C de redirección de URLSession. Se usa el callback oficial `@Sendable`, con rechazo inmediato, manteniendo async/await en el transporte. No se rebaja la concurrencia ni se añade `@unchecked Sendable`.
 
@@ -80,7 +80,7 @@ Tras publicar [e446b8e](https://github.com/JFrancoG/SmartShoppingList/commit/e44
 - Docker Release Linux arm64: PASS con el Dockerfile ajustado, log `/tmp/smartshoppinglist-block4-railway-linux-build.log`. No acredita aún amd64 ni un despliegue en Railway.
 - Se reutilizan las pruebas iOS del punto de control: estas adaptaciones no modifican cliente ni contrato.
 
-Se preparó [EXC-002](../dependency-exceptions.md#exc-002--extracción-de-metadatos-app-intents-sin-adopción) como **propuesta pendiente de aceptación**. El aviso permanece visible; no se ha introducido una excepción aceptada ni un flag de silencio. Estas comprobaciones resuelven la preparación local, no las credenciales, la contratación ni las pruebas reales siguientes.
+El 19 de septiembre se preparó [EXC-002](../dependency-exceptions.md#exc-002--extracción-de-metadatos-app-intents-sin-adopción); el responsable del proyecto la **aceptó explícitamente el 21 de septiembre**, sin ampliar su alcance. El aviso permanece visible y no se aplican flags de silencio. Las comprobaciones de esta sección acreditan la preparación local; el ensayo alojado posterior se registra por separado a continuación.
 
 ## Ensayo físico con Railway — 21 de septiembre de 2026
 
@@ -107,9 +107,8 @@ Consolidación autorizada por el usuario: resultados y criterios actualizados en
 ## Pendiente para acreditar el bloque completo
 
 - Completar la evidencia específica desde Mail/Mensajes y rechazos de invitaciones inválidas, caducadas o consumidas; conservar la distinción respecto de las pruebas automatizadas ya aprobadas, del enlace revocado y de la conservación durante el acceso mediante AirDrop descritos arriba.
-- Completar voz/IA, permisos y accesibilidad con interacción, conservando la dependencia #7 y la evidencia física del borrador ya descrita. Completar la reproducibilidad de la configuración sin secretos; hardware y versiones principales de los clientes constan arriba.
+- Completar voz/IA, permisos y accesibilidad con interacción, conservando la dependencia #7 y la evidencia física del borrador ya descrita. La configuración iOS y esta evidencia están publicadas en `d2bd13b`; hardware y versiones principales de los clientes constan arriba.
 - Mantener explícito el presupuesto del alojamiento antes de cualquier contratación o ampliación; el despliegue de prueba no autoriza gastos nuevos.
-- Resolución o aceptación explícita del diagnóstico de metadatos de Xcode.
 - Revisión y merge de la PR, cierre de issues y retirada de rama pendientes de completar los criterios y recibir la autorización de entrega. Una PR en borrador permite revisar el trabajo sin acreditar esos pasos.
 
-La issue permanece abierta. El 19 de septiembre se autorizó guardar y publicar este punto de control mediante commit y push en `codex/issue-4-shared-shopping-flow`, y continuar con los pendientes antes de lanzar la PR. La publicación verificada y su commit se registran en la issue; este documento no acredita el cierre del bloque ni una excepción nueva para el aviso de Xcode.
+La issue permanece abierta. El 19 de septiembre se autorizó guardar y publicar este punto de control mediante commit y push en `codex/issue-4-shared-shopping-flow`, y continuar con los pendientes antes de lanzar la PR. La publicación verificada y su commit se registran en la issue; este documento no acredita el cierre del bloque. EXC-002 quedó aceptada por decisión separada del 21 de septiembre; la PR #9 continúa en borrador.
