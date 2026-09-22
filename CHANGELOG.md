@@ -9,6 +9,7 @@
 
 ### Documentation
 
+- 2026-09-22 | 📝 docs: consolidate hosted validation evidence
 - 2026-09-22 | 📝 docs: record Linux review and delivery blockers
 - 2026-09-22 | 📝 docs: record validation and plan optional Siri support
 - 2026-09-21 | 📝 docs: accept scoped App Intents warning exception
