@@ -145,14 +145,7 @@ actor SpeechCaptureService: SpeechCapturing {
             try await request.downloadAndInstall()
         }
         try checkCapture(id)
-        guard let microphone = AVCaptureDevice.default(for: .audio) else {
-            throw SpeechCaptureError.microphoneUnavailable
-        }
-
-        let captureProvider = try await CaptureInputSequenceProvider.providerWithSession(
-            from: microphone,
-            compatibleWith: [transcriber]
-        )
+        let captureProvider = try await makeCaptureProvider(transcriber: transcriber)
         try checkCapture(id)
         provider = captureProvider
         let speechAnalyzer = SpeechAnalyzer(modules: [transcriber])
@@ -165,6 +158,36 @@ actor SpeechCaptureService: SpeechCapturing {
         isRecording = true
         continuation?.yield(.recording(localeIdentifier: locale.identifier))
         return transcriber
+    }
+
+    private func makeCaptureProvider(transcriber: SpeechTranscriber) async throws -> CaptureInputSequenceProvider {
+        guard let microphone = AVCaptureDevice.default(for: .audio) else {
+            throw SpeechCaptureError.microphoneUnavailable
+        }
+        guard ProcessInfo.processInfo.isiOSAppOnMac else {
+            return try await CaptureInputSequenceProvider.providerWithSession(
+                from: microphone,
+                compatibleWith: [transcriber]
+            )
+        }
+
+        // On macOS 27.2 beta, the convenience factory calls setAudioSettings:, unavailable to iOS apps on Mac.
+        // The explicit initializer converts native capture samples to the analyzer's supported format.
+        guard let format = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [transcriber]) else {
+            throw SpeechCaptureError.unavailable
+        }
+        try Task.checkCancellation()
+        let session = AVCaptureSession()
+        let input = try AVCaptureDeviceInput(device: microphone)
+        let captureProvider = try CaptureInputSequenceProvider(session: session, analyzerFormat: format, priority: nil)
+        session.beginConfiguration()
+        defer { session.commitConfiguration() }
+        guard session.canAddInput(input) else { throw SpeechCaptureError.microphoneUnavailable }
+        session.addInput(input)
+        let output = captureProvider.captureAudioDataOutput
+        guard session.canAddOutput(output) else { throw SpeechCaptureError.failed }
+        session.addOutput(output)
+        return captureProvider
     }
 
     private func checkCapture(_ id: UUID) throws {

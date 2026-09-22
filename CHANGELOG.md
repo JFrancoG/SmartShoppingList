@@ -13,6 +13,10 @@
 - 2026-09-19 | 📝 docs(api): define the MVP contract and executable examples
 - 2026-09-19 | 📝 docs: organize MVP tracking
 
+### Fixed
+
+- 2026-09-22 | 🐛 fix(ios): harden draft interpretation and dictation
+
 ### Maintenance
 
 - 2026-09-21 | 🔧 chore(ios): configure hosted shared shopping

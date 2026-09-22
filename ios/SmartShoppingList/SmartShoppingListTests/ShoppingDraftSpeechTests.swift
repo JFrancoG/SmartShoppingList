@@ -12,11 +12,14 @@ struct ShoppingDraftSpeechTests {
         let model = makeModel(speech: speech)
         let firstCapture = model.startDictation()
         await waitForActivity(.recording, in: model)
+        try await speech.transcribe("texto descartado", capture: 1)
+        await waitForText("texto descartado", in: model)
         let firstFinish = model.finishDictation()
         await speech.waitForFinishCalls(1)
 
         await model.cancelDictation().value
         await firstCapture.value
+        try #require(model.text.isEmpty)
         let secondCapture = model.startDictation()
         await waitForActivity(.recording, in: model)
         try await speech.transcribe("peras en Día", capture: 2)
@@ -34,6 +37,77 @@ struct ShoppingDraftSpeechTests {
 
         await model.cancelDictation().value
         await secondCapture.value
+    }
+
+    @Test(.timeLimit(.minutes(1)), arguments: ["", "  café molido\n", "pan en Aldi"])
+    func `Cancelling dictation restores and persists the exact previous text`(original: String) async throws {
+        let speech = ControlledDraftSpeech()
+        let persistence = MemoryDraftPersistence()
+        let item = ShoppingDraftItem(name: "arroz", quantity: "1 paquete", store: "Mercadona")
+        let draft = ShoppingDraftSnapshot(text: original, items: [item], interpretedText: original)
+        let model = ShoppingDraftViewModel(
+            interpreter: SpeechTestUnavailableInterpreter(),
+            speech: speech,
+            persistence: persistence,
+            initialDraft: draft
+        )
+        let capture = model.startDictation()
+        await waitForActivity(.recording, in: model)
+        try await speech.transcribe("leche en Lidl", capture: 1)
+        await waitForText("leche en Lidl", in: model)
+        await model.flushPersistence()
+
+        await model.cancelDictation().value
+        await capture.value
+        await model.flushPersistence()
+
+        #expect(model.text == original)
+        #expect(model.activity == .idle)
+        #expect(model.items == [item])
+        let saved = try #require(try await persistence.load())
+        #expect(saved.text == original)
+        #expect(saved.items == [item])
+        #expect(saved.interpretedText == original)
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func `Finishing keeps the transcript and the next cancellation restores it`() async throws {
+        let speech = ControlledDraftSpeech()
+        let model = makeModel(speech: speech, draft: ShoppingDraftSnapshot(text: "pan"))
+        let first = model.startDictation()
+        await waitForActivity(.recording, in: model)
+        try await speech.transcribe("leche", capture: 1)
+        await waitForText("pan\nleche", in: model)
+        let finish = model.finishDictation()
+        await speech.waitForFinishCalls(1)
+        try await speech.completeFinish(call: 1)
+        await finish.value
+        await first.value
+        #expect(model.text == "pan\nleche")
+        #expect(model.activity == .idle)
+
+        let second = model.startDictation()
+        await waitForActivity(.recording, in: model)
+        try await speech.transcribe("arroz", capture: 2)
+        await waitForText("pan\nleche\narroz", in: model)
+        await model.cancelDictation().value
+        await second.value
+        #expect(model.text == "pan\nleche")
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func `Backgrounding stops dictation without discarding the captured text`() async throws {
+        let speech = ControlledDraftSpeech()
+        let model = makeModel(speech: speech)
+        let capture = model.startDictation()
+        await waitForActivity(.recording, in: model)
+        try await speech.transcribe("pan en Aldi", capture: 1)
+        await waitForText("pan en Aldi", in: model)
+
+        model.setActive(false)
+        await capture.value
+        await waitForActivity(.idle, in: model)
+        #expect(model.text == "pan en Aldi")
     }
 
     @Test

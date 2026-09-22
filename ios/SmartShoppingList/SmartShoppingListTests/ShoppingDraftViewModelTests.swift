@@ -57,8 +57,10 @@ struct ShoppingDraftViewModelTests {
         #expect(saved.items.map(\.name) == ["leche sin lactosa", "pan integral", "manzanas"])
     }
 
-    @Test
-    func `An interpretation failure preserves both the draft and the original text`() async throws {
+    @Test(arguments: [DraftInterpretationError.failed, .noProducts])
+    func `An interpretation failure preserves both the draft and the original text`(
+        error: DraftInterpretationError
+    ) async throws {
         let existing = item(1)
         let interpreter = ControlledDraftInterpreter()
         let persistence = ViewModelDraftPersistence()
@@ -67,15 +69,43 @@ struct ShoppingDraftViewModelTests {
 
         let task = model.interpretText()
         await interpreter.waitForCalls(1)
-        try interpreter.fail(.failed)
+        try interpreter.fail(error)
         await task.value
         await model.flushPersistence()
 
         #expect(model.items == [existing])
         #expect(model.text == "añade peras y café del supermercado que te dije")
+        #expect(model.notice != nil)
         let saved = try #require(await persistence.load())
         #expect(saved.items == [existing])
         #expect(saved.text == "añade peras y café del supermercado que te dije")
+    }
+
+    @Test
+    func `Model loss during interpretation explains recovery and allows retry`() async throws {
+        let existing = item(1)
+        let interpreter = ControlledDraftInterpreter()
+        let model = makeModel(interpreter: interpreter, items: [existing])
+        model.text = "dos peras en Día"
+
+        let firstAttempt = model.interpretText()
+        await interpreter.waitForCalls(1)
+        try interpreter.fail(.unavailable)
+        await firstAttempt.value
+
+        let notice = try #require(model.notice)
+        #expect(String(localized: notice).contains("modelo de Apple Intelligence no está disponible"))
+        #expect(model.items == [existing])
+        #expect(model.text == "dos peras en Día")
+        #expect(model.canInterpret)
+
+        let retry = model.interpretText()
+        await interpreter.waitForCalls(2)
+        try interpreter.succeed([SuggestedProduct(name: "peras", quantity: "dos", store: "Día")], call: 2)
+        await retry.value
+
+        #expect(model.items.map(\.name) == ["pan integral", "peras"])
+        #expect(model.notice == nil)
     }
 
     @Test
