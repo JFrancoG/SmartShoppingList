@@ -43,7 +43,8 @@ func configure(
     ))
 
     app.routes.defaultMaxBodySize = "128kb"
-    app.middleware.use(APIErrorMiddleware(), at: .beginning)
+    // Handle contract errors before Vapor's outer default middleware turns them into generic responses.
+    app.middleware.use(APIErrorMiddleware(), at: .end)
 
     // register routes
     try routes(app, databases: databases)
