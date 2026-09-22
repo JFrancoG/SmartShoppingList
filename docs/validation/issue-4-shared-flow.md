@@ -244,6 +244,42 @@ El usuario autorizó commit y push de las correcciones y resultados acumulados, 
 
 Se planifica [#10: entrada al borrador con Siri y App Intents](https://github.com/JFrancoG/SmartShoppingList/issues/10) después del recorrido de compra, por elección explícita del usuario. Es un extra sin implementar; no se cierra la validación de App Intents ni se retira EXC-002 por esta propuesta.
 
+## Revisión de PR #9 y Linux — 22 de septiembre, 15:58 CEST
+
+Revisión del HEAD publicado `9e51e2c29184ff733dc9020fc58b3c7c3fcd9276`, sin modificar código de producción ni pruebas. Se revisaron las fronteras de autenticación, autorización, transacciones, recibos, transporte y conservación de estado del cliente, y las correcciones recientes de voz/interpretación. El pase automático de estilo abarcó los 58 Swift del diff: un candidato dentro de un literal SQL, descartado como falso positivo; se conserva la evidencia anterior de revisión manual de estilo. `git diff --check origin/main...HEAD` pasó. No se presenta esta revisión como una aprobación independiente ni como validación física nueva.
+
+### Validación nueva
+
+- **Docker Release Linux arm64: PASS**, Dockerfile e imágenes fijadas del repositorio, Swift 6.4.0. Imagen `smartshoppinglistserver:review-9e51e2c`, ID `sha256:e3d20ba662e2b991cb4a81e215b6a23de268df4fdd1c0a688427e7604d261c31`, usuario `vapor:vapor`. Log: `/tmp/smartshoppinglist-sep22-linux-build.log`.
+- **Swift Testing en Linux: 61 pruebas en 8 suites, PASS**, 2,907 segundos de ejecución tras compilar Release. Comando en la etapa de compilación: `swift test -c release --jobs 4 --force-resolved-versions`; PostgreSQL aislado `db-test`. Código de salida 0. El `Package.resolved` del contenedor coincide byte a byte con el repositorio: incluye AsyncHTTPClient 1.36.1 y swift-configuration 1.2.1. Log: `/tmp/smartshoppinglist-sep22-review/linux-tests.log`. Este recuento es el resumen de Swift Testing en Linux; no se atribuyen las 98 invocaciones del informe macOS a este resultado.
+- Único warning de compilación/resolución identificado: manifiesto de JWTKit 5.7.1, cubierto por EXC-001. EXC-002 permanece relevante para Xcode; no se declara ausencia global de avisos.
+- **HTTP real local: resultado parcial, con fallo reproducido de autenticación.** Pasaron arranque/migraciones, `/hello`, exclusión de `/todos` en producción, challenge válido, creación de grupo, preview sin consumo, aceptación, rechazo de enlace inválido/revocado/caducado/consumido por otro usuario, aislamiento, normalización Unicode de tiendas, lote/replay, conflicto de clave reutilizada, rollback de productos/tiendas/recibo tras fallo SQL, reinicio del proceso con persistencia y logout válido. Cinco comprobaciones negativas de autenticación fallaron con 500 donde correspondía 400/401.
+- El probe usa identidades/sesiones sintéticas insertadas directamente en una base temporal distinta, `smartshoppinglist_review_testing`, y HTTP por `127.0.0.1:8093`. No añade bypass al servidor ni contacta Apple/Railway. Script y logs: `/tmp/smartshoppinglist-sep22-review/smoke.py`, `smoke.log`, `runtime.log`. Se retiraron contenedor y base temporal. No acredita amd64, TLS público, credenciales Apple reales ni un despliegue nuevo.
+
+### Hallazgo que impide recomendar el merge
+
+**P2 — El middleware genérico intercepta los errores de autenticación.** En `server/Sources/SmartShoppingListServer/configure.swift:46`, `APIErrorMiddleware` se inserta al principio, por fuera del `ErrorMiddleware` predeterminado de Vapor. Este último convierte el error en una respuesta antes de que llegue al traductor del contrato. Las rutas de compras tienen otro `APIErrorMiddleware` dentro del grupo y no presentan este fallo; `AppleAuthenticationRoutes` depende del global.
+
+Reproducciones sobre la imagen de producción:
+
+| Petición | Esperado | Obtenido |
+|---|---|---|
+| `GET /v1/me` sin bearer | 401, `invalid_session` | 500, `error/reason` |
+| `GET /v1/me` con sesión revocada | 401, `invalid_session` | 500, `error/reason` |
+| `DELETE /v1/session` sin bearer | 401, `invalid_session` | 500, `error/reason` |
+| `POST /v1/auth/challenges` con campo desconocido | 400, `invalid_request` | 500, `error/reason` |
+| `POST /v1/auth/apple` con `{}` | 400, `invalid_request` | 500, `error/reason` |
+
+El cliente solo reconoce la sesión inválida mediante status y código contractuales; un 500 genérico conserva la sesión como error incierto y no activa la recuperación prevista. La corrección propuesta es colocar el traductor contractual dentro del middleware genérico, y añadir regresiones a través de las rutas y la configuración reales, incluyendo sesión revocada y los cuerpos de error. Los tests directos del servicio no verifican esta cadena. **Hallazgo pendiente de implementar; no se ha aplicado una corrección en esta revisión.**
+
+### Ensayos manuales restantes, sin repetir lo acreditado
+
+1. Entrega del enlace por Mail/Mensajes: comprobar apertura de la app y conservación del fragmento; AirDrop ya está acreditado.
+2. Rechazos alojados de enlace alterado, caducado sin consumir y consumido por otra identidad. El revocado ya se comprobó; los tres restantes tienen pruebas locales, pero no evidencia manual alojada. Para caducidad, usar una invitación realmente vencida, sin modificar el reloj o la base de producción. Reabrir con el mismo aceptante es recuperación válida, no el caso negativo de enlace consumido.
+3. Completar el tramo **interpretación real → revisión/corrección → envío → consulta en el segundo cliente**. La prueba de voz/IA del Mac llegó al borrador; el envío compartido acreditado se hizo con entrada manual. Se pueden reutilizar los dispositivos/cuentas del ensayo existente.
+
+Inglés y los hallazgos de accesibilidad siguen en #7 y en las fases previstas; esta revisión no elimina esa dependencia ni da por cerrada #4. El siguiente trabajo técnico es corregir el middleware y añadir la regresión antes de proponer el merge. La PR permanece en borrador; no se hizo commit, push, merge ni cierre de issues.
+
 ## Pendiente para acreditar el bloque completo
 
 El fallo histórico de assets del 21 de septiembre (23:38 CEST, `com.apple.UnifiedAssetFramework`, código 5000, seguido de `ModelManagerError`) dejó de bloquear los ensayos en español: el 22 de septiembre se confirmó interpretación real, dictado y el recorrido integrado en Mac, además de dictado en iPhone 14. Sus entornos y límites están registrados arriba. Esa evidencia no completa inglés ni los hallazgos de accesibilidad pendientes.
