@@ -66,8 +66,13 @@ El resultado de esta fase es el recorrido completo descrito en la spec:
 - Consulta de tiendas por voz y selector sobre datos reales del grupo; edición de pendientes y distinción entre compra y cancelación.
 - Checks locales reversibles, contador y finalización con IDs explícitos: mantener pendientes los no seleccionados, conservar selección ante errores y resolver conflictos sin duplicar compras.
 - Historial mínimo por entrada y nueva entrada para una nueva necesidad; estados de carga, vacío y error, refresco y consulta de la última lista recuperada.
+- Preparar las nuevas pantallas para español e inglés y adaptar la selección de idioma de Speech/Foundation Models, evitando el español fijo del recorrido inicial. Comprobar disponibilidad real por idioma con #7; la traducción y revisión completas se consolidan en fase 3.
 
 Las issues de esta fase se concretan al cerrar las incertidumbres iniciales, con dependencias y criterios de aceptación propios.
+
+### Extra opcional después del recorrido de compra: Siri
+
+El 22 de septiembre el usuario decidió planificar [#10: entrada al borrador con Siri y App Intents](https://github.com/JFrancoG/SmartShoppingList/issues/10) después de completar el recorrido de compra. La primera acción recibirá producto, tienda y cantidad opcional para añadir una entrada al borrador local, conservando los datos existentes y la revisión posterior. Se preparará para español e inglés y se validará con Siri/Atajos reales. La frase exacta de invocación y la ejecución con app cerrada necesitan validación; no se acreditan por habilitar Siri AI. Es un extra planificado, todavía no implementado, que no sustituye los criterios pendientes del MVP ni bloquea el cierre de #4/#7. Antes de iniciarlo se revisará el margen de entrega.
 
 ## Fase 3: validar y corregir
 
@@ -78,8 +83,12 @@ Las comprobaciones acompañan al desarrollo y se consolidan antes de congelar fu
 - Altas concurrentes, lotes atómicos y reintentos sin duplicados. Finalizar tres de cinco pendientes compra sólo tres; las altas posteriores y los otros dos quedan intactos. Ediciones, compras o cancelaciones concurrentes no se sobrescriben ni generan doble compra.
 - Checks sin escrituras, selección separada por tienda, conservación del borrador/selección ante errores y correcciones del usuario respetadas. Persistencia tras cierre/reapertura y reinicio del servidor.
 - Micrófono/IA no disponibles, tiendas ambiguas, pérdida de red y reintento explícito; VoiceOver, texto grande y uso manual en la interfaz real.
-- Revisar la presentación de errores al confirmar un envío: el aviso debe percibirse desde la posición actual de la pantalla, aunque el usuario esté al final del formulario, sin depender únicamente del color. Hallazgo físico y aplazamiento acordado a esta fase en la [validación de #4](validation/issue-4-shared-flow.md#ensayo-físico-con-railway--21-de-septiembre-de-2026).
+- Revisar la presentación de errores al confirmar un envío y de avisos de interpretación con borradores largos: el aviso debe percibirse desde la posición actual de la pantalla, sin obligar a hacer scroll hasta arriba o abajo y sin depender únicamente del color. El 22 de septiembre se confirmó que el aviso de interpretación queda oculto al final cuando ya hay varios productos. Hallazgo físico y aplazamiento acordado a esta fase en la [validación de #4](validation/issue-4-shared-flow.md#ensayo-físico-con-railway--21-de-septiembre-de-2026).
+- Comunicar automáticamente los errores de validación del editor a VoiceOver, mediante anuncio o foco apropiado y sin duplicaciones. Al pulsar Aplicar sin tienda, el ensayo del 22 de septiembre no anunció el error; solo pudo leerse al navegar hasta él. Conservar los datos y revalidar error/corrección en [#7](https://github.com/JFrancoG/SmartShoppingList/issues/7).
+- Evitar que el ejemplo del campo de entrada se recorte con texto de accesibilidad al máximo: el ensayo del 22 de septiembre terminó el placeholder en «yo…» (yogures). Valorar un ejemplo más breve o ayuda multilínea; mantener una etiqueta accesible independiente.
+- Restaurar el foco de VoiceOver al producto editado o a su acción Editar al cerrar el editor del borrador. El ensayo del 22 de septiembre desde Device Hub conectado al iPhone 14 devolvió el foco al encabezado Añadir, perdiendo la posición; registrar la revalidación en [#7](https://github.com/JFrancoG/SmartShoppingList/issues/7).
 - Ajustar la invitación pendiente cuando el usuario ya pertenece al grupo indicado: informar de esa pertenencia y permitir descartar el enlace, sin ofrecer una aceptación que el servidor rechazará. Evidencia y protección actual del servidor en la misma validación de #4.
+- Completar localización español/inglés, requerida por el usuario el 21 de septiembre para el jurado bilingüe: interfaz, avisos, errores, permisos, accesibilidad y demostración. Revisar formatos y textos en inglés de Reino Unido/Estados Unidos y en español, conservando los datos introducidos por usuarios. Validar transcripción e interpretación en ambos idiomas por separado; traducir el catálogo no acredita voz ni IA. Objetivo de acabado: 24–25 de septiembre.
 
 Las evidencias y limitaciones se enlazan desde las issues correspondientes, distinguiendo ejecución física, simulador, macOS y Linux.
 

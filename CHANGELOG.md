@@ -9,6 +9,7 @@
 
 ### Documentation
 
+- 2026-09-22 | 📝 docs: record validation and plan optional Siri support
 - 2026-09-21 | 📝 docs: accept scoped App Intents warning exception
 - 2026-09-19 | 📝 docs(api): define the MVP contract and executable examples
 - 2026-09-19 | 📝 docs: organize MVP tracking
@@ -20,7 +21,6 @@
 ### Maintenance
 
 - 2026-09-22 | 📦 build(server): refresh HTTP and configuration dependencies
-
 - 2026-09-21 | 🔧 chore(ios): configure hosted shared shopping
 - 2026-09-19 | 🔧 chore(server): prepare hosted configuration
 - 2026-09-19 | 🔧 chore(server): validate Vapor bootstrap

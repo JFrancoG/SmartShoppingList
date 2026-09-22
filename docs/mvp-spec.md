@@ -22,6 +22,12 @@ Recorrido principal:
 
 El MVP debe completar este recorrido con dos usuarios reales. Los datos simulados no acreditan colaboración ni funcionamiento de la IA.
 
+### Idiomas de la entrega
+
+El 21 de septiembre el usuario establece español e inglés como requisito de la entrega, dado que el jurado incluye evaluadores españoles y de Reino Unido/Estados Unidos. La interfaz, errores, permisos, textos de accesibilidad y recorrido de demostración deben poder utilizarse en ambos idiomas. Los nombres de productos, tiendas y grupos introducidos por las personas se conservan, sin traducción automática de los datos compartidos.
+
+La transcripción y la interpretación se preparan y prueban en español e inglés, comprobando por separado el soporte real de Speech y Foundation Models en el entorno disponible. La disponibilidad de Siri AI no acredita la de estos frameworks. Cualquier limitación real de idioma o modelos se registra y requiere una decisión explícita; no se considera resuelta solo por traducir la interfaz o actualizar macOS.
+
 ## 2. Acceso y grupo
 
 - Autenticación mediante **Iniciar sesión con Apple**. No se implementan contraseñas propias.
@@ -171,6 +177,10 @@ El cliente y el backend se implementan desde cero para el evento. La elección d
 No forman parte del MVP: sugerencias, predicción de reposición, estadísticas de compra, recetas, precios, comparación comercial, inventario doméstico, múltiples grupos por persona, roles personalizados, varias plataformas, presencia en tiempo real, sincronización offline completa, envío automático de correos, seleccionar toda la tienda automáticamente, vaciar pendientes al terminar y órdenes de modificación o borrado por voz. La confirmación conjunta de los checks sí forma parte del MVP.
 
 Tras la entrega podrán estudiarse sugerencias de productos frecuentes por tienda, reutilización de compras anteriores y otras mejoras. Son posibilidades, no compromisos ni tareas activas. Cualquier ampliación anterior al cierre exige acordar explícitamente qué se sustituye o se retira del MVP.
+
+El 22 de septiembre se acuerda aplazar hasta después del MVP la posibilidad de asociar una única necesidad de compra a varias tiendas alternativas (por ejemplo, «fresas en Aldi o Mercadona») y resolverla al comprar en cualquiera de ellas. En el MVP cada entrada pertenece a una sola tienda; repetir un producto en tiendas distintas crea entradas independientes. La ampliación queda como posibilidad por estudiar, sin implementación ni tarea activa en esta entrega.
+
+El 22 de septiembre el usuario aprueba planificar como extra opcional la entrada al borrador mediante Siri/App Intents, después del recorrido de compra ([#10](https://github.com/JFrancoG/SmartShoppingList/issues/10)). La primera versión se limita a producto, tienda y cantidad opcional en el borrador local, con revisión posterior y sin envío al grupo. No modifica el alcance base ni convierte la frase libre de ejemplo en una capacidad ya validada. La implementación y su encaje temporal se abordarán después del recorrido principal.
 
 ## 10. Fuentes y decisiones
 
