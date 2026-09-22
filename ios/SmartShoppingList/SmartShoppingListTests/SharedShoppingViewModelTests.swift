@@ -252,6 +252,95 @@ private actor SharedFlowAPI: SharedShoppingAPI {
     private(set) var loginRequests = 0
     private(set) var acceptedInvitations = 0
     let currentUserGate: SharedFlowGate?
+    private(set) var sentPurchases: [FinalizePurchaseRequest] = []
+    private(set) var purchaseItems: [SharedItem] = []
+    var purchaseError: SharedAPIError? = .transport
+    private var failRefreshAfterPurchase = false
+
+    func allowPurchaseButFailRefresh() {
+        purchaseError = nil
+        failRefreshAfterPurchase = true
+    }
+
+    func preparePurchaseItems() throws -> [SharedItem] {
+        let groupID = try #require(session.user.group).id
+        let firstStore = UUID()
+        let secondStore = UUID()
+        purchaseItems = (0..<6).map { index in
+            SharedItem(
+                id: UUID(),
+                groupId: groupID,
+                storeId: index < 5 ? firstStore : secondStore,
+                name: "Producto \(index)",
+                quantity: nil,
+                status: "pending",
+                version: 1,
+                createdBy: session.user.id,
+                createdAt: .distantPast,
+                purchasedBy: nil,
+                purchasedAt: nil
+            )
+        }
+        return purchaseItems
+    }
+
+    func rejectPurchaseWithConflict() {
+        changeFirstPurchaseItem()
+        purchaseError = .server(
+            status: 409,
+            code: "item_conflict",
+            requestID: UUID(),
+            retryAfter: nil
+        )
+    }
+
+    func changeFirstPurchaseItem() {
+        guard let item = purchaseItems.first else { return }
+        purchaseItems[0] = SharedItem(
+            id: item.id,
+            groupId: item.groupId,
+            storeId: item.storeId,
+            name: "Editado por otra persona",
+            quantity: item.quantity,
+            status: "pending",
+            version: 2,
+            createdBy: item.createdBy,
+            createdAt: item.createdAt,
+            purchasedBy: nil,
+            purchasedAt: nil
+        )
+    }
+
+    func finalizePurchase(
+        _ request: FinalizePurchaseRequest,
+        groupID: UUID,
+        token: String
+    ) async throws -> PurchaseResult {
+        sentPurchases.append(request)
+        if sentPurchases.count == 1, let purchaseError {
+            throw purchaseError
+        }
+        let date = Date(timeIntervalSince1970: 1_800_000_000)
+        let ids = Set(request.items.map(\.id))
+        let bought = purchaseItems.filter { ids.contains($0.id) }.map { item in
+            SharedItem(
+                id: item.id,
+                groupId: item.groupId,
+                storeId: item.storeId,
+                name: item.name,
+                quantity: item.quantity,
+                status: "purchased",
+                version: item.version + 1,
+                createdBy: item.createdBy,
+                createdAt: item.createdAt,
+                purchasedBy: session.user.id,
+                purchasedAt: date
+            )
+        }
+        purchaseItems.removeAll { ids.contains($0.id) }
+        return PurchaseResult(items: bought, confirmedAt: date)
+    }
+
     let acceptanceGate: SharedFlowGate?
     let acceptanceError: SharedAPIError?
     let firstBatchError: SharedAPIError
@@ -295,6 +384,9 @@ private actor SharedFlowAPI: SharedShoppingAPI {
 
     func currentUser(token: String) async throws -> SharedUser {
         await currentUserGate?.pause()
+        if failRefreshAfterPurchase && !sentPurchases.isEmpty {
+            throw SharedAPIError.transport
+        }
         return session.user
     }
     func logout(token: String) async throws {}
@@ -304,7 +396,9 @@ private actor SharedFlowAPI: SharedShoppingAPI {
         return try #require(session.user.group)
     }
 
-    func stores(groupID: UUID, token: String) async throws -> [SharedStore] { [] }
+    func stores(groupID: UUID, token: String) async throws -> [SharedStore] {
+        Set(purchaseItems.map(\.storeId)).map { SharedStore(id: $0, groupId: groupID, name: "Tienda") }
+    }
     func createInvitation(groupID: UUID, token: String) async throws -> CreatedInvitation {
         throw SharedAPIError.transport
     }
@@ -336,7 +430,9 @@ private actor SharedFlowAPI: SharedShoppingAPI {
         }
     }
 
-    func pendingItems(groupID: UUID, storeID: UUID, token: String) async throws -> [SharedItem] { [] }
+    func pendingItems(groupID: UUID, storeID: UUID, token: String) async throws -> [SharedItem] {
+        purchaseItems.filter { $0.storeId == storeID }
+    }
 }
 
 private struct UnavailableDraftInterpreter: DraftInterpreting {
@@ -437,5 +533,137 @@ private actor ObservedSharedCredentials: SharedCredentialStoring {
         await withCheckedContinuation {
             saveObservers[id, default: []].append($0)
         }
+    }
+}
+
+extension SharedShoppingViewModelTests {
+    @Test
+    func `purchase checks are reversible and isolated per store without sending a mutation`() async throws {
+        let api = SharedFlowAPI()
+        let items = try await api.preparePurchaseItems()
+        let model = try makeModel(api: api, credentials: MemorySharedCredentialStore(session: api.session))
+        await model.load()
+        model.selectedStoreID = items[0].storeId
+        await model.loadSelectedStore()
+        model.togglePurchaseItem(items[0])
+        model.togglePurchaseItem(items[1])
+        #expect(model.purchaseSelection.map(\.id) == [items[0].id, items[1].id])
+        model.togglePurchaseItem(items[1])
+        model.selectedStoreID = items[5].storeId
+        await model.loadSelectedStore()
+        #expect(model.purchaseSelection.isEmpty)
+        model.togglePurchaseItem(items[5])
+        model.selectedStoreID = items[0].storeId
+        await model.loadSelectedStore()
+        #expect(model.purchaseSelection.map(\.id) == [items[0].id])
+        #expect(await api.sentPurchases.isEmpty)
+    }
+
+    @Test
+    func `an uncertain purchase survives reopening and retries exactly the original selection`() async throws {
+        let api = SharedFlowAPI()
+        let items = try await api.preparePurchaseItems()
+        let credentials = MemorySharedCredentialStore(session: api.session)
+        let model = try makeModel(api: api, credentials: credentials)
+        await model.load()
+        model.selectedStoreID = items[0].storeId
+        await model.loadSelectedStore()
+        for item in items.prefix(3) {
+            model.togglePurchaseItem(item)
+        }
+        await model.finalizePurchase()
+        let original = try #require(model.pendingOperation)
+        #expect(!model.canFinalizePurchase)
+        #expect(model.purchaseSelection.count == 3)
+        let reopened = try makeModel(api: api, credentials: credentials)
+        await reopened.load()
+        #expect(reopened.pendingOperation == original)
+        #expect(reopened.purchaseSelection.count == 3)
+        await reopened.retryPendingOperation()
+        let requests = await api.sentPurchases
+        try #require(requests.count == 2)
+        #expect(requests[0] == requests[1])
+        #expect(Set(requests[0].items.map(\.id)) == Set(items.prefix(3).map(\.id)))
+        #expect(reopened.pendingOperation == nil)
+        #expect(reopened.purchaseSelection.isEmpty)
+        #expect(Set(reopened.items.map(\.id)) == Set(items[3...4].map(\.id)))
+        #expect(await credentials.loadOperation() == nil)
+    }
+
+    @Test
+    func `refresh never silently adopts a newer selected product version`() async throws {
+        let api = SharedFlowAPI()
+        let items = try await api.preparePurchaseItems()
+        let model = try makeModel(api: api, credentials: MemorySharedCredentialStore(session: api.session))
+        await model.load()
+        model.selectedStoreID = items[0].storeId
+        await model.loadSelectedStore()
+        model.togglePurchaseItem(items[0])
+        await api.changeFirstPurchaseItem()
+        await model.refresh()
+        #expect(model.purchaseSelection.first?.version == 1)
+        #expect(model.purchaseSelectionNeedsReview)
+        #expect(!model.canFinalizePurchase)
+        await model.finalizePurchase()
+        #expect(await api.sentPurchases.isEmpty)
+    }
+}
+
+
+extension SharedShoppingViewModelTests {
+    @Test
+    func `a terminal purchase conflict preserves unchanged checks and requires explicit review`() async throws {
+        let api = SharedFlowAPI()
+        let items = try await api.preparePurchaseItems()
+        let credentials = MemorySharedCredentialStore(session: api.session)
+        let model = try makeModel(api: api, credentials: credentials)
+        await model.load()
+        model.selectedStoreID = items[0].storeId
+        await model.loadSelectedStore()
+        model.togglePurchaseItem(items[0])
+        model.togglePurchaseItem(items[1])
+        await api.rejectPurchaseWithConflict()
+
+        await model.finalizePurchase()
+
+        #expect(model.pendingOperation == nil)
+        #expect(await credentials.loadOperation() == nil)
+        #expect(model.purchaseSelection.map(\.id) == [items[0].id, items[1].id])
+        #expect(model.purchaseSelectionNeedsReview)
+        #expect(!model.canFinalizePurchase)
+        #expect(model.notice != nil)
+        model.discardChangedPurchaseSelections()
+        #expect(model.purchaseSelection.map(\.id) == [items[1].id])
+        #expect(model.canFinalizePurchase)
+        await model.finalizePurchase()
+        let requests = await api.sentPurchases
+        try #require(requests.count == 2)
+        #expect(requests[0].operationId != requests[1].operationId)
+        #expect(requests[1].items.map(\.id) == [items[1].id])
+        #expect(model.items.contains { $0.id == items[0].id && $0.version == 2 })
+    }
+}
+
+
+extension SharedShoppingViewModelTests {
+    @Test
+    func `a confirmed purchase does not reappear when refreshing the list fails`() async throws {
+        let api = SharedFlowAPI()
+        let items = try await api.preparePurchaseItems()
+        let model = try makeModel(api: api, credentials: MemorySharedCredentialStore(session: api.session))
+        await model.load()
+        model.selectedStoreID = items[0].storeId
+        await model.loadSelectedStore()
+        model.togglePurchaseItem(items[0])
+        await api.allowPurchaseButFailRefresh()
+
+        await model.finalizePurchase()
+
+        #expect(model.pendingOperation == nil)
+        #expect(!model.items.contains { $0.id == items[0].id })
+        #expect(model.items.count == 4)
+        #expect(!model.canTogglePurchaseItem(items[1]))
+        #expect(!model.canFinalizePurchase)
+        #expect(model.notice == "La compra se ha confirmado, pero no se ha podido actualizar la lista. Actualiza antes de continuar.")
     }
 }

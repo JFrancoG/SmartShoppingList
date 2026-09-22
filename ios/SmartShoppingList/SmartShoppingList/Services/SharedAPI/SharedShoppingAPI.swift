@@ -13,6 +13,7 @@ protocol SharedShoppingAPI: Sendable {
     func previewInvitation(_ invitation: PendingInvitation, token: String) async throws -> InvitationPreview
     func acceptInvitation(_ invitation: PendingInvitation, token: String) async throws -> SharedGroup
     func addItems(_ request: AddItemsRequest, groupID: UUID, token: String) async throws -> [SharedItem]
+    func finalizePurchase(_ request: FinalizePurchaseRequest, groupID: UUID, token: String) async throws -> PurchaseResult
     func pendingItems(groupID: UUID, storeID: UUID, token: String) async throws -> [SharedItem]
 }
 
@@ -244,10 +245,11 @@ extension AddItemsRequest {
 enum PendingSharedOperation: Codable, Equatable {
     case createGroup(userID: UUID, request: CreateGroupRequest)
     case addItems(userID: UUID, groupID: UUID, request: AddItemsRequest, sourceDraft: ShoppingDraftSnapshot)
+    case purchase(userID: UUID, groupID: UUID, request: FinalizePurchaseRequest, selection: [SharedItem])
 
     var userID: UUID {
         switch self {
-        case .createGroup(let userID, _), .addItems(let userID, _, _, _): userID
+        case .createGroup(let userID, _), .addItems(let userID, _, _, _), .purchase(let userID, _, _, _): userID
         }
     }
 
@@ -255,6 +257,7 @@ enum PendingSharedOperation: Codable, Equatable {
         switch self {
         case .createGroup(_, let request): request.operationId
         case .addItems(_, _, let request, _): request.operationId
+        case .purchase(_, _, let request, _): request.operationId
         }
     }
 }
@@ -313,4 +316,37 @@ actor MemorySharedCredentialStore: SharedCredentialStoring {
     func saveOperation(_ operation: PendingSharedOperation?) {
         self.operation = operation
     }
+}
+
+struct SelectedPurchaseItem: Codable, Equatable {
+    let id: UUID
+    let expectedVersion: Int
+}
+
+extension SelectedPurchaseItem {
+    func encode(to encoder: any Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encode(id.uuidString.lowercased(), forKey: .id)
+        try values.encode(expectedVersion, forKey: .expectedVersion)
+    }
+}
+
+struct FinalizePurchaseRequest: Codable, Equatable {
+    let operationId: UUID
+    let storeId: UUID
+    let items: [SelectedPurchaseItem]
+}
+
+extension FinalizePurchaseRequest {
+    func encode(to encoder: any Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encode(operationId.uuidString.lowercased(), forKey: .operationId)
+        try values.encode(storeId.uuidString.lowercased(), forKey: .storeId)
+        try values.encode(items, forKey: .items)
+    }
+}
+
+struct PurchaseResult: Codable, Equatable {
+    let items: [SharedItem]
+    let confirmedAt: Date
 }

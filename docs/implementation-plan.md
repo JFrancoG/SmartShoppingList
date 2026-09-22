@@ -1,6 +1,6 @@
 # Plan de implementación
 
-Fecha de creación: 18 de septiembre de 2026. Última revisión: 19 de septiembre de 2026.
+Fecha de creación: 18 de septiembre de 2026. Última revisión: 22 de septiembre de 2026.
 
 Especificación de referencia: [MVP aprobado](mvp-spec.md). Este documento conserva las fases, dependencias y condiciones para avanzar; no amplía el contrato funcional ni registra el progreso de cada tarea.
 
@@ -68,7 +68,9 @@ El resultado de esta fase es el recorrido completo descrito en la spec:
 - Historial mínimo por entrada y nueva entrada para una nueva necesidad; estados de carga, vacío y error, refresco y consulta de la última lista recuperada.
 - Preparar las nuevas pantallas para español e inglés y adaptar la selección de idioma de Speech/Foundation Models, evitando el español fijo del recorrido inicial. Comprobar disponibilidad real por idioma con #7; la traducción y revisión completas se consolidan en fase 3.
 
-Las issues de esta fase se concretan al cerrar las incertidumbres iniciales, con dependencias y criterios de aceptación propios.
+La primera unidad es [#11: selección y finalización segura de compra](https://github.com/JFrancoG/SmartShoppingList/issues/11), sobre el código compartido de #4. Comprende checks locales por tienda, compra atómica de IDs/versiones explícitos, recuperación del envío y conflictos. Su [diseño](architecture/shared-shopping.md#selección-y-finalización-de-compra-11) y [validación](validation/issue-11-purchase-flow.md) separan pruebas locales de activación alojada y ensayo físico. Abrir este bloque no cierra #4/#7 ni da por completa la fase 2.
+
+Edición/cancelación desde la app, historial y consulta de tienda por voz se concretarán como siguientes unidades con dependencias y criterios propios. La localización completa y el acabado de accesibilidad conservan su ventana de fase 3.
 
 ### Extra opcional después del recorrido de compra: Siri
 

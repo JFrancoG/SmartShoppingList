@@ -16,6 +16,7 @@ Una persona dicta lo que necesita comprar y dónde. Revisa los productos interpr
 - [Borrador iOS](docs/architecture/ios-draft.md): decisiones de entrada, revisión y conservación local.
 - [Recorrido compartido](docs/architecture/shared-shopping.md): identidad, grupos, persistencia y reintentos.
 - [Configurar el acceso compartido](docs/setup/shared-shopping.md): Apple, orígenes HTTPS, enlaces universales y ensayo con dos usuarios.
+- [Validación de la compra](docs/validation/issue-11-purchase-flow.md): selección, reintentos, conflictos y activación pendiente.
 - [Validación del bloque 4](docs/validation/issue-4-shared-flow.md): pruebas locales y requisitos reales pendientes.
 - [Validación del borrador](docs/validation/issue-3-ios-draft.md): pruebas, disponibilidad real de modelos y comprobaciones pendientes.
 - [Validación del arranque](docs/validation/issue-1-server-bootstrap.md): versiones evaluadas, resultados y límites de la prueba técnica del servidor.
@@ -43,7 +44,7 @@ La validación acordada combina entrada manual en el iPhone físico sin Apple In
 
 Abrir `ios/SmartShoppingList/SmartShoppingList.xcodeproj` con Xcode 27, seleccionar el esquema compartido `SmartShoppingList` y un iPhone o simulador con iOS 27. Ejecutar la app para preparar el borrador local. Para las pruebas, seleccionar el plan `Fast` o `Integration` y ejecutar Test; ambos usan Swift Testing y no requieren IA ni micrófono.
 
-La entrada manual permite añadir nombre, cantidad opcional y tienda. Con el acceso compartido configurado, la revisión exige confirmar las tiendas antes de incorporar el lote al grupo. La pestaña Comprar permite acceder con Apple, crear un grupo o aceptar una invitación y consultar sus pendientes por tienda. Sin configurar el servidor, el borrador local sigue disponible. La compra, edición e historial completos quedan para la fase 2. Las pruebas reales de voz, Foundation Models y físico tienen requisitos y evidencia separados en los informes enlazados.
+La entrada manual permite añadir nombre, cantidad opcional y tienda. Con el acceso compartido configurado, la revisión exige confirmar las tiendas antes de incorporar el lote al grupo. La pestaña Comprar permite acceder con Apple, crear un grupo o aceptar una invitación y consultar sus pendientes por tienda. Sin configurar el servidor, el borrador local sigue disponible. La selección local por tienda y la finalización atómica de compra se implementan en #11; requieren desplegar el servidor de esa rama antes del ensayo alojado. Edición, cancelación, historial y consulta de tienda por voz siguen pendientes de fase 2. Las pruebas reales de voz, Foundation Models y físico tienen requisitos y evidencia separados en los informes enlazados.
 
 ## Compilación del servidor
 

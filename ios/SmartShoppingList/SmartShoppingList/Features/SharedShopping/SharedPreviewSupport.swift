@@ -62,6 +62,7 @@ struct SharedPreviewPresentation {
     let reviewedItems: [PreparedDraftItem]
     let storeChoices: [DraftStoreChoice]
     let selectedStoreID: UUID?
+    let purchaseSelection: [SharedItem]
     let isReviewPresented: Bool
     let isInvitationsPresented: Bool
     let reviewSnapshot: ShoppingDraftSnapshot?
@@ -83,6 +84,7 @@ extension SharedPreviewPresentation {
         reviewedItems = model.reviewedItems
         storeChoices = model.storeChoices
         selectedStoreID = model.selectedStoreID
+        purchaseSelection = model.purchaseSelection
         isReviewPresented = model.isReviewPresented
         isInvitationsPresented = model.isInvitationsPresented
         reviewSnapshot = state == .review ? fixture.draft : nil
@@ -254,6 +256,9 @@ enum SharedPreviewSupport {
         case .group:
             model.selectedStoreID = fixture.stores.first?.id
             await model.loadSelectedStore()
+            if let first = model.items.first {
+                model.togglePurchaseItem(first)
+            }
         case .review:
             await model.prepareReview()
         case .invitations:
@@ -295,6 +300,14 @@ private struct PreviewSharedShoppingAPI: SharedShoppingAPI {
     func addItems(_ request: AddItemsRequest, groupID: UUID, token: String) async throws -> [SharedItem] {
         throw SharedAPIError.transport
     }
+    func finalizePurchase(
+        _ request: FinalizePurchaseRequest,
+        groupID: UUID,
+        token: String
+    ) async throws -> PurchaseResult {
+        throw SharedAPIError.transport
+    }
+
     func pendingItems(groupID: UUID, storeID: UUID, token: String) async throws -> [SharedItem] {
         fixture.items.filter { $0.storeId == storeID }
     }

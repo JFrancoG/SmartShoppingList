@@ -4,6 +4,8 @@
 
 ### Added
 
+- 2026-09-22 | ✨ feat(purchase): add atomic purchases with recoverable retries
+
 - 2026-09-19 | ✨ feat(shared): add shared shopping flow
 - 2026-09-19 | ✨ feat(ios): add editable shopping drafts
 

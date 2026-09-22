@@ -352,3 +352,92 @@ extension ShoppingService {
         return result
     }
 }
+
+extension ShoppingService {
+    func finalizePurchase(
+        user: UUID,
+        group: UUID,
+        operation: UUID,
+        store: UUID,
+        items: [ShoppingSelectedItem]
+    ) async throws -> APIReply {
+        guard (1...50).contains(items.count), Set(items.map(\.id)).count == items.count else {
+            throw APIProblem.invalidRequest
+        }
+        let ordered = items.sorted { $0.id.uuidString < $1.id.uuidString }
+        let fingerprint = try fingerprint(type: "finalizePurchase", group: group, value: .object([
+            "storeId": .string(store.uuidString.lowercased()), "items": .array(ordered.map(\.json))
+        ]))
+        return try await database.transaction { transaction in
+            let sql = try shoppingSQL(transaction)
+            let current = try await lockUser(user, on: sql)
+            guard current == group else { throw APIProblem.notFound }
+            guard try await sql.raw("""
+                SELECT id FROM stores WHERE id = \(bind: store) AND group_id = \(bind: group)
+                """).first() != nil else { throw APIProblem.notFound }
+            if let replay = try await reserve(
+                user: user,
+                operation: operation,
+                type: "finalizePurchase",
+                group: group,
+                fingerprint: fingerprint,
+                currentGroup: current,
+                on: sql
+            ) {
+                return replay
+            }
+            var conflicts: [APIJSON] = []
+            // Stable row locking prevents inverted selections from deadlocking across buyers.
+            for item in ordered {
+                let row = try await sql.raw("""
+                    SELECT * FROM items WHERE id = \(bind: item.id) AND group_id = \(bind: group) FOR UPDATE
+                    """).first()
+                let reason: String?
+                if let row {
+                    if try row.decode(column: "store_id", as: UUID.self) != store {
+                        reason = "store_mismatch"
+                    } else if try row.decode(column: "status", as: String.self) != "pending" {
+                        reason = "not_pending"
+                    } else if try row.decode(column: "version", as: Int64.self) != item.expectedVersion {
+                        reason = "version_mismatch"
+                    } else {
+                        reason = nil
+                    }
+                } else {
+                    reason = "not_found"
+                }
+                if let reason {
+                    conflicts.append(.object([
+                        "itemId": .string(item.id.uuidString.lowercased()), "reason": .string(reason),
+                        "current": try row.map(Self.itemJSON) ?? .null
+                    ]))
+                }
+            }
+            let reply: APIReply
+            if !conflicts.isEmpty {
+                reply = try APIReply(status: .conflict, json: .object([
+                    "code": .string("item_conflict"), "message": .string("Revisa los productos que han cambiado."),
+                    "requestId": .string(UUID().uuidString.lowercased()), "conflicts": .array(conflicts)
+                ]))
+            } else {
+                guard ordered.allSatisfy({ $0.expectedVersion < 9_007_199_254_740_991 }) else {
+                    throw APIProblem.unavailable
+                }
+                let now = try await databaseClock(sql)
+                var purchased: [APIJSON] = []
+                for item in ordered {
+                    guard let row = try await sql.raw("""
+                        UPDATE items SET status = 'purchased', version = version + 1,
+                            purchased_by = \(bind: user), purchased_at = \(bind: now)
+                        WHERE id = \(bind: item.id) AND group_id = \(bind: group) RETURNING *
+                        """).first() else { throw APIProblem.unavailable }
+                    purchased.append(try Self.itemJSON(row))
+                }
+                reply = try APIReply(status: .ok, json: .object([
+                    "items": .array(purchased), "confirmedAt": .string(APIEncoding.timestamp(now))
+                ]))
+            }
+            return try await save(reply, user: user, operation: operation, group: group, on: sql)
+        }
+    }
+}

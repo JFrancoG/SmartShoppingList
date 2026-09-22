@@ -14,6 +14,9 @@ final class SharedShoppingViewModel {
     private(set) var pendingInvitation: PendingInvitation?
     private(set) var invitationPreview: InvitationPreview?
     private(set) var pendingOperation: PendingSharedOperation?
+    private var purchaseSelections: [UUID: [SharedItem]] = [:]
+    private var purchaseSelectionOwner: UUID?
+    private var loadedStoreID: UUID?
     private(set) var stores: [SharedStore] = []
     private(set) var items: [SharedItem] = []
     private(set) var invitations: [SharedInvitation] = []
@@ -336,6 +339,11 @@ final class SharedShoppingViewModel {
         }
         do {
             switch operation {
+            case .purchase(_, let groupID, let request, _):
+                let result = try await api.finalizePurchase(request, groupID: groupID, token: session.accessToken)
+                guard result.items.allSatisfy({ $0.purchasedBy == session.user.id }) else {
+                    throw SharedAPIError.invalidResponse
+                }
             case .createGroup(_, let request):
                 let group = try await api.createGroup(request, token: session.accessToken)
                 try await updateGroup(group)
@@ -347,13 +355,25 @@ final class SharedShoppingViewModel {
                 }
             }
             try await credentials.saveOperation(nil)
+            if case .purchase(_, _, let request, _) = operation {
+                purchaseSelections[request.storeId] = nil
+                let purchasedIDs = Set(request.items.map(\.id))
+                items.removeAll { purchasedIDs.contains($0.id) }
+                loadedStoreID = nil
+            }
             pendingOperation = nil
             reviewSnapshot = nil
             reviewedItems = []
             storeChoices = []
             retryNotBefore = nil
-            await refreshSessionAndLists()
-            notice = "La operación se ha confirmado en el grupo."
+            let refreshed = await refreshSessionAndLists()
+            if case .purchase = operation {
+                notice = refreshed
+                    ? "La compra se ha confirmado. Los productos no seleccionados siguen pendientes."
+                    : "La compra se ha confirmado, pero no se ha podido actualizar la lista. Actualiza antes de continuar."
+            } else {
+                notice = "La operación se ha confirmado en el grupo."
+            }
         } catch let error as SharedAPIError {
             if case .server(let status, _, _, let retryAfter) = error {
                 if let retryAfter {
@@ -364,6 +384,9 @@ final class SharedShoppingViewModel {
                     do {
                         try await credentials.saveOperation(nil)
                         pendingOperation = nil
+                        if case .purchase = operation {
+                            await refreshSessionAndLists()
+                        }
                     } catch {
                         notice = SharedErrorMessage.message(for: error)
                         return
@@ -383,8 +406,12 @@ final class SharedShoppingViewModel {
         }
         await performAction {
             items = []
+            loadedStoreID = nil
             do {
-                items = try await api.pendingItems(groupID: group.id, storeID: storeID, token: session.accessToken)
+                let loaded = try await api.pendingItems(groupID: group.id, storeID: storeID, token: session.accessToken)
+                guard selectedStoreID == storeID else { return }
+                items = loaded
+                loadedStoreID = storeID
                 notice = nil
             } catch {
                 await handle(error)
@@ -452,13 +479,15 @@ final class SharedShoppingViewModel {
         notice = nil
     }
 
-    private func refreshSessionAndLists() async {
-        guard let api, var current = session else { return }
+    @discardableResult
+    private func refreshSessionAndLists() async -> Bool {
+        guard let api, var current = session else { return false }
         do {
             current.user = try await api.currentUser(token: current.accessToken)
             try await credentials.saveSession(current)
             session = current
             sessionIsVerified = true
+            restorePurchaseSelection()
             notice = nil
             if let group = current.user.group {
                 stores = try await api.stores(groupID: group.id, token: current.accessToken)
@@ -467,12 +496,16 @@ final class SharedShoppingViewModel {
                     items = []
                 }
                 if let storeID = selectedStoreID {
+                    loadedStoreID = nil
                     items = try await api.pendingItems(groupID: group.id, storeID: storeID, token: current.accessToken)
+                    loadedStoreID = storeID
                 }
             }
             await previewPendingInvitation()
+            return true
         } catch {
             await handle(error)
+            return false
         }
     }
 
@@ -560,6 +593,9 @@ final class SharedShoppingViewModel {
     }
 
     private func clearSessionPresentation() {
+        purchaseSelections = [:]
+        purchaseSelectionOwner = nil
+        loadedStoreID = nil
         session = nil
         sessionIsVerified = false
         stores = []
@@ -602,9 +638,102 @@ extension SharedShoppingViewModel {
         reviewedItems = preview.reviewedItems
         storeChoices = preview.storeChoices
         selectedStoreID = preview.selectedStoreID
+        loadedStoreID = preview.selectedStoreID
+        purchaseSelectionOwner = preview.session?.user.id
+        if let storeID = preview.selectedStoreID {
+            purchaseSelections[storeID] = preview.purchaseSelection
+        }
         isReviewPresented = preview.isReviewPresented
         isInvitationsPresented = preview.isInvitationsPresented
         reviewSnapshot = preview.reviewSnapshot
     }
 }
 #endif
+
+extension SharedShoppingViewModel {
+    var purchaseSelection: [SharedItem] {
+        guard let selectedStoreID, purchaseSelectionOwner == session?.user.id else { return [] }
+        return purchaseSelections[selectedStoreID] ?? []
+    }
+
+    var purchaseSelectionNeedsReview: Bool {
+        guard loadedStoreID == selectedStoreID else { return false }
+        return purchaseSelection.contains { selected in
+            !items.contains { $0.id == selected.id && $0.version == selected.version }
+        }
+    }
+
+    var canFinalizePurchase: Bool {
+        canMutate && loadedStoreID != nil && loadedStoreID == selectedStoreID
+            && (1...50).contains(purchaseSelection.count) && !purchaseSelectionNeedsReview
+    }
+
+    var purchaseActionTitle: LocalizedStringResource { "Finalizar compra · \(purchaseSelection.count)" }
+
+    func isPurchaseSelected(_ item: SharedItem) -> Bool {
+        purchaseSelection.contains { $0.id == item.id }
+    }
+
+    func canTogglePurchaseItem(_ item: SharedItem) -> Bool {
+        canMutate && loadedStoreID == selectedStoreID && item.storeId == selectedStoreID
+            && item.groupId == group?.id && items.contains(item)
+            && (isPurchaseSelected(item) || purchaseSelection.count < 50)
+    }
+
+    func togglePurchaseItem(_ item: SharedItem) {
+        guard canTogglePurchaseItem(item) else { return }
+        var selection = purchaseSelection
+        if let index = selection.firstIndex(where: { $0.id == item.id }) {
+            selection.remove(at: index)
+        } else {
+            selection.append(item)
+        }
+        purchaseSelections[item.storeId] = selection
+    }
+
+    func discardChangedPurchaseSelections() {
+        guard canMutate, let selectedStoreID, loadedStoreID == selectedStoreID else { return }
+        purchaseSelections[selectedStoreID] = purchaseSelection.filter { selected in
+            items.contains { $0.id == selected.id && $0.version == selected.version }
+        }
+    }
+
+    func finalizePurchase() async {
+        guard canFinalizePurchase, let session, let group, let store = selectedStoreID else { return }
+        let selection = purchaseSelection
+        let request = FinalizePurchaseRequest(
+            operationId: UUID(),
+            storeId: store,
+            items: selection.map { SelectedPurchaseItem(id: $0.id, expectedVersion: $0.version) }
+        )
+        await performAction {
+            do {
+                let operation = PendingSharedOperation.purchase(
+                    userID: session.user.id,
+                    groupID: group.id,
+                    request: request,
+                    selection: selection
+                )
+                try await credentials.saveOperation(operation)
+                pendingOperation = operation
+                await performPendingOperation()
+            } catch {
+                notice = SharedErrorMessage.message(for: error)
+            }
+        }
+    }
+
+    private func restorePurchaseSelection() {
+        guard let session else { return }
+        if purchaseSelectionOwner != session.user.id {
+            purchaseSelections = [:]
+            purchaseSelectionOwner = session.user.id
+        }
+        if case .purchase(let userID, let groupID, let request, let selection) = pendingOperation,
+           userID == session.user.id, groupID == session.user.group?.id,
+           purchaseSelections[request.storeId] == nil {
+            purchaseSelections[request.storeId] = selection
+            selectedStoreID = request.storeId
+        }
+    }
+}
