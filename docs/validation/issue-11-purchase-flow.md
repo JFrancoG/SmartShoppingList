@@ -35,6 +35,22 @@ Artefactos locales de esta ejecución: `/tmp/ssl-purchase/`. Informes `ios-green
 
 Build iOS posterior a los ajustes de formato: correcto, incluidos tests. `GetBuildLog` final del servidor y cliente no muestra warnings. Esto no amplía las excepciones ni certifica que toda resolución desde cero carezca de avisos; [EXC-001 y EXC-002](../dependency-exceptions.md) mantienen su alcance aceptado. No se cambian dependencias ni toolchain.
 
+### Ampliación de criterios — 22 de septiembre, 23:29 CEST
+
+Se añaden dos tests de integración, con tres casos, en `ShoppingFlowTests.swift`:
+
+- **Alta posterior:** después de preparar una compra de tres de cinco, otro miembro añade Fresas a Mercadona mediante el endpoint real de lotes. La compra original confirma exactamente los tres IDs seleccionados; quedan cuatro pendientes (dos omitidos, uno de Aldi y el alta nueva). Fresas conserva versión 1, autor y ausencia de comprador/fecha de compra.
+- **Edición entre selección y compra:** un cambio ya confirmado deja Pan integral, cantidad «2 bolsas» y versión 2. La petición con versión 1 devuelve `409 item_conflict`, razón `version_mismatch`, e informa los valores actuales.
+- **Cancelación entre selección y compra:** el producto pasa a `cancelled`, versión 2. La misma selección obsoleta devuelve `409 item_conflict`, razón `not_pending`.
+
+En los dos conflictos se compara una instantánea completa de todas las filas del grupo antes y después del endpoint: ningún producto cambia, incluidos los otros dos seleccionados. La edición/cancelación se prepara directamente en PostgreSQL aislado, porque sus rutas e interfaz todavía no forman parte de este bloque. Esto acredita la protección de compra ante un cambio previo a su transacción; no una carrera simultánea con futuros endpoints de edición/cancelación ni un ensayo físico de esas funciones.
+
+Xcode 27.2 beta, esquema/plan `SmartShoppingListServer`, My Mac: build de tests correcto y ejecución dirigida **2 pruebas / 3 casos, 0 fallos, 0 omitidos**, confirmada en el `.xcresult` nativo cerrado. Artefactos: `/tmp/ssl-purchase-followup/targeted.json`, `targeted-native.json`, `build.json` y `build-warnings.json`. El log completo contiene únicamente el aviso App Intents del bundle de tests cubierto por **EXC-002**, aunque el resumen de `GetBuildLog` no lo muestra. Sin warnings propios; auditoría de estilo del Swift añadido y `git diff --check` correctos.
+
+No cambia código de producción, dependencias ni configuración. Los resultados completos anteriores de iOS, servidor y Linux siguen siendo su evidencia histórica; no se presentan como una nueva ejecución con estos tests. El catálogo actual contiene 76 funciones de test, pero esta ampliación solo ejecuta las dos nuevas. `db-test` vuelve a su estado detenido y no se cambia el esquema/destino/plan de iOS. El commit y la publicación de esta ampliación se verifican y referencian en #11.
+
+Tras el ajuste final de formato se repiten únicamente esas dos pruebas a las 23:32 CEST: **3 casos correctos**, mismo aviso aceptado y ningún diagnóstico adicional. Evidencia final: `targeted-final.json`, `targeted-final-native.json` y `build-warnings-final.json` en el mismo directorio de artefactos.
+
 ## Linux Release
 
 Swift 6.4.0 / Linux arm64: `swift test -c release --jobs 4 --force-resolved-versions` correcto, 74 pruebas en 8 suites, 4,419 segundos de ejecución después de compilar. Se reutilizó la etapa local `smartshoppinglistserver:review-builder-9e51e2c` con `Sources` y `Tests` actuales montados en solo lectura. Antes de ejecutar se compararon `Package.swift` y `Package.resolved` del contenedor byte a byte con el repositorio; coinciden. PostgreSQL: `db-test` aislado en la red local de Compose. Log `/tmp/ssl-purchase/linux-tests.log`, salida 0.
@@ -71,7 +87,7 @@ La captura aportada **«Captura 2026-09-22 a las 23.00.47.png»** muestra el mod
 - El corte de conexión se hizo **antes** del envío. No se forzó pérdida de respuesta después de un commit remoto. El replay exacto, el doble envío y la atomicidad mantienen su evidencia automatizada separada.
 - La prueba entre teléfonos fue una compra seguida de una selección obsoleta en el otro cliente. No se capturó el HTTP `409` ni se midió simultaneidad real. La carrera de dos transacciones con un único ganador está cubierta por PostgreSQL en las pruebas automatizadas.
 - La interfaz confirma estados observables; no se inspeccionaron manualmente comprador, fecha, versiones o recibos en producción. Estos campos se verifican en las pruebas del servidor.
-- No se ensayaron físicamente límites 0/50/51, alta posterior a la selección, edición/cancelación concurrente ni VoiceOver de compra. El caso exacto de tres de cinco y los límites de petición tienen evidencia automatizada; las altas posteriores y las transiciones de edición/cancelación conservan la necesidad de revisión de cobertura antes del cierre.
+- No se ensayaron físicamente límites 0/50/51, alta posterior a la selección, edición/cancelación concurrente ni VoiceOver de compra. El caso exacto de tres de cinco y los límites de petición tienen evidencia automatizada. La ampliación anterior comprueba el alta posterior y el rechazo atómico ante edición/cancelación ya confirmadas entre selección y compra, con los límites allí indicados.
 
 ## Ajustes de interfaz registrados para fase 3
 
@@ -82,7 +98,7 @@ La captura aportada **«Captura 2026-09-22 a las 23.00.47.png»** muestra el mod
 
 ## Situación después del ensayo
 
-El recorrido físico guiado está confirmado dentro de los límites anteriores. El seguimiento vigente y el cierre de criterios se conservan en #11; no se declara completada la fase 2. Siguiente paso de entrega: revisar los criterios/cobertura restantes antes de PR y merge. Los ajustes de interfaz quedan en fase 3, y las invitaciones de #4/#7, edición/cancelación, historial, voz para tiendas y Siri mantienen su planificación independiente.
+El recorrido físico guiado está confirmado dentro de los límites anteriores y los casos automatizados pendientes de este bloque están completados. El seguimiento vigente y el cierre de criterios se conservan en #11; no se declara completada la fase 2. El responsable autoriza commit, push y apertura de PR de compra contra la rama de PR #9. El merge y cierre de #11 quedan para después de integrar #9, cambiar la base de la PR de compra a `main` y revisar su diff y comprobaciones finales. Los ajustes de interfaz quedan en fase 3, y las invitaciones de #4/#7, edición/cancelación, historial, voz para tiendas y Siri mantienen su planificación independiente.
 
 ## Preparación del commit y push
 

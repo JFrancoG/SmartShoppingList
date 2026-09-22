@@ -25,6 +25,10 @@
 - 2026-09-22 | 🐛 fix(server): preserve authentication error responses
 - 2026-09-22 | 🐛 fix(ios): harden draft interpretation and dictation
 
+### Tests
+
+- 2026-09-22 | ✅ test(purchase): cover changes after selection
+
 ### Maintenance
 
 - 2026-09-22 | 📦 build(server): refresh HTTP and configuration dependencies

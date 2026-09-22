@@ -286,6 +286,117 @@ struct ShoppingFixture {
 
 extension SmartShoppingListServerTests {
     @Test
+    func `products added after selection remain pending when the original purchase completes`() async throws {
+        let buyer = try await ShoppingFixture.user()
+        let contributor = try await ShoppingFixture.user()
+        let group = try await ShoppingFixture.group(buyer)
+        try await ShoppingFixture.join(contributor, group: group)
+        let fixture = try await PurchaseFixture.items(buyer, group: group)
+        let selected = Array(fixture.ids.prefix(3))
+        let payload = PurchaseFixture.body(store: fixture.store, ids: selected)
+
+        let addition = try await ShoppingFixture.request(
+            .POST,
+            "/v1/groups/\(group)/item-batches",
+            contributor,
+            ShoppingFixture.batch(names: ["Fresas"], stores: ["Mercadona"])
+        )
+        try #require(addition.status == .created)
+        let added = try ShoppingFixture.object(addition)
+        guard case .array(let items) = added["items"], case .object(let item) = items.first else {
+            throw APIProblem.invalidRequest
+        }
+        let addedID = try #require(item["id"]?.string)
+        try #require(item["storeId"] == .string(fixture.store))
+
+        let purchase = try await ShoppingFixture.request(
+            .POST,
+            "/v1/groups/\(group)/purchases",
+            buyer,
+            payload
+        )
+        try #require(purchase.status == .ok)
+        let sql = try shoppingSQL(database)
+        let purchased = try await sql.raw("""
+            SELECT id FROM items WHERE group_id = \(bind: group)::uuid AND status = 'purchased'
+            """).all()
+        let purchasedIDs = try purchased.map {
+            try $0.decode(column: "id", as: UUID.self).uuidString.lowercased()
+        }
+        #expect(Set(purchasedIDs) == Set(selected))
+        let pending = try await sql.raw("""
+            SELECT id FROM items WHERE group_id = \(bind: group)::uuid AND status = 'pending'
+            """).all()
+        #expect(pending.count == 4)
+        let row = try #require(try await sql.raw("SELECT * FROM items WHERE id = \(bind: addedID)::uuid").first())
+        #expect(try row.decode(column: "name", as: String.self) == "Fresas")
+        #expect(try row.decode(column: "status", as: String.self) == "pending")
+        #expect(try row.decode(column: "version", as: Int.self) == 1)
+        #expect(try row.decode(column: "created_by", as: UUID.self) == contributor.id)
+        #expect(try row.decode(column: "purchased_by", as: UUID?.self) == nil)
+        #expect(try row.decode(column: "purchased_at", as: Date?.self) == nil)
+    }
+
+    @Test(arguments: [
+        ("Pan integral", "2 bolsas", "pending", "version_mismatch"),
+        ("Pan", nil, "cancelled", "not_pending")
+    ] as [(String, String?, String, String)])
+    func `an intervening edit or cancellation rejects the whole purchase without overwriting products`(
+        name: String,
+        quantity: String?,
+        status: String,
+        reason: String
+    ) async throws {
+        let buyer = try await ShoppingFixture.user()
+        let group = try await ShoppingFixture.group(buyer)
+        let fixture = try await PurchaseFixture.items(buyer, group: group)
+        let payload = PurchaseFixture.body(store: fixture.store, ids: Array(fixture.ids.prefix(3)))
+        let sql = try shoppingSQL(database)
+
+        // Edit/cancel routes are outside this block; seed a committed change after selection.
+        try await sql.raw("""
+            UPDATE items SET name = \(bind: name), quantity = \(bind: quantity),
+                status = \(bind: status), version = 2 WHERE id = \(bind: fixture.ids[0])::uuid
+            """).run()
+        let before = try await sql.raw("""
+            SELECT row_to_json(items)::text AS snapshot FROM items
+            WHERE group_id = \(bind: group)::uuid ORDER BY id
+            """).all().map {
+                try $0.decode(column: "snapshot", as: String.self)
+            }
+        try #require(before.count == 6)
+
+        let response = try await ShoppingFixture.request(
+            .POST,
+            "/v1/groups/\(group)/purchases",
+            buyer,
+            payload
+        )
+        try #require(response.status == .conflict)
+        let body = try ShoppingFixture.object(response)
+        #expect(body["code"] == .string("item_conflict"))
+        guard case .array(let conflicts) = body["conflicts"],
+              case .object(let conflict) = conflicts.first,
+              case .object(let current) = conflict["current"] else {
+            throw APIProblem.invalidRequest
+        }
+        #expect(conflicts.count == 1)
+        #expect(conflict["itemId"] == .string(fixture.ids[0]))
+        #expect(conflict["reason"] == .string(reason))
+        #expect(current["name"] == .string(name))
+        #expect(current["quantity"] == (quantity.map(APIJSON.string) ?? .null))
+        #expect(current["status"] == .string(status))
+        #expect(current["version"] == .integer(2))
+        let after = try await sql.raw("""
+            SELECT row_to_json(items)::text AS snapshot FROM items
+            WHERE group_id = \(bind: group)::uuid ORDER BY id
+            """).all().map {
+                try $0.decode(column: "snapshot", as: String.self)
+            }
+        #expect(after == before)
+    }
+
+    @Test
     func `purchase changes only the selected products and replays the original receipt`() async throws {
         let owner = try await ShoppingFixture.user()
         let buyer = try await ShoppingFixture.user()
