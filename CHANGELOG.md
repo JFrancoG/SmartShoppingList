@@ -11,6 +11,8 @@
 
 ### Documentation
 
+- 2026-09-22 | 📝 docs: consolidate physical purchase validation
+
 - 2026-09-22 | 📝 docs: consolidate hosted validation evidence
 - 2026-09-22 | 📝 docs: record Linux review and delivery blockers
 - 2026-09-22 | 📝 docs: record validation and plan optional Siri support

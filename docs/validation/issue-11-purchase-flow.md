@@ -1,12 +1,12 @@
 # Selección y finalización de compra — #11
 
-Evidencia del 22 de septiembre de 2026. Seguimiento operativo: [issue #11](https://github.com/JFrancoG/SmartShoppingList/issues/11). Rama local `codex/issue-11-purchase-flow`, basada en `81b8128c8ec5e6a8ad053ae75c2217172cdb276a` de `codex/issue-4-shared-shopping-flow`. La PR #9 permanece como dependencia. Este informe recoge la validación previa al primer commit y push, autorizados después por el usuario; la confirmación de publicación y su SHA se registran en la issue. No acredita un despliegue propio.
+Evidencia del 22 de septiembre de 2026. Seguimiento operativo: [issue #11](https://github.com/JFrancoG/SmartShoppingList/issues/11). Rama local `codex/issue-11-purchase-flow`, basada en `81b8128c8ec5e6a8ad053ae75c2217172cdb276a` de `codex/issue-4-shared-shopping-flow`. La PR #9 permanece abierta en borrador como dependencia. El código está publicado y desplegado en el commit `5e65c563dd73cbbc9f8741498f107f1249a8b684`. Este informe reúne la validación automatizada inicial, la comprobación del estado de despliegue y los resultados físicos comunicados por el responsable. La publicación de esta consolidación documental y su commit se referencian en la issue.
 
 ## Alcance implementado
 
 Selección local separada por tienda, contador, confirmación explícita y compra atómica de 1–50 IDs/versiones. Keychain conserva la intención antes del envío; un reintento o reapertura recupera la misma clave y selección. El servidor registra comprador/fecha/versiones, conserva recibos de éxito o conflicto y no modifica filas omitidas. Ante cambios concurrentes se conserva la selección original para revisión. Diseño en [arquitectura compartida](../architecture/shared-shopping.md#selección-y-finalización-de-compra-11).
 
-No incorpora edición/cancelación desde la app, historial, selección de tienda por voz ni Siri. Los checks previos a Finalizar están en memoria; la persistencia comprobada corresponde al envío preparado/incierto. No se atribuye esta implementación al servicio que actualmente atiende Railway.
+No incorpora edición/cancelación desde la app, historial, selección de tienda por voz ni Siri. Los checks previos a Finalizar están en memoria; la persistencia comprobada corresponde al envío preparado/incierto. La activación de esta versión y su ensayo alojado se detallan más abajo.
 
 ## Validación automatizada local
 
@@ -47,19 +47,42 @@ Las revisiones independientes de arquitectura y UI cubren el diff local. Se corr
 
 Previews oficiales de `SharedPurchaseSection` en iPhone 18 Pro / iOS 27.2 con un producto seleccionado: Large, XXX Large y AX 5. Inspección visual sin truncado de productos ni solapamientos en el área visible. En AX 5 la confirmación queda fuera del encuadre inicial: exige scroll y ensayo real. Las capturas/JSON están en `/tmp/ssl-purchase/preview-*.json` y en sus rutas `previewSnapshotPath`.
 
-No se acredita VoiceOver, foco tras finalizar, comportamiento completo al desplazarse ni inglés traducido. Los avisos/reintento al principio del formulario pueden quedar fuera de pantalla al confirmar desde abajo; ese hallazgo ya aplazado permanece en fase 3 y también requiere comprobarse en compra.
+Las previews no acreditan VoiceOver, foco tras finalizar, comportamiento completo al desplazarse ni inglés traducido. El ensayo físico posterior tampoco se realizó como auditoría de accesibilidad. Los avisos/reintento al principio del formulario pueden quedar fuera de pantalla al confirmar desde abajo; ese hallazgo ya aplazado permanece en fase 3 y también requiere comprobarse en compra.
 
-## Activación y siguiente ensayo
+## Despliegue y ensayo físico — 22 de septiembre de 2026
 
-Antes del ensayo alojado: desplegar el commit publicado de esta rama, comprobar el arranque del servidor y ejecutar la app actualizada. Un `/hello` correcto no prueba por sí solo la nueva ruta de compra.
+El responsable confirmó el despliegue correcto en Railway. Se verificó además el deployment de GitHub `6599823733`, entorno `SmartShoppingList / production`, SHA `5e65c563dd73cbbc9f8741498f107f1249a8b684`, con estado `success` registrado a las **22:23:34 CEST**. Esta comprobación vincula el servidor al commit; no identifica por sí sola el build instalado en cada iPhone. URL de servicio: [SmartShoppingList en Railway](https://smartshoppinglist-production.up.railway.app/).
 
-1. Preparar cinco productos en Mercadona y tres en Aldi, con algún nombre repetido entre tiendas.
-2. Marcar/desmarcar y cambiar de tienda; comprobar que los checks son locales y no aparecen como compras en el otro dispositivo.
-3. Marcar tres de Mercadona y Finalizar. Refrescar ambos: dos pendientes en Mercadona y tres en Aldi.
-4. Comprobar pérdida de red, reintento/reapertura y compra concurrente desde las dos cuentas. Distinguir interrupción antes del envío y pérdida de respuesta después del envío.
-5. Revisar VoiceOver, texto máximo y visibilidad de éxito/conflicto/reintento durante la interacción.
+El ensayo se hizo con los **iPhone 14 e iPhone 11**, dos cuentas Apple y el mismo grupo del recorrido anterior. No se volvió a verificar el número exacto de build iOS de cada dispositivo. Los resultados siguientes son confirmaciones del usuario durante el recorrido guiado; no una ejecución automatizada ni una inspección directa de los teléfonos por Codex. Se prepararon varios productos en **Mercadona y Aldi**, incluidos **papel higiénico y Alpro repetidos en ambas tiendas**. El número total inicial no se registró: la compra física seleccionó dos productos y no debe presentarse como una repetición exacta del caso automatizado de tres de cinco.
 
-La issue permanece abierta hasta entrega y criterios verificados. Los pendientes de invitaciones de #4/#7 continúan separados y no se dan por cerrados por esta compra.
+| Caso | Acción y resultado confirmado |
+|---|---|
+| Selección local y por tienda | En iPhone 14 se marcaron papel higiénico y Alpro en Mercadona: contador 2. Aldi mostraba 0 y ambos sin marcar. Al volver a Mercadona seguían seleccionados. Tras actualizar el iPhone 11, los mismos productos seguían pendientes y sin checks locales. |
+| Compra compartida y aislamiento de tienda | Finalizar los dos de Mercadona los retiró de pendientes en iPhone 14 y, tras refrescar, en iPhone 11. Los otros productos se conservaron; papel higiénico y Alpro de Aldi siguieron pendientes en ambos. |
+| Fallo sin conexión | En iPhone 14 se marcó otro pendiente, se activó modo avión y se desactivó Wi-Fi antes de Finalizar. Aparecieron el aviso de resultado no confirmado y el bloque de envío pendiente con Reintentar envío. El usuario confirmó selección conservada y producto aún pendiente en iPhone 11 tras refrescar. |
+| Reintento al recuperar conexión | Reintentar confirmó la compra, retiró el bloque de envío pendiente y el producto desapareció de ambos clientes tras refrescar el 11. Apareció el aviso esperado «La compra se ha confirmado. Los productos no seleccionados siguen pendientes». |
+| Selección desactualizada por compra del otro usuario | Se marcó el mismo pendiente de la misma tienda en ambos. Tras finalizar en iPhone 11, el intento en iPhone 14, sin refresco manual previo, mostró «Hay productos seleccionados que han cambiado o ya no están pendientes». Desmarcar los cambiados dejó contador 0 y Finalizar deshabilitado; tras refrescar ambos, el comprado siguió fuera de pendientes y los demás se conservaron. |
+| Recuperación tras cerrar y reabrir | Se preparó otro envío sin conexión en iPhone 14, se cerró completamente la app, se recuperó la red y se abrió de nuevo. El usuario confirmó Reintentar envío y selección conservados. El reintento posterior confirmó y eliminó el bloque pendiente; ambos clientes quedaron sin productos cargados en la tienda consultada porque era su último pendiente. No se acredita con ello que todas las tiendas estuvieran vacías. |
+
+La captura aportada **«Captura 2026-09-22 a las 23.00.47.png»** muestra el modo avión, los dos mensajes y Reintentar envío. Es evidencia visual del estado presentado; la selección fuera del encuadre y el resultado del otro dispositivo se basan en la confirmación posterior del usuario. La captura no se incorpora al repositorio.
+
+### Límites de estas confirmaciones
+
+- El corte de conexión se hizo **antes** del envío. No se forzó pérdida de respuesta después de un commit remoto. El replay exacto, el doble envío y la atomicidad mantienen su evidencia automatizada separada.
+- La prueba entre teléfonos fue una compra seguida de una selección obsoleta en el otro cliente. No se capturó el HTTP `409` ni se midió simultaneidad real. La carrera de dos transacciones con un único ganador está cubierta por PostgreSQL en las pruebas automatizadas.
+- La interfaz confirma estados observables; no se inspeccionaron manualmente comprador, fecha, versiones o recibos en producción. Estos campos se verifican en las pruebas del servidor.
+- No se ensayaron físicamente límites 0/50/51, alta posterior a la selección, edición/cancelación concurrente ni VoiceOver de compra. El caso exacto de tres de cinco y los límites de petición tienen evidencia automatizada; las altas posteriores y las transiciones de edición/cancelación conservan la necesidad de revisión de cobertura antes del cierre.
+
+## Ajustes de interfaz registrados para fase 3
+
+1. **Avisos repetidos:** el fallo de red muestra simultáneamente el aviso y el estado del envío pendiente. Son dos presentaciones del mismo intento, no evidencia de dos compras. Unificar la información preservando la acción de reintento y la distinción entre aviso descartable y operación pendiente.
+2. **Texto adecuado a la operación:** «sin duplicar productos» procede del alta de productos y resulta impreciso al finalizar una compra. Adaptar el mensaje a la operación, o usar un texto común como «sin repetir la operación».
+3. **Visibilidad y accesibilidad:** el usuario localizó el aviso de selección desactualizada abajo. Revisar éxito, conflicto y reintento para que se perciban desde la posición actual y con VoiceOver, dentro del pendiente general de avisos fuera de pantalla.
+4. **Vacío confirmado:** tras agotar los pendientes, ambos mostraron «Sin productos cargados». Distinguir una consulta completada y vacía («No hay productos pendientes en esta tienda») de una lista aún no cargada o un fallo de consulta; no cambiar el texto indiscriminadamente.
+
+## Situación después del ensayo
+
+El recorrido físico guiado está confirmado dentro de los límites anteriores. El seguimiento vigente y el cierre de criterios se conservan en #11; no se declara completada la fase 2. Siguiente paso de entrega: revisar los criterios/cobertura restantes antes de PR y merge. Los ajustes de interfaz quedan en fase 3, y las invitaciones de #4/#7, edición/cancelación, historial, voz para tiendas y Siri mantienen su planificación independiente.
 
 ## Preparación del commit y push
 
