@@ -1,6 +1,6 @@
 # Plan de implementación
 
-Fecha de creación: 18 de septiembre de 2026. Última revisión: 23 de septiembre de 2026.
+Fecha de creación: 18 de septiembre de 2026. Última revisión: 24 de septiembre de 2026.
 
 Especificación de referencia: [MVP aprobado](mvp-spec.md). Este documento conserva las fases, dependencias y condiciones para avanzar; no amplía el contrato funcional ni registra el progreso de cada tarea.
 
@@ -94,6 +94,8 @@ Orden de ejecución previsto:
 5. Revisar todos los criterios aplicables antes del congelado. Exigir ≥4,5:1 para texto normal propio, ≥7:1 en HC y ≥3:1 para gráficos esenciales, más los resultados del recorrido real. No afirmar AAA global ni publicar etiquetas de accesibilidad por pasar el cálculo.
 
 ### Comprobaciones de consolidación
+
+La implementación bilingüe se concreta en [#13: localización ES/EN](https://github.com/JFrancoG/SmartShoppingList/issues/13), autorizada el 24 de septiembre en rama independiente sobre el recorrido de compra. Inglés es el idioma fuente; español conserva traducción completa. La [decisión técnica](architecture/ios-draft.md) conecta voz e IA con el idioma efectivo de la app; #7 conserva el ensayo real de ambos idiomas. Esta unidad no sustituye la integración visual ni los hallazgos de accesibilidad pendientes.
 
 Las comprobaciones acompañan al desarrollo y se consolidan antes de congelar funcionalidades:
 

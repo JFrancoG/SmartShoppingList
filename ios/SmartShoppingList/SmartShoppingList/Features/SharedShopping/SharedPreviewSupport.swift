@@ -19,7 +19,6 @@ struct SharedPreviewModifier: PreviewModifier {
         SharedPreviewContainer(context: context, state: state) { viewModel in
             content
                 .environment(viewModel)
-                .environment(\.locale, Locale(identifier: "es_ES"))
         }
     }
 }

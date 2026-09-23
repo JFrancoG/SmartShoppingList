@@ -12,13 +12,13 @@ struct SharedGroupView: View {
                 SharedOperationSection(viewModel: viewModel)
 
                 if !viewModel.isConfigured {
-                    Section("Acceso al grupo") {
-                        Text("La conexión del grupo todavía no está configurada. Puedes preparar productos en Añadir.")
+                    Section("Group access") {
+                        Text("The group connection is not configured yet. You can prepare products in Add.")
                     }
                 } else if viewModel.session == nil {
                     Section {
-                        Text("Accede con Apple para crear un grupo o aceptar una invitación.")
-                        Button("Preparar acceso con Apple") {
+                        Text("Sign in with Apple to create a group or accept an invitation.")
+                        Button("Prepare Sign in with Apple") {
                             Task {
                                 await viewModel.prepareAppleLogin()
                             }
@@ -36,36 +36,36 @@ struct SharedGroupView: View {
                             .disabled(viewModel.isBusy)
                         }
                     } header: {
-                        Text("Acceso con Apple")
+                        Text("Sign in with Apple")
                     } footer: {
-                        Text("Tu borrador y la invitación pendiente se conservan durante el acceso.")
+                        Text("Your draft and pending invitation are kept while you sign in.")
                     }
                 }
 
                 if viewModel.pendingInvitation != nil {
-                    Section("Invitación pendiente") {
+                    Section("Pending invitation") {
                         if let invitation = viewModel.invitationPreview {
                             VStack(alignment: .leading) {
                                 Text(invitation.group.name)
                                     .font(.headline)
-                                Text("Vence el \(invitation.expiresAt, format: .dateTime.day().month().year().hour().minute())")
+                                Text("Expires on \(invitation.expiresAt, format: .dateTime.day().month().year().hour().minute())")
                                     .foregroundStyle(.secondary)
                                 if invitation.alreadyAccepted {
-                                    Text("Ya has aceptado esta invitación.")
+                                    Text("You have already accepted this invitation.")
                                 }
                             }
                             .fixedSize(horizontal: false, vertical: true)
                             .accessibilityElement(children: .combine)
-                            Button("Aceptar invitación", systemImage: "person.badge.plus") {
+                            Button("Accept invitation", systemImage: "person.badge.plus") {
                                 Task {
                                     await viewModel.acceptInvitation()
                                 }
                             }
                             .disabled(!viewModel.canMutate)
                         } else {
-                            Text("Accede y actualiza para consultar el grupo antes de aceptar.")
+                            Text("Sign in and refresh to check the group before accepting.")
                         }
-                        Button("Descartar invitación", role: .destructive) {
+                        Button("Discard invitation", role: .destructive) {
                             Task {
                                 await viewModel.discardInvitation()
                             }
@@ -76,11 +76,11 @@ struct SharedGroupView: View {
 
                 if let session = viewModel.session {
                     if let group = viewModel.group {
-                        Section("Tu grupo") {
+                        Section("Your group") {
                             Text(group.name)
                                 .font(.headline)
                             if viewModel.isCreator {
-                                Button("Gestionar invitaciones", systemImage: "person.badge.plus") {
+                                Button("Manage invitations", systemImage: "person.badge.plus") {
                                     Task {
                                         await viewModel.openInvitations()
                                     }
@@ -88,9 +88,9 @@ struct SharedGroupView: View {
                                 .disabled(!viewModel.canMutate)
                             }
                         }
-                        Section("Supermercado") {
-                            Picker("Tienda", selection: $viewModel.selectedStoreID) {
-                                Text("Selecciona una tienda").tag(Optional<UUID>.none)
+                        Section("Supermarket") {
+                            Picker("Store", selection: $viewModel.selectedStoreID) {
+                                Text("Select a store").tag(Optional<UUID>.none)
                                 ForEach(viewModel.stores) { store in
                                     Text(store.name).tag(Optional(store.id))
                                 }
@@ -98,7 +98,7 @@ struct SharedGroupView: View {
                             .pickerStyle(.navigationLink)
                             .disabled(viewModel.isBusy || !viewModel.sessionIsVerified)
                             if viewModel.stores.isEmpty {
-                                Text("No hay tiendas cargadas. Puedes confirmar una tienda al incorporar productos.")
+                                Text("No stores loaded. You can confirm a store when adding products.")
                                     .foregroundStyle(.secondary)
                             }
                         }
@@ -107,26 +107,26 @@ struct SharedGroupView: View {
                         }
                     } else {
                         Section {
-                            TextField("Nombre del grupo", text: $viewModel.groupName)
+                            TextField("Group name", text: $viewModel.groupName)
                                 .textInputAutocapitalization(.sentences)
                                 .disabled(!viewModel.canMutate)
-                            Button("Crear grupo", systemImage: "person.2") {
+                            Button("Create group", systemImage: "person.2") {
                                 Task {
                                     await viewModel.createGroup()
                                 }
                             }
                             .disabled(!viewModel.canMutate)
                         } header: {
-                            Text("Crear un grupo")
+                            Text("Create a group")
                         } footer: {
-                            Text("También puedes abrir una invitación para unirte a otro grupo. Cada cuenta pertenece a un solo grupo.")
+                            Text("You can also open an invitation to join another group. Each account belongs to one group only.")
                         }
                     }
-                    Section("Sesión") {
+                    Section("Session") {
                         if let name = session.user.displayName {
                             Text(name)
                         }
-                        Button("Cerrar sesión") {
+                        Button("Sign out") {
                             Task {
                                 await viewModel.logout()
                             }
@@ -135,10 +135,10 @@ struct SharedGroupView: View {
                     }
                 }
             }
-            .navigationTitle("Grupo")
+            .navigationTitle("Group")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Actualizar", systemImage: "arrow.clockwise") {
+                    Button("Refresh", systemImage: "arrow.clockwise") {
                         Task {
                             await viewModel.refresh()
                         }

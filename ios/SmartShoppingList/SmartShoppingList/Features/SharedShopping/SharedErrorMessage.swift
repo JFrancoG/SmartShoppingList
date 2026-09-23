@@ -3,33 +3,33 @@ import Foundation
 enum SharedErrorMessage {
     static func message(for error: any Error) -> LocalizedStringResource {
         guard let error = error as? SharedAPIError else {
-            return "No se ha podido completar la operación. Los datos pendientes se conservan; vuelve a intentarlo."
+            return "The operation could not be completed. Pending data is kept; try again."
         }
         switch error {
         case .configuration:
-            return "La conexión del grupo todavía no está configurada. Puedes preparar tu borrador a mano."
+            return "The group connection is not configured yet. You can prepare your draft manually."
         case .invalidInvitation:
-            return "El enlace de invitación no es válido para esta app."
+            return "This invitation link is not valid for this app."
         case .requestTooLarge:
-            return "El envío es demasiado grande. Revisa el borrador antes de confirmarlo."
+            return "The submission is too large. Review the draft before confirming it."
         case .transport, .invalidResponse:
-            return "No se ha podido confirmar el resultado. Conservamos el envío original para reintentarlo sin duplicar productos."
+            return "The result could not be confirmed. The original submission is kept so you can retry without duplicating products."
         case .server(_, let code, _, _):
             switch code {
-            case "invalid_session": return "La sesión ha caducado o se ha revocado. Accede de nuevo con la misma cuenta de Apple."
+            case "invalid_session": return "Your session has expired or been revoked. Sign in again with the same Apple Account."
             case "invalid_apple_credentials", "challenge_expired", "challenge_consumed":
-                return "Este intento de acceso ya no es válido. Inicia de nuevo el acceso con Apple."
-            case "already_in_group": return "Tu cuenta ya pertenece a un grupo. Actualiza para consultar su estado."
-            case "invitation_expired": return "La invitación ha caducado. Pide un enlace nuevo."
-            case "invitation_revoked": return "La invitación se ha revocado. Pide un enlace nuevo."
-            case "invitation_consumed": return "Otra persona ya ha utilizado esta invitación. Pide un enlace nuevo."
-            case "not_found": return "El recurso no está disponible o no tienes acceso. Actualiza e inténtalo de nuevo."
-            case "creator_required": return "Solo la persona que creó el grupo puede gestionar invitaciones."
+                return "This sign-in attempt is no longer valid. Start signing in with Apple again."
+            case "already_in_group": return "Your account already belongs to a group. Refresh to check its status."
+            case "invitation_expired": return "The invitation has expired. Ask for a new link."
+            case "invitation_revoked": return "The invitation has been revoked. Ask for a new link."
+            case "invitation_consumed": return "Someone else has already used this invitation. Ask for a new link."
+            case "not_found": return "The resource is unavailable or you do not have access. Refresh and try again."
+            case "creator_required": return "Only the person who created the group can manage invitations."
             case "idempotency_key_reused", "item_conflict":
-                return "El envío tiene un conflicto. Actualiza y revisa los datos antes de volver a confirmar."
-            case "invalid_request", "body_too_large": return "Revisa los datos del formulario antes de volver a enviarlos."
-            case "rate_limited": return "Hay demasiados intentos. Espera un momento antes de reintentar."
-            default: return "El servicio no está disponible ahora. Conservamos los datos pendientes para reintentarlo."
+                return "The submission has a conflict. Refresh and review the data before confirming again."
+            case "invalid_request", "body_too_large": return "Review the form data before submitting it again."
+            case "rate_limited": return "Too many attempts. Wait a moment before retrying."
+            default: return "The service is currently unavailable. Pending data is kept so you can retry."
             }
         }
     }

@@ -82,11 +82,11 @@ final class SharedShoppingViewModel {
                 session = try await credentials.loadSession()
             } catch {
                 storageFailed = true
-                notice = "No se ha podido recuperar el acceso guardado. Desbloquea el dispositivo y vuelve a abrir la app; conservamos los datos sin sobrescribirlos."
+                notice = "Your saved access could not be restored. Unlock the device and reopen the app; your data is kept without overwriting it."
                 return
             }
             guard isConfigured else {
-                notice = "La conexión del grupo todavía no está configurada. Puedes preparar tu borrador a mano."
+                notice = "The group connection is not configured yet. You can prepare your draft manually."
                 return
             }
             await refreshSessionAndLists()
@@ -123,7 +123,7 @@ final class SharedShoppingViewModel {
     func configureAppleRequest(_ request: ASAuthorizationAppleIDRequest) {
         guard let challenge, challenge.expiresAt > Date(), let appleState, !isBusy else {
             request.state = UUID().uuidString
-            notice = "El intento ha caducado. Prepara de nuevo el acceso con Apple."
+            notice = "This sign-in attempt has expired. Prepare Sign in with Apple again."
             return
         }
         request.requestedScopes = [.fullName]
@@ -140,7 +140,7 @@ final class SharedShoppingViewModel {
                   let token = String(data: tokenData, encoding: .utf8),
                   let code = String(data: codeData, encoding: .utf8) else {
                 resetAppleAttempt()
-                notice = "Apple no ha devuelto las credenciales necesarias. Vuelve a iniciar el acceso."
+                notice = "Apple did not return the required credentials. Start signing in again."
                 Task {
                     await finishAction()
                 }
@@ -158,7 +158,7 @@ final class SharedShoppingViewModel {
             }
         case .failure:
             resetAppleAttempt()
-            notice = "El acceso con Apple no se ha completado. El borrador y la invitación se conservan."
+            notice = "Sign in with Apple was not completed. Your draft and invitation are kept."
             Task {
                 await finishAction()
             }
@@ -173,7 +173,7 @@ final class SharedShoppingViewModel {
     ) async {
         guard let challenge, let appleState, returnedState == appleState, let api else {
             resetAppleAttempt()
-            notice = "No se ha podido verificar este intento de acceso. Inícialo de nuevo."
+            notice = "This sign-in attempt could not be verified. Start again."
             await finishAction()
             return
         }
@@ -200,7 +200,7 @@ final class SharedShoppingViewModel {
 
     func receiveInvitation(_ url: URL) async {
         guard let configuration else {
-            notice = "No se puede abrir la invitación hasta configurar la conexión del grupo."
+            notice = "The invitation cannot be opened until the group connection is configured."
             return
         }
         do {
@@ -211,7 +211,7 @@ final class SharedShoppingViewModel {
         } catch let error as SharedAPIError {
             notice = SharedErrorMessage.message(for: error)
         } catch {
-            notice = "No se ha podido guardar este enlace. Vuelve a abrirlo después de desbloquear el dispositivo."
+            notice = "This link could not be saved. Open it again after unlocking the device."
         }
     }
 
@@ -250,7 +250,7 @@ final class SharedShoppingViewModel {
               let name = ShoppingDraftRules.normalized(groupName), !name.isEmpty,
               name.unicodeScalars.count <= 80,
               !name.unicodeScalars.contains(where: { $0.properties.generalCategory == .control }) else {
-            notice = "Escribe un nombre de grupo válido de hasta 80 caracteres Unicode."
+            notice = "Enter a valid group name of up to 80 Unicode characters."
             return
         }
         await performAction {
@@ -325,7 +325,7 @@ final class SharedShoppingViewModel {
     func retryPendingOperation() async {
         guard canRetryOperation else { return }
         if let retryNotBefore, Date() < retryNotBefore {
-            notice = "El servicio ha pedido esperar antes de reintentar. Conservamos el envío original."
+            notice = "The service has asked you to wait before retrying. The original submission is kept."
             return
         }
         await performAction {
@@ -350,7 +350,7 @@ final class SharedShoppingViewModel {
             case .addItems(_, let groupID, let request, let sourceDraft):
                 _ = try await api.addItems(request, groupID: groupID, token: session.accessToken)
                 guard await draft.consumeConfirmedItems(sourceDraft.items) else {
-                    notice = "El servidor confirmó el lote, pero falta guardar su resolución en el dispositivo. Reintenta para completar el mismo envío."
+                    notice = "The server confirmed the batch, but the result still needs to be saved on this device. Retry to complete the same submission."
                     return
                 }
             }
@@ -368,11 +368,13 @@ final class SharedShoppingViewModel {
             retryNotBefore = nil
             let refreshed = await refreshSessionAndLists()
             if case .purchase = operation {
-                notice = refreshed
-                    ? "La compra se ha confirmado. Los productos no seleccionados siguen pendientes."
-                    : "La compra se ha confirmado, pero no se ha podido actualizar la lista. Actualiza antes de continuar."
+                if refreshed {
+                    notice = "The purchase is confirmed. Unselected products remain pending."
+                } else {
+                    notice = "The purchase is confirmed, but the list could not be refreshed. Refresh before continuing."
+                }
             } else {
-                notice = "La operación se ha confirmado en el grupo."
+                notice = "The operation is confirmed in the group."
             }
         } catch let error as SharedAPIError {
             if case .server(let status, _, _, let retryAfter) = error {
@@ -470,7 +472,7 @@ final class SharedShoppingViewModel {
                 try await credentials.saveSession(nil)
                 clearSessionPresentation()
             } catch {
-                notice = "No se ha podido confirmar el cierre de sesión. Conservamos el acceso para que puedas reintentarlo."
+                notice = "Sign-out could not be confirmed. Your access is kept so you can retry."
             }
         }
     }
@@ -570,7 +572,7 @@ final class SharedShoppingViewModel {
             // Each iteration consumes one received value. An unresolved active invitation stops promotion.
             while let incoming = try await credentials.loadIncomingInvitation() {
                 if let pendingInvitation, pendingInvitation != incoming {
-                    notice = "Hay otra invitación guardada. Resuelve o descarta la anterior para revisar el nuevo enlace."
+                    notice = "Another invitation is saved. Resolve or discard it before reviewing the new link."
                     return
                 }
                 if pendingInvitation == nil {
@@ -583,7 +585,7 @@ final class SharedShoppingViewModel {
                 await previewPendingInvitation()
             }
         } catch {
-            notice = "No se ha podido preparar la invitación guardada. Desbloquea el dispositivo y vuelve a intentarlo."
+            notice = "The saved invitation could not be prepared. Unlock the device and try again."
         }
     }
 
@@ -668,7 +670,7 @@ extension SharedShoppingViewModel {
             && (1...50).contains(purchaseSelection.count) && !purchaseSelectionNeedsReview
     }
 
-    var purchaseActionTitle: LocalizedStringResource { "Finalizar compra · \(purchaseSelection.count)" }
+    var purchaseActionTitle: LocalizedStringResource { "Finish shopping · \(purchaseSelection.count)" }
 
     func isPurchaseSelected(_ item: SharedItem) -> Bool {
         purchaseSelection.contains { $0.id == item.id }

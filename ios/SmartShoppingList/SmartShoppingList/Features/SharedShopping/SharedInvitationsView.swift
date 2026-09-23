@@ -9,7 +9,7 @@ struct SharedInvitationsView: View {
             Form {
                 SharedOperationSection(viewModel: viewModel)
                 Section {
-                    Button("Crear invitación", systemImage: "link") {
+                    Button("Create invitation", systemImage: "link") {
                         Task {
                             await viewModel.createInvitation()
                         }
@@ -17,52 +17,52 @@ struct SharedInvitationsView: View {
                     .disabled(!viewModel.canMutate || !viewModel.isCreator)
                     if let url = viewModel.shareURL {
                         ShareLink(item: url) {
-                            Label("Compartir invitación", systemImage: "square.and.arrow.up")
+                            Label("Share invitation", systemImage: "square.and.arrow.up")
                         }
                     }
                 } header: {
-                    Text("Nuevo enlace")
+                    Text("New link")
                 } footer: {
-                    Text("Cada enlace permite que una persona se una durante 24 horas. Compártelo ahora: el enlace no se recupera al volver a abrir la app.")
+                    Text("Each link lets one person join within 24 hours. Share it now: the link cannot be retrieved after reopening the app.")
                 }
-                Section("Invitaciones creadas") {
+                Section("Created invitations") {
                     if viewModel.invitations.isEmpty {
-                        Text("No hay invitaciones cargadas.")
+                        Text("No invitations loaded.")
                             .foregroundStyle(.secondary)
                     }
                     ForEach(viewModel.invitations) { invitation in
                         VStack(alignment: .leading) {
                             VStack(alignment: .leading) {
-                                Text("Creada el \(invitation.createdAt, format: .dateTime.day().month().year().hour().minute().second())")
-                                Text("Vence el \(invitation.expiresAt, format: .dateTime.day().month().year().hour().minute())")
+                                Text("Created on \(invitation.createdAt, format: .dateTime.day().month().year().hour().minute().second())")
+                                Text("Expires on \(invitation.expiresAt, format: .dateTime.day().month().year().hour().minute())")
                                     .foregroundStyle(.secondary)
                                 if invitation.acceptedAt != nil {
-                                    Label("Aceptada", systemImage: "person.crop.circle.badge.checkmark")
+                                    Label("Accepted", systemImage: "person.crop.circle.badge.checkmark")
                                 } else if invitation.revokedAt != nil {
-                                    Label("Revocada", systemImage: "xmark.circle")
+                                    Label("Revoked", systemImage: "xmark.circle")
                                 } else {
-                                    Text("Sin aceptar")
+                                    Text("Not accepted")
                                 }
                             }
                             .accessibilityElement(children: .combine)
                             if invitation.acceptedAt == nil && invitation.revokedAt == nil {
-                                Button("Revocar enlace", role: .destructive) {
+                                Button("Revoke link", role: .destructive) {
                                     Task {
                                         await viewModel.revokeInvitation(invitation)
                                     }
                                 }
                                 .disabled(!viewModel.canMutate || !viewModel.isCreator)
-                                .accessibilityHint("Impide que alguien utilice esta invitación para unirse al grupo.")
+                                .accessibilityHint("Prevents anyone from using this invitation to join the group.")
                             }
                         }
                         .fixedSize(horizontal: false, vertical: true)
                     }
                 }
             }
-            .navigationTitle("Invitaciones")
+            .navigationTitle("Invitations")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Cerrar") {
+                    Button("Close") {
                         dismiss()
                     }
                 }

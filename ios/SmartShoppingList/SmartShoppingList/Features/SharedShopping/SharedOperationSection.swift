@@ -5,29 +5,29 @@ struct SharedOperationSection: View {
 
     var body: some View {
         if viewModel.notice != nil || viewModel.pendingOperation != nil || viewModel.isBusy {
-            Section("Estado del grupo") {
+            Section("Group status") {
                 if viewModel.isBusy {
-                    ProgressView("Consultando el grupo…")
+                    ProgressView("Loading group…")
                 }
                 if let notice = viewModel.notice {
                     Text(notice)
                         .fixedSize(horizontal: false, vertical: true)
-                    Button("Cerrar aviso") {
+                    Button("Dismiss notice") {
                         viewModel.dismissNotice()
                     }
                 }
                 if viewModel.pendingOperation != nil {
-                    Text("Hay un envío pendiente de confirmación. Conservamos sus datos para reintentarlo sin duplicarlo.")
+                    Text("A submission is awaiting confirmation. Its data is kept so you can retry without duplicating it.")
                         .fixedSize(horizontal: false, vertical: true)
-                    Button("Reintentar envío", systemImage: "arrow.clockwise") {
+                    Button("Retry submission", systemImage: "arrow.clockwise") {
                         Task {
                             await viewModel.retryPendingOperation()
                         }
                     }
                     .disabled(!viewModel.canRetryOperation)
-                    .accessibilityHint("Repite el mismo envío que quedó pendiente de confirmar.")
+                    .accessibilityHint("Retries the same submission that is awaiting confirmation.")
                     if !viewModel.canRetryOperation && !viewModel.isBusy {
-                        Text("Para recuperar el envío, accede con la misma cuenta de Apple que lo inició.")
+                        Text("To recover the submission, sign in with the same Apple Account that started it.")
                             .foregroundStyle(.secondary)
                     }
                 }

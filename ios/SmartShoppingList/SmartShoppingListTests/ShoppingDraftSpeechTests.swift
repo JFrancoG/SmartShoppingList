@@ -110,9 +110,15 @@ struct ShoppingDraftSpeechTests {
         #expect(model.text == "pan en Aldi")
     }
 
-    @Test
-    func `Denied microphone permission preserves the text and corrected draft`() async throws {
-        let speech = ControlledDraftSpeech(startError: .permissionDenied)
+    @Test(arguments: [
+        (SpeechCaptureError.permissionDenied, "Microphone access is not allowed. You can allow it in Settings or enter products manually."),
+        (.unavailable, "Transcription is unavailable on this device. You can type the text or add products manually."),
+        (.unsupportedLocale, "Transcription is unavailable in the selected language on this device. You can type the text or add products manually.")
+    ])
+    func `Capture failures explain the recovery and preserve manual draft review`(
+        error: SpeechCaptureError, expectedMessage: String
+    ) async throws {
+        let speech = ControlledDraftSpeech(startError: error)
         let corrected = ShoppingDraftItem(
             id: UUID(uuid: (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1)),
             name: "leche sin lactosa",
@@ -125,6 +131,9 @@ struct ShoppingDraftSpeechTests {
         )
 
         await model.startDictation().value
+        var notice = try #require(model.notice)
+        notice.locale = Locale(identifier: "en")
+        #expect(String(localized: notice) == expectedMessage)
         model.reviewDraft()
 
         #expect(model.activity == .idle)

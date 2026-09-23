@@ -1,525 +1,1774 @@
 {
-  "sourceLanguage" : "es",
-  "strings" : {
-    "Accede a tu grupo en Comprar para enviar estos productos." : {
-
-    },
-    "Accede con Apple para crear un grupo o aceptar una invitación." : {
-
-    },
-    "Accede y actualiza para consultar el grupo antes de aceptar." : {
-
-    },
-    "Acceso al grupo" : {
-
-    },
-    "Acceso con Apple" : {
-
-    },
-    "Aceptada" : {
-
-    },
-    "Aceptar invitación" : {
-
-    },
-    "Acorta el nombre del producto: admite hasta 160 caracteres Unicode." : {
-
-    },
-    "Acorta la cantidad: admite hasta 80 caracteres Unicode." : {
-
-    },
-    "Acorta la tienda: admite hasta 80 caracteres Unicode." : {
-
-    },
-    "Activa Apple Intelligence en Ajustes para interpretar texto. La entrada manual sigue disponible." : {
-
-    },
-    "Actualizar" : {
-
-    },
-    "Añade al menos un producto para revisar el borrador." : {
-
-    },
-    "Añade todos los productos revisados al grupo con las tiendas elegidas." : {
-
-    },
-    "Añadir" : {
-
-    },
-    "Añadir producto a mano" : {
-
-    },
-    "Aplicar" : {
-
-    },
-    "Apple no ha devuelto las credenciales necesarias. Vuelve a iniciar el acceso." : {
-
-    },
-    "Borrador revisado. Todavía no se ha enviado al grupo." : {
-
-    },
-    "Cada enlace permite que una persona se una durante 24 horas. Compártelo ahora: el enlace no se recupera al volver a abrir la app." : {
-
-    },
-    "Cambia la selección local. La compra se guarda al pulsar Finalizar compra." : {
-
-    },
-    "Cambiar de tienda o salir de esta pantalla no confirma la compra. Actualiza para consultar cambios del grupo." : {
-
-    },
-    "Cancelar" : {
-
-    },
-    "Cancelar dictado" : {
-
-    },
-    "Cancelar interpretación" : {
-
-    },
-    "Cantidad no indicada" : {
-
-    },
-    "Cantidad, opcional" : {
-
-    },
-    "Cantidad: %@" : {
-
-    },
-    "Cerrar" : {
-
-    },
-    "Cerrar aviso" : {
-
-    },
-    "Cerrar sesión" : {
-
-    },
-    "Compartir invitación" : {
-
-    },
-    "Comprar" : {
-
-    },
-    "Comprobar disponibilidad" : {
-
-    },
-    "Confirma las tiendas" : {
-
-    },
-    "Confirma una opción para cada nombre. Si ese nombre ya existe en el grupo, se usará la misma tienda." : {
-
-    },
-    "Confirma únicamente los productos seleccionados de esta tienda para todo el grupo." : {
-
-    },
-    "Confirmar compra" : {
-
-    },
-    "Confirmar el nombre «%@»" : {
-
-    },
-    "Confirmar incorporación al grupo" : {
-
-    },
-    "Conservación del borrador" : {
-
-    },
-    "Consultando el grupo…" : {
-
-    },
-    "Creada el %@" : {
-
-    },
-    "Crear grupo" : {
-
-    },
-    "Crear invitación" : {
-
-    },
-    "Crear un grupo" : {
-
-    },
-    "Descartar invitación" : {
-
-    },
-    "Desmarcar los productos que han cambiado" : {
-
-    },
-    "Dictar" : {
-
-    },
-    "Editar" : {
-
-    },
-    "Editar %@" : {
-
-    },
-    "El acceso con Apple no se ha completado. El borrador y la invitación se conservan." : {
-
-    },
-    "El borrador admite hasta 50 productos." : {
-
-    },
-    "El campo contiene caracteres de control que no se admiten." : {
-
-    },
-    "El enlace de invitación no es válido para esta app." : {
-
-    },
-    "El envío es demasiado grande. Revisa el borrador antes de confirmarlo." : {
-
-    },
-    "El envío tiene un conflicto. Actualiza y revisa los datos antes de volver a confirmar." : {
-
-    },
-    "El intento ha caducado. Prepara de nuevo el acceso con Apple." : {
-
-    },
-    "El micrófono no tiene permiso. Puedes permitirlo en Ajustes o escribir los productos a mano." : {
-
-    },
-    "El modelo aún no está listo. Puedes continuar a mano y volver a comprobarlo después." : {
-
-    },
-    "El modelo de Apple Intelligence no está disponible en este momento. El borrador se conserva; puedes reintentar más tarde o continuar a mano." : {
-
-    },
-    "El recurso no está disponible o no tienes acceso. Actualiza e inténtalo de nuevo." : {
-
-    },
-    "El servicio ha pedido esperar antes de reintentar. Conservamos el envío original." : {
-
-    },
-    "El servicio no está disponible ahora. Conservamos los datos pendientes para reintentarlo." : {
-
-    },
-    "El servidor confirmó el lote, pero falta guardar su resolución en el dispositivo. Reintenta para completar el mismo envío." : {
-
-    },
-    "El texto es demasiado largo. Interpreta una lista más corta; tu texto se conserva." : {
-
-    },
-    "Elegir tiendas y confirmar" : {
-
-    },
-    "Elige una tienda del grupo o confirma el nombre que has revisado." : {
-
-    },
-    "Escribe el nombre del producto." : {
-
-    },
-    "Escribe o dicta" : {
-
-    },
-    "Escribe un nombre de grupo válido de hasta 80 caracteres Unicode." : {
-
-    },
-    "Escuchando…" : {
-
-    },
-    "Estado del grupo" : {
-
-    },
-    "Este dispositivo no admite Apple Intelligence. Puedes añadir los productos a mano." : {
-
-    },
-    "Este intento de acceso ya no es válido. Inicia de nuevo el acceso con Apple." : {
-
-    },
-    "Finalizar compra · %lld" : {
-
-    },
-    "Gestionar invitaciones" : {
-
-    },
-    "Grupo" : {
-
-    },
-    "Hay demasiados intentos. Espera un momento antes de reintentar." : {
-
-    },
-    "Hay otra invitación guardada. Resuelve o descarta la anterior para revisar el nuevo enlace." : {
-
-    },
-    "Hay productos seleccionados que han cambiado o ya no están pendientes." : {
-
-    },
-    "Hay un envío pendiente de confirmación. Conservamos sus datos para reintentarlo sin duplicarlo." : {
-
-    },
-    "Impide que alguien utilice esta invitación para unirse al grupo." : {
-
-    },
-    "Incluye las variantes que necesitas, por ejemplo sin lactosa." : {
-
-    },
-    "Indica la tienda de cada producto antes de revisar el borrador." : {
-
-    },
-    "Indica una tienda" : {
-
-    },
-    "Interpretando el texto…" : {
-
-    },
-    "Interpretar texto" : {
-
-    },
-    "Invitación pendiente" : {
-
-    },
-    "Invitaciones" : {
-
-    },
-    "Invitaciones creadas" : {
-
-    },
-    "La compra se ha confirmado. Los productos no seleccionados siguen pendientes." : {
-
-    },
-    "La conexión del grupo todavía no está configurada. Puedes preparar productos en Añadir." : {
-
-    },
-    "La conexión del grupo todavía no está configurada. Puedes preparar tu borrador a mano." : {
-
-    },
-    "La grabación se ha interrumpido. El texto reconocido se conserva; puedes continuar a mano o volver a dictar." : {
-
-    },
-    "La interpretación en español no está disponible. Puedes continuar a mano." : {
-
-    },
-    "La interpretación no está disponible ahora. Puedes continuar a mano." : {
-
-    },
-    "La invitación ha caducado. Pide un enlace nuevo." : {
-
-    },
-    "La invitación se ha revocado. Pide un enlace nuevo." : {
-
-    },
-    "La operación se ha confirmado en el grupo." : {
-
-    },
-    "La propuesta superaría los 50 productos. No se ha añadido ninguno; divide el texto y revisa el borrador." : {
-
-    },
-    "La sesión ha caducado o se ha revocado. Accede de nuevo con la misma cuenta de Apple." : {
-
-    },
-    "La transcripción en español no está disponible en este dispositivo. Puedes escribir el texto o añadir los productos a mano." : {
-
-    },
-    "Los productos se compartirán únicamente al confirmar este envío." : {
-
-    },
-    "Los productos siguen siendo un borrador hasta que confirmes su incorporación al grupo." : {
-
-    },
-    "Marca los productos que vas a comprar. Los demás seguirán pendientes." : {
-
-    },
-    "No hay invitaciones cargadas." : {
-
-    },
-    "No hay tiendas cargadas. Puedes confirmar una tienda al incorporar productos." : {
-
-    },
-    "No hay un micrófono disponible. Puedes continuar a mano." : {
-
-    },
-    "No se ha podido completar la operación. Los datos pendientes se conservan; vuelve a intentarlo." : {
-
-    },
-    "No se ha podido confirmar el cierre de sesión. Conservamos el acceso para que puedas reintentarlo." : {
-
-    },
-    "No se ha podido confirmar el resultado. Conservamos el envío original para reintentarlo sin duplicar productos." : {
-
-    },
-    "No se ha podido guardar el borrador en este dispositivo. Conserva la app abierta; volveremos a intentarlo con el siguiente cambio." : {
-
-    },
-    "No se ha podido guardar este enlace. Vuelve a abrirlo después de desbloquear el dispositivo." : {
-
-    },
-    "No se ha podido interpretar el texto. El borrador se conserva; puedes reintentar o continuar a mano." : {
-
-    },
-    "No se ha podido interpretar este texto. Puedes añadir los productos a mano." : {
-
-    },
-    "No se ha podido preparar la invitación guardada. Desbloquea el dispositivo y vuelve a intentarlo." : {
-
-    },
-    "No se ha podido recuperar el acceso guardado. Desbloquea el dispositivo y vuelve a abrir la app; conservamos los datos sin sobrescribirlos." : {
-
-    },
-    "No se ha podido recuperar el borrador guardado. Lo conservamos sin modificar. Los cambios de esta sesión no se guardarán al cerrar la app." : {
-
-    },
-    "No se ha podido verificar este intento de acceso. Inícialo de nuevo." : {
-
-    },
-    "No se han encontrado productos. Puedes reformular el texto o añadirlos a mano." : {
-
-    },
-    "No se puede abrir la invitación hasta configurar la conexión del grupo." : {
-
-    },
-    "Nombre del grupo" : {
-
-    },
-    "Nombre: hasta 160 caracteres. Cantidad y tienda: hasta 80. La cantidad es opcional." : {
-
-    },
-    "Nuevo enlace" : {
-
-    },
-    "Otra persona ya ha utilizado esta invitación. Pide un enlace nuevo." : {
-
-    },
-    "Para corregir productos o cantidades, vuelve al borrador antes de confirmar." : {
-
-    },
-    "Para recuperar el envío, accede con la misma cuenta de Apple que lo inició." : {
-
-    },
-    "Pendientes · %@" : {
-
-    },
-    "Por ejemplo: jabón, cerveza y yogures en Mercadona" : {
-
-    },
-    "Preparando el dictado…" : {
-
-    },
-    "Preparar acceso con Apple" : {
-
-    },
-    "Producto" : {
-
-    },
-    "Producto sin nombre" : {
-
-    },
-    "Productos · %lld" : {
-
-    },
-    "Productos revisados · %lld" : {
-
-    },
-    "Puedes interpretar el texto y revisar los productos antes de añadirlos al grupo." : {
-
-    },
-    "Quitar" : {
-
-    },
-    "Quitar %@" : {
-
-    },
-    "Recuperando el borrador…" : {
-
-    },
-    "Reintentar envío" : {
-
-    },
-    "Repite el mismo envío que quedó pendiente de confirmar." : {
-
-    },
-    "Revisa cada producto, su cantidad y la tienda. Puedes añadir hasta 50 productos por lote." : {
-
-    },
-    "Revisa la cantidad del producto." : {
-
-    },
-    "Revisa los datos del formulario antes de volver a enviarlos." : {
-
-    },
-    "Revisar borrador" : {
-
-    },
-    "Revisar envío" : {
-
-    },
-    "Revocada" : {
-
-    },
-    "Revocar enlace" : {
-
-    },
-    "Selecciona una opción" : {
-
-    },
-    "Selecciona una tienda" : {
-
-    },
-    "Seleccionado" : {
-
-    },
-    "Seleccionados: %lld de 50 como máximo" : {
-
-    },
-    "Sesión" : {
-
-    },
-    "Sin aceptar" : {
-
-    },
-    "Sin productos cargados. Actualiza para consultar esta tienda." : {
-
-    },
-    "Sin seleccionar" : {
-
-    },
-    "Solo la persona que creó el grupo puede gestionar invitaciones." : {
-
-    },
-    "Supermercado" : {
-
-    },
-    "También puedes abrir una invitación para unirte a otro grupo. Cada cuenta pertenece a un solo grupo." : {
-
-    },
-    "Terminando el dictado…" : {
-
-    },
-    "Terminar dictado" : {
-
-    },
-    "Texto de la compra" : {
-
-    },
-    "Tienda" : {
-
-    },
-    "Tienda indicada: %@" : {
-
-    },
-    "Tienda para «%@»" : {
-
-    },
-    "Todavía no hay productos en el borrador." : {
-
-    },
-    "Tu borrador y la invitación pendiente se conservan durante el acceso." : {
-
-    },
-    "Tu cuenta ya pertenece a un grupo. Actualiza para consultar su estado." : {
-
-    },
-    "Tu grupo" : {
-
-    },
-    "Vence el %@" : {
-
-    },
-    "Volver" : {
-
-    },
-    "Ya has aceptado esta invitación." : {
-
+  "sourceLanguage": "en",
+  "strings": {
+    "A submission is awaiting confirmation. Its data is kept so you can retry without duplicating it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hay un envío pendiente de confirmación. Conservamos sus datos para reintentarlo sin duplicarlo."
+          }
+        }
+      }
+    },
+    "Accept invitation": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aceptar invitación"
+          }
+        }
+      }
+    },
+    "Accepted": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aceptada"
+          }
+        }
+      }
+    },
+    "Add": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añadir"
+          }
+        }
+      },
+      "comment": "Tab for preparing products in the local shopping draft. Verb."
+    },
+    "Add at least one product to review the draft.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añade al menos un producto para revisar el borrador."
+          }
+        }
+      }
+    },
+    "Add product manually": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añadir producto a mano"
+          }
+        }
+      }
+    },
+    "Adds all reviewed products to the group with the chosen stores.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añade todos los productos revisados al grupo con las tiendas elegidas."
+          }
+        }
+      }
+    },
+    "Another invitation is saved. Resolve or discard it before reviewing the new link.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hay otra invitación guardada. Resuelve o descarta la anterior para revisar el nuevo enlace."
+          }
+        }
+      }
+    },
+    "Apple did not return the required credentials. Start signing in again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple no ha devuelto las credenciales necesarias. Vuelve a iniciar el acceso."
+          }
+        }
+      }
+    },
+    "Apply": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aplicar"
+          }
+        }
+      }
+    },
+    "Back": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volver"
+          }
+        }
+      }
+    },
+    "Cancel": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancelar"
+          }
+        }
+      }
+    },
+    "Cancel dictation": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancelar dictado"
+          }
+        }
+      }
+    },
+    "Cancel interpretation": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancelar interpretación"
+          }
+        }
+      }
+    },
+    "Changes the local selection. The purchase is saved when you tap Finish shopping.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambia la selección local. La compra se guarda al pulsar Finalizar compra."
+          }
+        }
+      }
+    },
+    "Check availability": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comprobar disponibilidad"
+          }
+        }
+      }
+    },
+    "Choose a store from the group or confirm the name you reviewed.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige una tienda del grupo o confirma el nombre que has revisado."
+          }
+        }
+      }
+    },
+    "Choose stores and confirm": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elegir tiendas y confirmar"
+          }
+        }
+      }
+    },
+    "Close": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cerrar"
+          }
+        }
+      }
+    },
+    "Confirm adding to group": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirmar incorporación al grupo"
+          }
+        }
+      }
+    },
+    "Confirm an option for each name. If that name already exists in the group, the same store will be used.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirma una opción para cada nombre. Si ese nombre ya existe en el grupo, se usará la misma tienda."
+          }
+        }
+      }
+    },
+    "Confirm purchase": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirmar compra"
+          }
+        }
+      }
+    },
+    "Confirm stores": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirma las tiendas"
+          }
+        }
+      }
+    },
+    "Confirm the name “%@”": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirmar el nombre «%@»"
+          }
+        }
+      },
+      "comment": "Store confirmation action. The placeholder is a user-entered store name."
+    },
+    "Confirms only the selected products from this store for the whole group.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirma únicamente los productos seleccionados de esta tienda para todo el grupo."
+          }
+        }
+      }
+    },
+    "Create a group": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Crear un grupo"
+          }
+        }
+      }
+    },
+    "Create group": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Crear grupo"
+          }
+        }
+      }
+    },
+    "Create invitation": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Crear invitación"
+          }
+        }
+      }
+    },
+    "Created invitations": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invitaciones creadas"
+          }
+        }
+      }
+    },
+    "Created on %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Creada el %@"
+          }
+        }
+      },
+      "comment": "Invitation creation timestamp, formatted using the current locale."
+    },
+    "Deselect changed products": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desmarcar los productos que han cambiado"
+          }
+        }
+      }
+    },
+    "Dictate": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dictar"
+          }
+        }
+      }
+    },
+    "Discard invitation": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descartar invitación"
+          }
+        }
+      }
+    },
+    "Dismiss notice": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cerrar aviso"
+          }
+        }
+      }
+    },
+    "Draft reviewed. It has not been sent to the group yet.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Borrador revisado. Todavía no se ha enviado al grupo."
+          }
+        }
+      }
+    },
+    "Draft storage": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conservación del borrador"
+          }
+        }
+      }
+    },
+    "Each link lets one person join within 24 hours. Share it now: the link cannot be retrieved after reopening the app.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cada enlace permite que una persona se una durante 24 horas. Compártelo ahora: el enlace no se recupera al volver a abrir la app."
+          }
+        }
+      }
+    },
+    "Edit": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Editar"
+          }
+        }
+      },
+      "comment": "Button to edit a draft product. Verb."
+    },
+    "Edit %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Editar %@"
+          }
+        }
+      },
+      "comment": "Accessibility label for editing a draft product. The placeholder is its user-entered name."
+    },
+    "Enter a valid group name of up to 80 Unicode characters.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escribe un nombre de grupo válido de hasta 80 caracteres Unicode."
+          }
+        }
+      }
+    },
+    "Enter the product name.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escribe el nombre del producto."
+          }
+        }
+      }
+    },
+    "Expires on %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vence el %@"
+          }
+        }
+      },
+      "comment": "Invitation expiration timestamp, formatted using the current locale."
+    },
+    "Finish dictation": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminar dictado"
+          }
+        }
+      }
+    },
+    "Finish shopping · %lld": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finalizar compra · %lld"
+          }
+        }
+      },
+      "comment": "Purchase confirmation button. The placeholder is the number of selected products."
+    },
+    "Finishing dictation…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminando el dictado…"
+          }
+        }
+      }
+    },
+    "For example: bread at Aldi": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Por ejemplo: pan en Aldi"
+          }
+        }
+      }
+    },
+    "Group": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grupo"
+          }
+        }
+      }
+    },
+    "Group access": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Acceso al grupo"
+          }
+        }
+      }
+    },
+    "Group name": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nombre del grupo"
+          }
+        }
+      }
+    },
+    "Group status": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estado del grupo"
+          }
+        }
+      }
+    },
+    "Include any variants you need, such as lactose-free.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Incluye las variantes que necesitas, por ejemplo sin lactosa."
+          }
+        }
+      }
+    },
+    "Interpret text": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Interpretar texto"
+          }
+        }
+      }
+    },
+    "Interpretation is currently unavailable. You can continue manually.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La interpretación no está disponible ahora. Puedes continuar a mano."
+          }
+        }
+      }
+    },
+    "Interpretation is unavailable in the selected language. You can continue manually.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La interpretación en el idioma seleccionado no está disponible. Puedes continuar a mano."
+          }
+        }
+      }
+    },
+    "Interpreting text…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Interpretando el texto…"
+          }
+        }
+      }
+    },
+    "Invitations": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invitaciones"
+          }
+        }
+      }
+    },
+    "Listening…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escuchando…"
+          }
+        }
+      }
+    },
+    "Loading group…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Consultando el grupo…"
+          }
+        }
+      }
+    },
+    "Manage invitations": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gestionar invitaciones"
+          }
+        }
+      }
+    },
+    "Microphone access is not allowed. You can allow it in Settings or enter products manually.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El micrófono no tiene permiso. Puedes permitirlo en Ajustes o escribir los productos a mano."
+          }
+        }
+      }
+    },
+    "Name: up to 160 characters. Quantity and store: up to 80. Quantity is optional.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nombre: hasta 160 caracteres. Cantidad y tienda: hasta 80. La cantidad es opcional."
+          }
+        }
+      }
+    },
+    "New link": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nuevo enlace"
+          }
+        }
+      }
+    },
+    "No invitations loaded.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay invitaciones cargadas."
+          }
+        }
+      }
+    },
+    "No microphone is available. You can continue manually.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay un micrófono disponible. Puedes continuar a mano."
+          }
+        }
+      }
+    },
+    "No products loaded. Refresh to check this store.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sin productos cargados. Actualiza para consultar esta tienda."
+          }
+        }
+      }
+    },
+    "No products were found. You can rephrase the text or add them manually.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se han encontrado productos. Puedes reformular el texto o añadirlos a mano."
+          }
+        }
+      }
+    },
+    "No stores loaded. You can confirm a store when adding products.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay tiendas cargadas. Puedes confirmar una tienda al incorporar productos."
+          }
+        }
+      }
+    },
+    "Not accepted": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sin aceptar"
+          }
+        }
+      }
+    },
+    "Not selected": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sin seleccionar"
+          }
+        }
+      }
+    },
+    "Only the person who created the group can manage invitations.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo la persona que creó el grupo puede gestionar invitaciones."
+          }
+        }
+      }
+    },
+    "Open your group in Shop to send these products.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accede a tu grupo en Comprar para enviar estos productos."
+          }
+        }
+      }
+    },
+    "Pending invitation": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invitación pendiente"
+          }
+        }
+      }
+    },
+    "Pending · %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pendientes · %@"
+          }
+        }
+      },
+      "comment": "Section heading. The placeholder is the selected store name entered by a user."
+    },
+    "Prepare Sign in with Apple": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparar acceso con Apple"
+          }
+        }
+      }
+    },
+    "Preparing dictation…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparando el dictado…"
+          }
+        }
+      }
+    },
+    "Prevents anyone from using this invitation to join the group.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impide que alguien utilice esta invitación para unirse al grupo."
+          }
+        }
+      }
+    },
+    "Product": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Producto"
+          }
+        }
+      }
+    },
+    "Products remain in your draft until you confirm adding them to the group.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los productos siguen siendo un borrador hasta que confirmes su incorporación al grupo."
+          }
+        }
+      }
+    },
+    "Products will only be shared when you confirm this submission.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los productos se compartirán únicamente al confirmar este envío."
+          }
+        }
+      }
+    },
+    "Products · %lld": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Productos · %lld"
+          }
+        }
+      },
+      "comment": "Draft section heading. The placeholder is the number of draft products."
+    },
+    "Quantity not specified": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cantidad no indicada"
+          }
+        }
+      }
+    },
+    "Quantity, optional": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cantidad, opcional"
+          }
+        }
+      }
+    },
+    "Quantity: %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cantidad: %@"
+          }
+        }
+      },
+      "comment": "The placeholder is the quantity entered by the person. Do not translate the value."
+    },
+    "Recording was interrupted. The recognized text is kept; you can continue manually or dictate again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La grabación se ha interrumpido. El texto reconocido se conserva; puedes continuar a mano o volver a dictar."
+          }
+        }
+      }
+    },
+    "Refresh": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actualizar"
+          }
+        }
+      }
+    },
+    "Remove": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitar"
+          }
+        }
+      },
+      "comment": "Button to remove a product from the local draft. Verb."
+    },
+    "Remove %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitar %@"
+          }
+        }
+      },
+      "comment": "Accessibility label for removing a draft product. The placeholder is its user-entered name."
+    },
+    "Restoring draft…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recuperando el borrador…"
+          }
+        }
+      }
+    },
+    "Retries the same submission that is awaiting confirmation.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repite el mismo envío que quedó pendiente de confirmar."
+          }
+        }
+      }
+    },
+    "Retry submission": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reintentar envío"
+          }
+        }
+      }
+    },
+    "Review draft": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisar borrador"
+          }
+        }
+      }
+    },
+    "Review each product, its quantity and store. You can add up to 50 products per batch.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisa cada producto, su cantidad y la tienda. Puedes añadir hasta 50 productos por lote."
+          }
+        }
+      }
+    },
+    "Review submission": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisar envío"
+          }
+        }
+      }
+    },
+    "Review the form data before submitting it again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisa los datos del formulario antes de volver a enviarlos."
+          }
+        }
+      }
+    },
+    "Review the product quantity.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisa la cantidad del producto."
+          }
+        }
+      }
+    },
+    "Reviewed products · %lld": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Productos revisados · %lld"
+          }
+        }
+      },
+      "comment": "Review section heading. The placeholder is the number of reviewed products."
+    },
+    "Revoke link": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revocar enlace"
+          }
+        }
+      }
+    },
+    "Revoked": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revocada"
+          }
+        }
+      }
+    },
+    "Select a store": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selecciona una tienda"
+          }
+        }
+      }
+    },
+    "Select an option": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selecciona una opción"
+          }
+        }
+      }
+    },
+    "Select the products you are buying. The others will remain pending.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marca los productos que vas a comprar. Los demás seguirán pendientes."
+          }
+        }
+      }
+    },
+    "Selected": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seleccionado"
+          }
+        }
+      }
+    },
+    "Selected: %lld of up to 50": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seleccionados: %lld de 50 como máximo"
+          }
+        }
+      },
+      "comment": "The placeholder is the number of selected products. 50 is the maximum batch size."
+    },
+    "Session": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sesión"
+          }
+        }
+      }
+    },
+    "Share invitation": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compartir invitación"
+          }
+        }
+      }
+    },
+    "Shop": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comprar"
+          }
+        }
+      },
+      "comment": "Tab for shared shopping and confirming purchases. Verb, not a store name."
+    },
+    "Shopping text": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Texto de la compra"
+          }
+        }
+      }
+    },
+    "Shorten the product name: up to 160 Unicode characters.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Acorta el nombre del producto: admite hasta 160 caracteres Unicode."
+          }
+        }
+      }
+    },
+    "Shorten the quantity: up to 80 Unicode characters.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Acorta la cantidad: admite hasta 80 caracteres Unicode."
+          }
+        }
+      }
+    },
+    "Shorten the store name: up to 80 Unicode characters.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Acorta la tienda: admite hasta 80 caracteres Unicode."
+          }
+        }
+      }
+    },
+    "Sign in and refresh to check the group before accepting.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accede y actualiza para consultar el grupo antes de aceptar."
+          }
+        }
+      }
+    },
+    "Sign in with Apple": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Acceso con Apple"
+          }
+        }
+      }
+    },
+    "Sign in with Apple to create a group or accept an invitation.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accede con Apple para crear un grupo o aceptar una invitación."
+          }
+        }
+      }
+    },
+    "Sign in with Apple was not completed. Your draft and invitation are kept.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El acceso con Apple no se ha completado. El borrador y la invitación se conservan."
+          }
+        }
+      }
+    },
+    "Sign out": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cerrar sesión"
+          }
+        }
+      }
+    },
+    "Sign-out could not be confirmed. Your access is kept so you can retry.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se ha podido confirmar el cierre de sesión. Conservamos el acceso para que puedas reintentarlo."
+          }
+        }
+      }
+    },
+    "Some selected products have changed or are no longer pending.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hay productos seleccionados que han cambiado o ya no están pendientes."
+          }
+        }
+      }
+    },
+    "Someone else has already used this invitation. Ask for a new link.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otra persona ya ha utilizado esta invitación. Pide un enlace nuevo."
+          }
+        }
+      }
+    },
+    "Specified store: %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tienda indicada: %@"
+          }
+        }
+      },
+      "comment": "The placeholder is the store name entered by the person."
+    },
+    "Specify a store": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Indica una tienda"
+          }
+        }
+      }
+    },
+    "Specify a store for each product before reviewing the draft.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Indica la tienda de cada producto antes de revisar el borrador."
+          }
+        }
+      }
+    },
+    "Store": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tienda"
+          }
+        }
+      }
+    },
+    "Store for “%@”": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tienda para «%@»"
+          }
+        }
+      },
+      "comment": "Store selection label. The placeholder is the store name found in the reviewed draft."
+    },
+    "Supermarket": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supermercado"
+          }
+        }
+      }
+    },
+    "Switching stores or leaving this screen does not confirm the purchase. Refresh to check for group changes.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambiar de tienda o salir de esta pantalla no confirma la compra. Actualiza para consultar cambios del grupo."
+          }
+        }
+      }
+    },
+    "The Apple Intelligence model is currently unavailable. Your draft is kept; you can retry later or continue manually.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El modelo de Apple Intelligence no está disponible en este momento. El borrador se conserva; puedes reintentar más tarde o continuar a mano."
+          }
+        }
+      }
+    },
+    "The draft can contain up to 50 products.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El borrador admite hasta 50 productos."
+          }
+        }
+      }
+    },
+    "The draft could not be saved on this device. Keep the app open; we will retry with your next change.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se ha podido guardar el borrador en este dispositivo. Conserva la app abierta; volveremos a intentarlo con el siguiente cambio."
+          }
+        }
+      }
+    },
+    "The group connection is not configured yet. You can prepare products in Add.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La conexión del grupo todavía no está configurada. Puedes preparar productos en Añadir."
+          }
+        }
+      }
+    },
+    "The group connection is not configured yet. You can prepare your draft manually.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La conexión del grupo todavía no está configurada. Puedes preparar tu borrador a mano."
+          }
+        }
+      }
+    },
+    "The invitation cannot be opened until the group connection is configured.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se puede abrir la invitación hasta configurar la conexión del grupo."
+          }
+        }
+      }
+    },
+    "The invitation has been revoked. Ask for a new link.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La invitación se ha revocado. Pide un enlace nuevo."
+          }
+        }
+      }
+    },
+    "The invitation has expired. Ask for a new link.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La invitación ha caducado. Pide un enlace nuevo."
+          }
+        }
+      }
+    },
+    "The model is not ready yet. You can continue manually and check again later.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El modelo aún no está listo. Puedes continuar a mano y volver a comprobarlo después."
+          }
+        }
+      }
+    },
+    "The operation could not be completed. Pending data is kept; try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se ha podido completar la operación. Los datos pendientes se conservan; vuelve a intentarlo."
+          }
+        }
+      }
+    },
+    "The operation is confirmed in the group.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La operación se ha confirmado en el grupo."
+          }
+        }
+      }
+    },
+    "The purchase is confirmed. Unselected products remain pending.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La compra se ha confirmado. Los productos no seleccionados siguen pendientes."
+          }
+        }
+      }
+    },
+    "The resource is unavailable or you do not have access. Refresh and try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El recurso no está disponible o no tienes acceso. Actualiza e inténtalo de nuevo."
+          }
+        }
+      }
+    },
+    "The result could not be confirmed. The original submission is kept so you can retry without duplicating products.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se ha podido confirmar el resultado. Conservamos el envío original para reintentarlo sin duplicar productos."
+          }
+        }
+      }
+    },
+    "The result would exceed 50 products. None were added; split the text and review the draft.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La propuesta superaría los 50 productos. No se ha añadido ninguno; divide el texto y revisa el borrador."
+          }
+        }
+      }
+    },
+    "The saved draft could not be restored. It is kept unchanged. Changes in this session will not be saved when you close the app.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se ha podido recuperar el borrador guardado. Lo conservamos sin modificar. Los cambios de esta sesión no se guardarán al cerrar la app."
+          }
+        }
+      }
+    },
+    "The saved invitation could not be prepared. Unlock the device and try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se ha podido preparar la invitación guardada. Desbloquea el dispositivo y vuelve a intentarlo."
+          }
+        }
+      }
+    },
+    "The server confirmed the batch, but the result still needs to be saved on this device. Retry to complete the same submission.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El servidor confirmó el lote, pero falta guardar su resolución en el dispositivo. Reintenta para completar el mismo envío."
+          }
+        }
+      }
+    },
+    "The service has asked you to wait before retrying. The original submission is kept.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El servicio ha pedido esperar antes de reintentar. Conservamos el envío original."
+          }
+        }
+      }
+    },
+    "The service is currently unavailable. Pending data is kept so you can retry.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El servicio no está disponible ahora. Conservamos los datos pendientes para reintentarlo."
+          }
+        }
+      }
+    },
+    "The submission has a conflict. Refresh and review the data before confirming again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El envío tiene un conflicto. Actualiza y revisa los datos antes de volver a confirmar."
+          }
+        }
+      }
+    },
+    "The submission is too large. Review the draft before confirming it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El envío es demasiado grande. Revisa el borrador antes de confirmarlo."
+          }
+        }
+      }
+    },
+    "The text could not be interpreted. Your draft is kept; you can retry or continue manually.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se ha podido interpretar el texto. El borrador se conserva; puedes reintentar o continuar a mano."
+          }
+        }
+      }
+    },
+    "The text is too long. Interpret a shorter list; your text is kept.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El texto es demasiado largo. Interpreta una lista más corta; tu texto se conserva."
+          }
+        }
+      }
+    },
+    "There are no products in the draft yet.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Todavía no hay productos en el borrador."
+          }
+        }
+      }
+    },
+    "This device does not support Apple Intelligence. You can add products manually.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este dispositivo no admite Apple Intelligence. Puedes añadir los productos a mano."
+          }
+        }
+      }
+    },
+    "This field contains unsupported control characters.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El campo contiene caracteres de control que no se admiten."
+          }
+        }
+      }
+    },
+    "This invitation link is not valid for this app.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El enlace de invitación no es válido para esta app."
+          }
+        }
+      }
+    },
+    "This link could not be saved. Open it again after unlocking the device.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se ha podido guardar este enlace. Vuelve a abrirlo después de desbloquear el dispositivo."
+          }
+        }
+      }
+    },
+    "This sign-in attempt could not be verified. Start again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se ha podido verificar este intento de acceso. Inícialo de nuevo."
+          }
+        }
+      }
+    },
+    "This sign-in attempt has expired. Prepare Sign in with Apple again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El intento ha caducado. Prepara de nuevo el acceso con Apple."
+          }
+        }
+      }
+    },
+    "This sign-in attempt is no longer valid. Start signing in with Apple again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este intento de acceso ya no es válido. Inicia de nuevo el acceso con Apple."
+          }
+        }
+      }
+    },
+    "This text could not be interpreted. You can add products manually.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se ha podido interpretar este texto. Puedes añadir los productos a mano."
+          }
+        }
+      }
+    },
+    "To correct products or quantities, return to the draft before confirming.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Para corregir productos o cantidades, vuelve al borrador antes de confirmar."
+          }
+        }
+      }
+    },
+    "To recover the submission, sign in with the same Apple Account that started it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Para recuperar el envío, accede con la misma cuenta de Apple que lo inició."
+          }
+        }
+      }
+    },
+    "Too many attempts. Wait a moment before retrying.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hay demasiados intentos. Espera un momento antes de reintentar."
+          }
+        }
+      }
+    },
+    "Transcription is unavailable in the selected language on this device. You can type the text or add products manually.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La transcripción en el idioma seleccionado no está disponible en este dispositivo. Puedes escribir el texto o añadir los productos a mano."
+          }
+        }
+      }
+    },
+    "Turn on Apple Intelligence in Settings to interpret text. You can still add products manually.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activa Apple Intelligence en Ajustes para interpretar texto. La entrada manual sigue disponible."
+          }
+        }
+      }
+    },
+    "Type or dictate": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escribe o dicta"
+          }
+        }
+      }
+    },
+    "Unnamed product": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Producto sin nombre"
+          }
+        }
+      }
+    },
+    "You can also open an invitation to join another group. Each account belongs to one group only.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "También puedes abrir una invitación para unirte a otro grupo. Cada cuenta pertenece a un solo grupo."
+          }
+        }
+      }
+    },
+    "You can interpret the text and review the products before adding them to the group.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Puedes interpretar el texto y revisar los productos antes de añadirlos al grupo."
+          }
+        }
+      }
+    },
+    "You have already accepted this invitation.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ya has aceptado esta invitación."
+          }
+        }
+      }
+    },
+    "Your account already belongs to a group. Refresh to check its status.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu cuenta ya pertenece a un grupo. Actualiza para consultar su estado."
+          }
+        }
+      }
+    },
+    "Your draft and pending invitation are kept while you sign in.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu borrador y la invitación pendiente se conservan durante el acceso."
+          }
+        }
+      }
+    },
+    "Your group": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu grupo"
+          }
+        }
+      }
+    },
+    "Your saved access could not be restored. Unlock the device and reopen the app; your data is kept without overwriting it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se ha podido recuperar el acceso guardado. Desbloquea el dispositivo y vuelve a abrir la app; conservamos los datos sin sobrescribirlos."
+          }
+        }
+      }
+    },
+    "Your session has expired or been revoked. Sign in again with the same Apple Account.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La sesión ha caducado o se ha revocado. Accede de nuevo con la misma cuenta de Apple."
+          }
+        }
+      }
+    },
+    "The purchase is confirmed, but the list could not be refreshed. Refresh before continuing.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La compra se ha confirmado, pero no se ha podido actualizar la lista. Actualiza antes de continuar."
+          }
+        }
+      }
+    },
+    "Transcription is unavailable on this device. You can type the text or add products manually.": {
+      "comment": "The transcription service is unavailable on this device; this does not imply an unsupported language.",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La transcripción no está disponible en este dispositivo. Puedes escribir el texto o añadir los productos a mano."
+          }
+        }
+      }
     }
   },
-  "version" : "1.0"
+  "version": "1.0"
 }

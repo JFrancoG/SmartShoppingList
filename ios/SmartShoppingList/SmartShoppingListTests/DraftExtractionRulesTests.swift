@@ -61,6 +61,30 @@ struct DraftExtractionRulesTests {
         }
     }
 
+    @Test(arguments: ["", " ", "\n\t\u{00a0}"])
+    func `Entirely blank model rows report no products`(blank: String) {
+        let rows = [
+            SuggestedProduct(name: blank, quantity: nil, store: nil),
+            SuggestedProduct(name: blank, quantity: blank, store: blank)
+        ]
+
+        #expect(throws: DraftInterpretationError.noProducts) {
+            try DraftExtractionRules.validate(rows, source: "The weather is nice today and I am going for a walk.")
+        }
+    }
+
+    @Test(arguments: [
+        [SuggestedProduct(name: " ", quantity: "2", store: nil)],
+        [SuggestedProduct(name: " ", quantity: nil, store: "Aldi")],
+        [SuggestedProduct(name: "bread", quantity: nil, store: "Aldi"),
+         SuggestedProduct(name: " ", quantity: nil, store: nil)]
+    ])
+    func `Blank names with meaningful fields or valid rows still reject the whole proposal`(rows: [SuggestedProduct]) {
+        #expect(throws: DraftInterpretationError.failed) {
+            try DraftExtractionRules.validate(rows, source: "Buy 2 loaves of bread at Aldi")
+        }
+    }
+
     private func product(_ name: String) -> SuggestedProduct {
         SuggestedProduct(name: name, quantity: nil, store: nil)
     }
