@@ -4,6 +4,8 @@ Estado: **alcance funcional aprobado** por el usuario el 18 de septiembre de 202
 
 Revisión del 19 de septiembre: selección provisional de productos y confirmación al finalizar la compra; iOS 27 como versión mínima y preferencia por Vapor 5, con Vapor 4 como alternativa autorizada si la versión 5 no resulta viable.
 
+Revisión de diseño del 23 de septiembre: sistema visual semántico y accesibilidad en cuatro apariencias, documentados para su implementación y validación en el acabado del MVP. No amplía funcionalidades ni acredita validación de la interfaz.
+
 Entrega: **27 de septiembre de 2026**. Las bases publican las 23:00 CET; el plan reserva margen y no depende de interpretar esa hora como tiempo adicional en Madrid.
 
 Esta especificación recoge el acuerdo de la conversación. Las decisiones técnicas que aún requieren una prueba se distinguen del comportamiento comprometido.
@@ -149,6 +151,18 @@ La FAQ pública consultada el 19 de septiembre aún indica sistemas 26. El usuar
 
 El cliente y el backend se implementan desde cero para el evento. La elección de una herramienta no acredita un despliegue ni una validación ya realizados.
 
+### Sistema de diseño y accesibilidad
+
+El [sistema de diseño](design-system.md) es la referencia de tokens, tipografía, espaciado, componentes y estados. Se inspira en el verde y amarillo del icono candidato aportado el 23 de septiembre: verde como acento interactivo y amarillo como apoyo con tinta oscura. Los estados de selección provisional, éxito, aviso y error se distinguen con texto, forma y semántica, además del color. El icono sigue siendo candidato; esta decisión no aprueba su publicación.
+
+- Soportar Light, Dark, Light con Aumentar contraste y Dark con Aumentar contraste, siguiendo las preferencias del sistema. Texto informativo propio ≥4,5:1 en normal y ≥7:1 en alto contraste; información gráfica esencial ≥3:1 frente al fondo adyacente real. Los pares autorizados y su [validación matemática](validation/design-system-contrast.md) son parte del contrato visual.
+- Mantener superficies sólidas en contenido propio y presentación nativa de navegación/controles; verificar por separado los materiales y su personalización en iOS 27, incluyendo Reducir transparencia. Respetar Reducir movimiento, Diferenciar sin color y las formas de botones.
+- Usar estilos tipográficos semánticos, Dynamic Type hasta el mayor tamaño de accesibilidad, Texto en negrita, reflujo y objetivos táctiles propios ≥44×44 pt. Las vistas se adaptan al espacio disponible sin perder acciones con teclado, traducciones o texto grande.
+- Aplicar el [protocolo de accesibilidad](accessibility.md) a los recorridos en español e inglés, con VoiceOver, controles alternativos, errores perceptibles y foco conservado. Los pendientes físicos ya registrados siguen abiertos hasta revalidarse.
+- Tomar WCAG 2.2 A/AA como base, interpretada para software nativo con WCAG2ICT y complementada por HIG actuales. El objetivo de 7:1 en HC no significa conformidad AAA global. La [revisión de fuentes](research/design-system-sources.md) incorpora WWDC26 y documentación W3C posterior a la referencia de iOS 26; WCAG 3 continúa como borrador.
+
+La documentación y los ratios no acreditan que los colores estén integrados ni que la app cumpla todos los criterios. La aceptación requiere medición de la interfaz renderizada y evidencia del recorrido completo. Este trabajo se integra en fase 3 sin añadir funciones al MVP.
+
 ### Estrategia de validación acordada
 
 - En el iPhone físico sin Apple Intelligence se comprobará el recorrido mediante entrada manual de productos y tienda, con revisión del borrador y confirmación explícita del guardado.
@@ -169,8 +183,9 @@ El cliente y el backend se implementan desde cero para el evento. La elección d
 8. Reintentar una finalización o confirmar concurrentemente un mismo producto no cuenta dos compras. Una nueva alta de otro miembro queda intacta; cancelar no cuenta como comprar. Los errores conservan la selección sin presentar éxito falso.
 9. Reiniciar app y servidor conserva los datos confirmados.
 10. Fallos de micrófono, IA o red tienen estados comprensibles y no presentan éxito falso.
-11. Los controles principales funcionan con VoiceOver y tamaños de texto grandes, comprobados en la interfaz real.
+11. Los recorridos esenciales funcionan con VoiceOver, texto de accesibilidad al máximo y controles alternativos en español e inglés, con foco y mensajes de error perceptibles, comprobados según el [protocolo de accesibilidad](accessibility.md).
 12. El repositorio incluye instrucciones verificadas para ejecutar cliente y servidor, configurar servicios y reproducir la demostración, sin secretos.
+13. El sistema de diseño se aplica de forma coherente en las cuatro apariencias; los pares sólidos y los componentes renderizados cumplen sus objetivos de contraste. Se verifican preferencias de accesibilidad, materiales y reflujo en iOS 27, sin presentar una validación de paleta como conformidad global del producto.
 
 ## 9. Fuera de la entrega del 27
 
@@ -195,3 +210,5 @@ Decisiones de la conversación del 18 de septiembre: el usuario elige Sign in wi
 Decisiones del 19 de septiembre: el usuario sustituye la compra inmediata por check por una selección provisional y un envío al finalizar. Los no marcados se mantienen pendientes; se usa la simplificación expresamente permitida de omitir la pregunta de eliminación. También solicita iOS 27, confirma autorización de los organizadores para exigirlo, y elige Vapor 5 si es viable, o Vapor 4 en caso contrario.
 
 Acuerdo de validación del 19 de septiembre: utilizar entrada manual de productos y tienda en el iPhone físico sin Apple Intelligence y comprobar Foundation Models en un simulador compatible del Mac, distinguiendo las evidencias de ambos entornos y manteniendo voz e IA en el alcance.
+
+Decisión documental del 23 de septiembre, a petición del usuario: definir una identidad coherente inspirada en el icono candidato y accesible en los cuatro modos, comprobar fuentes actuales Apple/W3C y conservar tokens, pares permitidos y protocolo en `docs`. La integración y el ensayo pertenecen a fase 3; esta revisión no los declara completados.

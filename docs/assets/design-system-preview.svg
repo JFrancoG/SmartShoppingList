@@ -1,0 +1,135 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1560" height="880" viewBox="0 0 1560 880" role="img" aria-labelledby="title desc">
+<title id="title">SmartShoppingList: cuatro apariencias</title>
+<desc id="desc">La misma lista de compra en claro, oscuro y ambas variantes con contraste aumentado. Dos productos seleccionados pendientes de confirmar. Diagrama de colores opacos, no captura de la app.</desc>
+<rect width="1560" height="880" fill="#F7FAF7"/>
+<text x="28" y="43" fill="#14291C" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="30" font-weight="700">SmartShoppingList · cuatro apariencias</text>
+<text x="28" y="72" fill="#405746" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="18" font-weight="400">Referencia de color · superficies opacas · no es una captura ni una auditoría de la app</text>
+<rect x="28" y="100" width="355" height="746" rx="20" fill="#F7FAF7" stroke="#687D6C" stroke-width="2"/>
+<text x="48" y="136" fill="#405746" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="17" font-weight="600">Light</text>
+<text x="48" y="181" fill="#14291C" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="30" font-weight="700">Comprar</text>
+<text x="48" y="215" fill="#14291C" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="22" font-weight="600">Mercadona</text>
+<text x="48" y="244" fill="#405746" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="17" font-weight="400">3 pendientes · 2 seleccionados</text>
+<rect x="44" y="268" width="323" height="78" rx="12" fill="#DDF1E2" stroke="none" stroke-width="2"/>
+<rect x="58" y="291" width="30" height="30" rx="7" fill="#006B3C" stroke="#006B3C" stroke-width="2"/>
+<path d="M 65 306 l 6 6 l 11 -14" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="104" y="298" fill="#14291C" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="20" font-weight="600">Tomates</text>
+<text x="104" y="325" fill="#006B3C" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="16" font-weight="400">1 kg · Seleccionado</text>
+<rect x="44" y="358" width="323" height="78" rx="12" fill="#DDF1E2" stroke="none" stroke-width="2"/>
+<rect x="58" y="381" width="30" height="30" rx="7" fill="#006B3C" stroke="#006B3C" stroke-width="2"/>
+<path d="M 65 396 l 6 6 l 11 -14" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="104" y="388" fill="#14291C" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="20" font-weight="600">Pan integral</text>
+<text x="104" y="415" fill="#006B3C" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="16" font-weight="400">1 unidad · Seleccionado</text>
+<rect x="44" y="448" width="323" height="78" rx="12" fill="#FFFFFF" stroke="none" stroke-width="2"/>
+<rect x="58" y="471" width="30" height="30" rx="7" fill="#FFFFFF" stroke="#687D6C" stroke-width="2"/>
+<text x="104" y="478" fill="#14291C" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="20" font-weight="600">Yogures</text>
+<text x="104" y="505" fill="#405746" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="16" font-weight="400">Sin seleccionar</text>
+<text x="48" y="565" fill="#405746" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="17" font-weight="400">Pendientes de confirmar</text>
+<rect x="44" y="585" width="323" height="58" rx="14" fill="#006B3C" stroke="none" stroke-width="2"/>
+<text x="63" y="621" fill="#FFFFFF" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="18" font-weight="600">Finalizar compra · 2 productos</text>
+<rect x="44" y="661" width="323" height="62" rx="12" fill="#FFF0BF" stroke="none" stroke-width="2"/>
+<text x="58" y="686" fill="#745000" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="17" font-weight="600">!  Sin conexión</text>
+<text x="58" y="710" fill="#14291C" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="16" font-weight="400">La selección se conserva</text>
+<text x="48" y="754" fill="#405746" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="16" font-weight="400">Marca y estados</text>
+<rect x="48" y="767" width="54" height="22" rx="5" fill="#006B3C" stroke="none" stroke-width="2"/>
+<rect x="113" y="767" width="54" height="22" rx="5" fill="#FFD34E" stroke="none" stroke-width="2"/>
+<rect x="178" y="767" width="54" height="22" rx="5" fill="#23632C" stroke="none" stroke-width="2"/>
+<rect x="243" y="767" width="54" height="22" rx="5" fill="#B3261E" stroke="none" stroke-width="2"/>
+<rect x="308" y="767" width="54" height="22" rx="5" fill="#185CA4" stroke="none" stroke-width="2"/>
+<text x="48" y="823" fill="#405746" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="16" font-weight="400">Texto neutro mínimo: 5.43:1</text>
+<rect x="411" y="100" width="355" height="746" rx="20" fill="#101A14" stroke="#91A895" stroke-width="2"/>
+<text x="431" y="136" fill="#C3D3C5" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="17" font-weight="600">Dark</text>
+<text x="431" y="181" fill="#F2F8F1" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="30" font-weight="700">Comprar</text>
+<text x="431" y="215" fill="#F2F8F1" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="22" font-weight="600">Mercadona</text>
+<text x="431" y="244" fill="#C3D3C5" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="17" font-weight="400">3 pendientes · 2 seleccionados</text>
+<rect x="427" y="268" width="323" height="78" rx="12" fill="#173F29" stroke="none" stroke-width="2"/>
+<rect x="441" y="291" width="30" height="30" rx="7" fill="#78DEA0" stroke="#78DEA0" stroke-width="2"/>
+<path d="M 448 306 l 6 6 l 11 -14" fill="none" stroke="#082113" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="487" y="298" fill="#F2F8F1" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="20" font-weight="600">Tomates</text>
+<text x="487" y="325" fill="#78DEA0" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="16" font-weight="400">1 kg · Seleccionado</text>
+<rect x="427" y="358" width="323" height="78" rx="12" fill="#173F29" stroke="none" stroke-width="2"/>
+<rect x="441" y="381" width="30" height="30" rx="7" fill="#78DEA0" stroke="#78DEA0" stroke-width="2"/>
+<path d="M 448 396 l 6 6 l 11 -14" fill="none" stroke="#082113" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="487" y="388" fill="#F2F8F1" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="20" font-weight="600">Pan integral</text>
+<text x="487" y="415" fill="#78DEA0" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="16" font-weight="400">1 unidad · Seleccionado</text>
+<rect x="427" y="448" width="323" height="78" rx="12" fill="#19271E" stroke="none" stroke-width="2"/>
+<rect x="441" y="471" width="30" height="30" rx="7" fill="#19271E" stroke="#91A895" stroke-width="2"/>
+<text x="487" y="478" fill="#F2F8F1" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="20" font-weight="600">Yogures</text>
+<text x="487" y="505" fill="#C3D3C5" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="16" font-weight="400">Sin seleccionar</text>
+<text x="431" y="565" fill="#C3D3C5" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="17" font-weight="400">Pendientes de confirmar</text>
+<rect x="427" y="585" width="323" height="58" rx="14" fill="#78DEA0" stroke="none" stroke-width="2"/>
+<text x="446" y="621" fill="#082113" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="18" font-weight="600">Finalizar compra · 2 productos</text>
+<rect x="427" y="661" width="323" height="62" rx="12" fill="#463615" stroke="none" stroke-width="2"/>
+<text x="441" y="686" fill="#FFD36A" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="17" font-weight="600">!  Sin conexión</text>
+<text x="441" y="710" fill="#F2F8F1" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="16" font-weight="400">La selección se conserva</text>
+<text x="431" y="754" fill="#C3D3C5" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="16" font-weight="400">Marca y estados</text>
+<rect x="431" y="767" width="54" height="22" rx="5" fill="#78DEA0" stroke="none" stroke-width="2"/>
+<rect x="496" y="767" width="54" height="22" rx="5" fill="#FFD36A" stroke="none" stroke-width="2"/>
+<rect x="561" y="767" width="54" height="22" rx="5" fill="#A6DA87" stroke="none" stroke-width="2"/>
+<rect x="626" y="767" width="54" height="22" rx="5" fill="#FFB4A9" stroke="none" stroke-width="2"/>
+<rect x="691" y="767" width="54" height="22" rx="5" fill="#B0D0FF" stroke="none" stroke-width="2"/>
+<text x="431" y="823" fill="#C3D3C5" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="16" font-weight="400">Texto neutro mínimo: 6.23:1</text>
+<rect x="794" y="100" width="355" height="746" rx="20" fill="#FFFFFF" stroke="#354F3C" stroke-width="2"/>
+<text x="814" y="136" fill="#203426" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="17" font-weight="600">HC Light</text>
+<text x="814" y="181" fill="#000000" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="30" font-weight="700">Comprar</text>
+<text x="814" y="215" fill="#000000" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="22" font-weight="600">Mercadona</text>
+<text x="814" y="244" fill="#203426" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="17" font-weight="400">3 pendientes · 2 seleccionados</text>
+<rect x="810" y="268" width="323" height="78" rx="12" fill="#E3F4E7" stroke="none" stroke-width="2"/>
+<rect x="824" y="291" width="30" height="30" rx="7" fill="#004D29" stroke="#004D29" stroke-width="2"/>
+<path d="M 831 306 l 6 6 l 11 -14" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="870" y="298" fill="#000000" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="20" font-weight="600">Tomates</text>
+<text x="870" y="325" fill="#004D29" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="16" font-weight="400">1 kg · Seleccionado</text>
+<rect x="810" y="358" width="323" height="78" rx="12" fill="#E3F4E7" stroke="none" stroke-width="2"/>
+<rect x="824" y="381" width="30" height="30" rx="7" fill="#004D29" stroke="#004D29" stroke-width="2"/>
+<path d="M 831 396 l 6 6 l 11 -14" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="870" y="388" fill="#000000" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="20" font-weight="600">Pan integral</text>
+<text x="870" y="415" fill="#004D29" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="16" font-weight="400">1 unidad · Seleccionado</text>
+<rect x="810" y="448" width="323" height="78" rx="12" fill="#FFFFFF" stroke="none" stroke-width="2"/>
+<rect x="824" y="471" width="30" height="30" rx="7" fill="#FFFFFF" stroke="#354F3C" stroke-width="2"/>
+<text x="870" y="478" fill="#000000" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="20" font-weight="600">Yogures</text>
+<text x="870" y="505" fill="#203426" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="16" font-weight="400">Sin seleccionar</text>
+<text x="814" y="565" fill="#203426" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="17" font-weight="400">Pendientes de confirmar</text>
+<rect x="810" y="585" width="323" height="58" rx="14" fill="#004D29" stroke="none" stroke-width="2"/>
+<text x="829" y="621" fill="#FFFFFF" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="18" font-weight="600">Finalizar compra · 2 productos</text>
+<rect x="810" y="661" width="323" height="62" rx="12" fill="#FFF2C6" stroke="none" stroke-width="2"/>
+<text x="824" y="686" fill="#533700" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="17" font-weight="600">!  Sin conexión</text>
+<text x="824" y="710" fill="#000000" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="16" font-weight="400">La selección se conserva</text>
+<text x="814" y="754" fill="#203426" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="16" font-weight="400">Marca y estados</text>
+<rect x="814" y="767" width="54" height="22" rx="5" fill="#004D29" stroke="none" stroke-width="2"/>
+<rect x="879" y="767" width="54" height="22" rx="5" fill="#FFD34E" stroke="none" stroke-width="2"/>
+<rect x="944" y="767" width="54" height="22" rx="5" fill="#214A19" stroke="none" stroke-width="2"/>
+<rect x="1009" y="767" width="54" height="22" rx="5" fill="#850F0A" stroke="none" stroke-width="2"/>
+<rect x="1074" y="767" width="54" height="22" rx="5" fill="#163F77" stroke="none" stroke-width="2"/>
+<text x="814" y="823" fill="#203426" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="16" font-weight="400">Texto neutro mínimo: 8.22:1</text>
+<rect x="1177" y="100" width="355" height="746" rx="20" fill="#000000" stroke="#CDDFCF" stroke-width="2"/>
+<text x="1197" y="136" fill="#E1EDE3" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="17" font-weight="600">HC Dark</text>
+<text x="1197" y="181" fill="#FFFFFF" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="30" font-weight="700">Comprar</text>
+<text x="1197" y="215" fill="#FFFFFF" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="22" font-weight="600">Mercadona</text>
+<text x="1197" y="244" fill="#E1EDE3" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="17" font-weight="400">3 pendientes · 2 seleccionados</text>
+<rect x="1193" y="268" width="323" height="78" rx="12" fill="#102A19" stroke="none" stroke-width="2"/>
+<rect x="1207" y="291" width="30" height="30" rx="7" fill="#9AF3B7" stroke="#9AF3B7" stroke-width="2"/>
+<path d="M 1214 306 l 6 6 l 11 -14" fill="none" stroke="#000000" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="1253" y="298" fill="#FFFFFF" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="20" font-weight="600">Tomates</text>
+<text x="1253" y="325" fill="#9AF3B7" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="16" font-weight="400">1 kg · Seleccionado</text>
+<rect x="1193" y="358" width="323" height="78" rx="12" fill="#102A19" stroke="none" stroke-width="2"/>
+<rect x="1207" y="381" width="30" height="30" rx="7" fill="#9AF3B7" stroke="#9AF3B7" stroke-width="2"/>
+<path d="M 1214 396 l 6 6 l 11 -14" fill="none" stroke="#000000" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="1253" y="388" fill="#FFFFFF" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="20" font-weight="600">Pan integral</text>
+<text x="1253" y="415" fill="#9AF3B7" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="16" font-weight="400">1 unidad · Seleccionado</text>
+<rect x="1193" y="448" width="323" height="78" rx="12" fill="#0B120D" stroke="none" stroke-width="2"/>
+<rect x="1207" y="471" width="30" height="30" rx="7" fill="#0B120D" stroke="#CDDFCF" stroke-width="2"/>
+<text x="1253" y="478" fill="#FFFFFF" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="20" font-weight="600">Yogures</text>
+<text x="1253" y="505" fill="#E1EDE3" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="16" font-weight="400">Sin seleccionar</text>
+<text x="1197" y="565" fill="#E1EDE3" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="17" font-weight="400">Pendientes de confirmar</text>
+<rect x="1193" y="585" width="323" height="58" rx="14" fill="#9AF3B7" stroke="none" stroke-width="2"/>
+<text x="1212" y="621" fill="#000000" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="18" font-weight="600">Finalizar compra · 2 productos</text>
+<rect x="1193" y="661" width="323" height="62" rx="12" fill="#322507" stroke="none" stroke-width="2"/>
+<text x="1207" y="686" fill="#FFE29A" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="17" font-weight="600">!  Sin conexión</text>
+<text x="1207" y="710" fill="#FFFFFF" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="16" font-weight="400">La selección se conserva</text>
+<text x="1197" y="754" fill="#E1EDE3" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="16" font-weight="400">Marca y estados</text>
+<rect x="1197" y="767" width="54" height="22" rx="5" fill="#9AF3B7" stroke="none" stroke-width="2"/>
+<rect x="1262" y="767" width="54" height="22" rx="5" fill="#FFE29A" stroke="none" stroke-width="2"/>
+<rect x="1327" y="767" width="54" height="22" rx="5" fill="#C5F2A9" stroke="none" stroke-width="2"/>
+<rect x="1392" y="767" width="54" height="22" rx="5" fill="#FFCBC2" stroke="none" stroke-width="2"/>
+<rect x="1457" y="767" width="54" height="22" rx="5" fill="#D0E3FF" stroke="none" stroke-width="2"/>
+<text x="1197" y="823" fill="#E1EDE3" font-family="-apple-system, BlinkMacSystemFont, Arial, sans-serif" font-size="16" font-weight="400">Texto neutro mínimo: 11.48:1</text>
+</svg>
