@@ -93,7 +93,8 @@ struct ShoppingDraftViewModelTests {
         try interpreter.fail(.unavailable)
         await firstAttempt.value
 
-        let notice = try #require(model.notice)
+        var notice = try #require(model.notice)
+        notice.locale = Locale(identifier: "es")
         #expect(String(localized: notice).contains("modelo de Apple Intelligence no está disponible"))
         #expect(model.items == [existing])
         #expect(model.text == "dos peras en Día")

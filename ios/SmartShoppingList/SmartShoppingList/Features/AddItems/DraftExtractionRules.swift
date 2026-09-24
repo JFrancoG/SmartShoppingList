@@ -4,7 +4,14 @@ enum DraftExtractionRules {
     /// Rejects the whole proposal when a name has no distinct, ordered mention in the source.
     /// This checks literal grounding; the model still determines shopping intent and field relationships.
     static func validate(_ products: [SuggestedProduct], source: String) throws {
-        guard !products.isEmpty else { throw DraftInterpretationError.noProducts }
+        // A model can represent no matches with blank rows. Never discard a blank row from a mixed proposal.
+        guard products.contains(where: { product in
+            !normalizedWhitespace(product.name).isEmpty
+                || !normalizedWhitespace(product.quantity ?? "").isEmpty
+                || !normalizedWhitespace(product.store ?? "").isEmpty
+        }) else {
+            throw DraftInterpretationError.noProducts
+        }
         let input = normalizedWhitespace(source)
         var cursor = input.startIndex
 

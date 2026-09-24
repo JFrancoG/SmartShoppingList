@@ -34,7 +34,7 @@ actor SpeechCaptureService: SpeechCapturing {
     private var isFinishing = false
     private var isStopping = false
 
-    init(localeIdentifier: String = "es-ES") {
+    init(localeIdentifier: String) {
         self.localeIdentifier = localeIdentifier
     }
 

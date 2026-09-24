@@ -7,12 +7,12 @@ struct DraftItemEditor: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("Producto", text: $viewModel.editorItem.name, axis: .vertical)
-                        .accessibilityHint("Incluye las variantes que necesitas, por ejemplo sin lactosa.")
-                    TextField("Cantidad, opcional", text: $viewModel.editorItem.quantity, axis: .vertical)
-                    TextField("Tienda", text: $viewModel.editorItem.store, axis: .vertical)
+                    TextField("Product", text: $viewModel.editorItem.name, axis: .vertical)
+                        .accessibilityHint("Include any variants you need, such as lactose-free.")
+                    TextField("Quantity, optional", text: $viewModel.editorItem.quantity, axis: .vertical)
+                    TextField("Store", text: $viewModel.editorItem.store, axis: .vertical)
                 } footer: {
-                    Text("Nombre: hasta 160 caracteres. Cantidad y tienda: hasta 80. La cantidad es opcional.")
+                    Text("Name: up to 160 characters. Quantity and store: up to 80. Quantity is optional.")
                 }
 
                 if let error = viewModel.editorError {
@@ -26,16 +26,16 @@ struct DraftItemEditor: View {
                     }
                 }
             }
-            .navigationTitle("Producto")
+            .navigationTitle("Product")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancelar") {
+                    Button("Cancel") {
                         viewModel.cancelEditor()
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Aplicar") {
+                    Button("Apply") {
                         viewModel.saveEditor()
                     }
                 }

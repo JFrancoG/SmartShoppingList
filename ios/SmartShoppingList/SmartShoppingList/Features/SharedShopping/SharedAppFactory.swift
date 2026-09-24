@@ -3,9 +3,10 @@ import Foundation
 @MainActor
 enum SharedAppFactory {
     static func make() -> SharedShoppingViewModel {
+        let language = AppLanguage.current
         let draft = ShoppingDraftViewModel(
-            interpreter: FoundationModelsDraftInterpreter(),
-            speech: SpeechCaptureService(),
+            interpreter: FoundationModelsDraftInterpreter(appLocale: language.locale),
+            speech: SpeechCaptureService(localeIdentifier: language.locale.identifier),
             persistence: FileDraftPersistence(
                 fileURL: URL.applicationSupportDirectory.appending(path: "SmartShoppingList/draft-v1.json")
             )

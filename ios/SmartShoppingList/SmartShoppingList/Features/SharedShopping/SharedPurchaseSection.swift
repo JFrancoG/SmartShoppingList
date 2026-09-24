@@ -6,7 +6,7 @@ struct SharedPurchaseSection: View {
     var body: some View {
         Section {
             if viewModel.items.isEmpty && !viewModel.isBusy {
-                Text("Sin productos cargados. Actualiza para consultar esta tienda.")
+                Text("No products loaded. Refresh to check this store.")
                     .foregroundStyle(.secondary)
             }
             ForEach(viewModel.items) { item in
@@ -31,21 +31,21 @@ struct SharedPurchaseSection: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(!viewModel.canTogglePurchaseItem(item))
-                .accessibilityValue(viewModel.isPurchaseSelected(item) ? Text("Seleccionado") : Text("Sin seleccionar"))
-                .accessibilityHint("Cambia la selección local. La compra se guarda al pulsar Finalizar compra.")
+                .accessibilityValue(viewModel.isPurchaseSelected(item) ? Text("Selected") : Text("Not selected"))
+                .accessibilityHint("Changes the local selection. The purchase is saved when you tap Finish shopping.")
             }
         } header: {
-            Text("Pendientes · \(viewModel.selectedStoreName)")
+            Text("Pending · \(viewModel.selectedStoreName)")
         } footer: {
-            Text("Marca los productos que vas a comprar. Los demás seguirán pendientes.")
+            Text("Select the products you are buying. The others will remain pending.")
         }
 
         Section {
-            Text("Seleccionados: \(viewModel.purchaseSelection.count) de 50 como máximo")
+            Text("Selected: \(viewModel.purchaseSelection.count) of up to 50")
             if viewModel.purchaseSelectionNeedsReview {
-                Label("Hay productos seleccionados que han cambiado o ya no están pendientes.", systemImage: "exclamationmark.triangle")
+                Label("Some selected products have changed or are no longer pending.", systemImage: "exclamationmark.triangle")
                     .fixedSize(horizontal: false, vertical: true)
-                Button("Desmarcar los productos que han cambiado") {
+                Button("Deselect changed products") {
                     viewModel.discardChangedPurchaseSelections()
                 }
                 .disabled(!viewModel.canMutate)
@@ -62,11 +62,11 @@ struct SharedPurchaseSection: View {
                 }
             }
             .disabled(!viewModel.canFinalizePurchase)
-            .accessibilityHint("Confirma únicamente los productos seleccionados de esta tienda para todo el grupo.")
+            .accessibilityHint("Confirms only the selected products from this store for the whole group.")
         } header: {
-            Text("Confirmar compra")
+            Text("Confirm purchase")
         } footer: {
-            Text("Cambiar de tienda o salir de esta pantalla no confirma la compra. Actualiza para consultar cambios del grupo.")
+            Text("Switching stores or leaving this screen does not confirm the purchase. Refresh to check for group changes.")
         }
     }
 }

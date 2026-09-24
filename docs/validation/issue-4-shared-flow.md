@@ -2,6 +2,17 @@
 
 Evidencia local inicial: 19 de septiembre de 2026, CEST; ensayo físico ampliado el 21 de septiembre. Trabajo en `codex/issue-4-shared-shopping-flow`, iniciado sobre `2f3ee14`. Seguimiento: [#4](https://github.com/JFrancoG/SmartShoppingList/issues/4). Las secciones distinguen pruebas locales, comprobaciones HTTP y resultados físicos comunicados por el usuario; no acreditan entrega en `main`.
 
+## Estado vigente — revisión del 24 de septiembre
+
+Las secciones fechadas conservan el estado observado en cada ensayo; sus pendientes históricos no sustituyen este resumen. [#4](https://github.com/JFrancoG/SmartShoppingList/issues/4) y [PR #9](https://github.com/JFrancoG/SmartShoppingList/pull/9) registran los ensayos alojados posteriores:
+
+- El 23 de septiembre, el usuario confirmó en iPhone 14 el rechazo por caducidad de una invitación creada, según comunica, 26–27 horas antes: «La invitación ha caducado. Pide un enlace nuevo.». No se capturó HTTP ni se verificaron directamente las marcas de tiempo del servidor.
+- Después, una tercera cuenta Apple normal aceptó una invitación nueva; el grupo pasó a tres miembros. Al abrir el mismo enlace con su cuenta habitual, ya miembro, el usuario confirmó «Otra persona ya ha utilizado esta invitación. Pide un enlace de nuevo.». Acredita el rechazo presentado tras consumo por otra identidad, sin inspección de la base de producción.
+- Mail/Mensajes, AirDrop y rechazo del enlace alterado ya cuentan con evidencia manual descrita abajo. Atomicidad, rollback, replay y aislamiento tienen cobertura automatizada y ensayo HTTP Linux; acceso compartido y reintento tienen además evidencia física. No se atribuye al corte de red previo al envío una pérdida de respuesta después del commit.
+- La localización y sus ensayos ES/EN, VoiceOver inglés acotado y fechas UK/US están publicados en [PR #14](https://github.com/JFrancoG/SmartShoppingList/pull/14), con [informe en `913d50d`](https://github.com/JFrancoG/SmartShoppingList/blob/913d50d084f62a0e70046c750102981295b0bae3/docs/validation/issue-13-localization.md). Son cambios posteriores a #9 y dependientes de #12; no se atribuyen al código de #9 ni se consideran entregados en `main`.
+
+La revisión de entrega conserva el orden #9 → #12 → #14. #7 y fase 3 mantienen los pendientes de accesibilidad, permisos y matriz completa; los cierres de Foundation Models en previews tienen el tratamiento limitado documentado en #13. No se repiten pruebas ni se acredita la cadena completa IA → revisión → grupo → segundo cliente: sus tramos siguen comprobados por separado. Merge, cierre de issues y retirada de ramas no se han realizado.
+
 ## Resultado implementado
 
 - Backend: challenge y canje Apple, JWKS, concesiones cifradas, sesiones persistentes, grupo, invitaciones, lotes atómicos con recibos idempotentes, tiendas y pendientes paginados. PostgreSQL conserva las restricciones y arbitra las carreras.
@@ -315,13 +326,13 @@ El usuario confirma después los dos rechazos sobre un enlace con identificador 
 
 El usuario autorizó consolidar este informe y publicarlo mediante commit y push antes de preparar el bloque de compra. El commit remoto verificado se registra en #4 y PR #9 después de la publicación. Se permite continuar con la preparación del siguiente bloque manteniendo los límites anteriores; no se cierran #4, #7, el hito ni la PR, ni se autoriza merge o eliminación de rama.
 
-## Pendiente para acreditar el bloque completo
+## Pendientes vigentes de entrega y validación
 
-El fallo histórico de assets del 21 de septiembre (23:38 CEST, `com.apple.UnifiedAssetFramework`, código 5000, seguido de `ModelManagerError`) dejó de bloquear los ensayos en español: el 22 de septiembre se confirmó interpretación real, dictado y el recorrido integrado en Mac, además de dictado en iPhone 14. Sus entornos y límites están registrados arriba. Esa evidencia no completa inglés ni los hallazgos de accesibilidad pendientes.
+Los rechazos alojados de caducidad y consumo por otra identidad ya están confirmados; el resumen inicial de este informe recoge su alcance. Los ensayos ingleses y regionales están publicados en #14, sin sustituir los criterios amplios de #7.
 
-- Completar los rechazos alojados de invitaciones caducadas sin consumir y consumidas por otra identidad. Mail/Mensajes y el rechazo del enlace alterado ya quedaron acreditados el 22 de septiembre; conservar la distinción respecto de las pruebas automatizadas, del enlace revocado y de la conservación durante el acceso mediante AirDrop descritos arriba.
-- Completar voz/IA, permisos y accesibilidad con interacción, conservando la dependencia #7 y la evidencia física del borrador ya descrita. La configuración iOS y esta evidencia están publicadas en `d2bd13b`; hardware y versiones principales de los clientes constan arriba.
+- Integrar las PR en orden #9 → #12 → #14, revisando el diff y estado de cada PR al cambiar su base a `main` después de integrar la anterior. La evidencia bilingüe no justifica cerrar #7 ni declarar terminada la fase 3.
+- Completar los pendientes reales de permisos, accesibilidad con interacción, foco, anuncios y visibilidad de avisos en #7/fase 3; conservar los resultados ya realizados por entorno sin repetirlos por un mero cambio documental.
 - Mantener explícito el presupuesto del alojamiento antes de cualquier contratación o ampliación; el despliegue de prueba no autoriza gastos nuevos.
-- Revisión y merge de la PR, cierre de issues y retirada de rama pendientes de completar los criterios y recibir la autorización de entrega. Una PR en borrador permite revisar el trabajo sin acreditar esos pasos.
+- El 24 de septiembre el usuario autoriza publicar las correcciones, integrar #9 → #12 → #14 y cerrar sus issues y ramas tras verificar la entrega. La ejecución definitiva se registra en GitHub; esta autorización no acredita por sí sola el merge o el cierre.
 
-La issue permanece abierta. El 19 de septiembre se autorizó guardar y publicar este punto de control mediante commit y push en `codex/issue-4-shared-shopping-flow`, y continuar con los pendientes antes de lanzar la PR. La publicación verificada y su commit se registran en la issue; este documento no acredita el cierre del bloque. EXC-002 quedó aceptada por decisión separada del 21 de septiembre; la PR #9 continúa en borrador.
+En este punto documental la issue permanece abierta y la PR #9 continúa en borrador; la ejecución de la entrega autorizada se registra en GitHub. EXC-002 conserva exclusivamente su alcance aceptado; no cubre los cierres de previews. Las autorizaciones históricas de publicación no equivalen a haber realizado el merge o el cierre.

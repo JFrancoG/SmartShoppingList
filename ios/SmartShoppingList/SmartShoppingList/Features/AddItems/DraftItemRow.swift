@@ -22,7 +22,7 @@ struct DraftItemRow: View {
         VStack(alignment: .leading, spacing: sectionSpacing) {
             VStack(alignment: .leading, spacing: detailSpacing) {
                 if item.name.isEmpty {
-                    Text("Producto sin nombre")
+                    Text("Unnamed product")
                         .font(.headline)
                 } else {
                     Text(item.name)
@@ -30,15 +30,15 @@ struct DraftItemRow: View {
                 }
 
                 if item.quantity.isEmpty {
-                    Text("Cantidad no indicada")
+                    Text("Quantity not specified")
                         .foregroundStyle(.secondary)
                 } else {
-                    Text("Cantidad: \(item.quantity)")
+                    Text("Quantity: \(item.quantity)")
                         .foregroundStyle(.secondary)
                 }
 
                 if item.store.isEmpty {
-                    Label("Indica una tienda", systemImage: "exclamationmark.circle")
+                    Label("Specify a store", systemImage: "exclamationmark.circle")
                 } else {
                     Label(item.store, systemImage: "storefront")
                 }
@@ -47,19 +47,19 @@ struct DraftItemRow: View {
             .accessibilityElement(children: .combine)
 
             actionsLayout {
-                Button("Editar", systemImage: "pencil") {
+                Button("Edit", systemImage: "pencil") {
                     onEdit()
                 }
                 .fixedSize(horizontal: false, vertical: true)
-                .accessibilityLabel("Editar \(item.name)")
+                .accessibilityLabel("Edit \(item.name)")
                 if !dynamicTypeSize.isAccessibilitySize {
                     Spacer()
                 }
-                Button("Quitar", systemImage: "trash", role: .destructive) {
+                Button("Remove", systemImage: "trash", role: .destructive) {
                     onRemove()
                 }
                 .fixedSize(horizontal: false, vertical: true)
-                .accessibilityLabel("Quitar \(item.name)")
+                .accessibilityLabel("Remove \(item.name)")
             }
             .buttonStyle(.borderless)
         }

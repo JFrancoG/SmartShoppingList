@@ -6,10 +6,10 @@ struct SharedRootView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            Tab("Añadir", systemImage: "plus.circle", value: SharedTab.add) {
+            Tab("Add", systemImage: "plus.circle", value: SharedTab.add) {
                 AddItemsView(viewModel: viewModel.draft, shared: viewModel)
             }
-            Tab("Comprar", systemImage: "cart", value: SharedTab.shop) {
+            Tab("Shop", systemImage: "cart", value: SharedTab.shop) {
                 SharedGroupView(viewModel: viewModel)
             }
         }

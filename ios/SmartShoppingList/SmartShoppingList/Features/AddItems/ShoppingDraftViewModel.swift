@@ -69,12 +69,12 @@ final class ShoppingDraftViewModel {
 
     var availabilityMessage: LocalizedStringResource {
         switch availability {
-        case .available: "Puedes interpretar el texto y revisar los productos antes de añadirlos al grupo."
-        case .deviceNotEligible: "Este dispositivo no admite Apple Intelligence. Puedes añadir los productos a mano."
-        case .intelligenceDisabled: "Activa Apple Intelligence en Ajustes para interpretar texto. La entrada manual sigue disponible."
-        case .modelNotReady: "El modelo aún no está listo. Puedes continuar a mano y volver a comprobarlo después."
-        case .unsupportedLanguage: "La interpretación en español no está disponible. Puedes continuar a mano."
-        case .unavailable: "La interpretación no está disponible ahora. Puedes continuar a mano."
+        case .available: "You can interpret the text and review the products before adding them to the group."
+        case .deviceNotEligible: "This device does not support Apple Intelligence. You can add products manually."
+        case .intelligenceDisabled: "Turn on Apple Intelligence in Settings to interpret text. You can still add products manually."
+        case .modelNotReady: "The model is not ready yet. You can continue manually and check again later."
+        case .unsupportedLanguage: "Interpretation is unavailable in the selected language. You can continue manually."
+        case .unavailable: "Interpretation is currently unavailable. You can continue manually."
         }
     }
 
@@ -93,7 +93,7 @@ final class ShoppingDraftViewModel {
             }
         } catch {
             storageBlocked = true
-            persistenceNotice = "No se ha podido recuperar el borrador guardado. Lo conservamos sin modificar. Los cambios de esta sesión no se guardarán al cerrar la app."
+            persistenceNotice = "The saved draft could not be restored. It is kept unchanged. Changes in this session will not be saved when you close the app."
         }
     }
 
@@ -131,7 +131,7 @@ final class ShoppingDraftViewModel {
                 items[index] = saved
             } else {
                 guard items.count < 50 else {
-                    editorError = "El borrador admite hasta 50 productos."
+                    editorError = "The draft can contain up to 50 products."
                     return
                 }
                 items.append(saved)
@@ -346,7 +346,7 @@ final class ShoppingDraftViewModel {
                     try await persistence.save(snapshot)
                     persistenceNotice = nil
                 } catch {
-                    persistenceNotice = "No se ha podido guardar el borrador en este dispositivo. Conserva la app abierta; volveremos a intentarlo con el siguiente cambio."
+                    persistenceNotice = "The draft could not be saved on this device. Keep the app open; we will retry with your next change."
                 }
             }
             saveTask = nil
@@ -355,38 +355,39 @@ final class ShoppingDraftViewModel {
 
     private static func validationMessage(_ error: DraftValidationError) -> LocalizedStringResource {
         switch error {
-        case .emptyBatch: return "Añade al menos un producto para revisar el borrador."
-        case .tooManyItems: return "El borrador admite hasta 50 productos."
+        case .emptyBatch: return "Add at least one product to review the draft."
+        case .tooManyItems: return "The draft can contain up to 50 products."
         case .invalidField(_, let field, let reason):
             switch (field, reason) {
-            case (.name, .required): return "Escribe el nombre del producto."
-            case (.store, .required): return "Indica la tienda de cada producto antes de revisar el borrador."
-            case (.name, .tooLong): return "Acorta el nombre del producto: admite hasta 160 caracteres Unicode."
-            case (.quantity, .tooLong): return "Acorta la cantidad: admite hasta 80 caracteres Unicode."
-            case (.store, .tooLong): return "Acorta la tienda: admite hasta 80 caracteres Unicode."
-            case (_, .invalidCharacters): return "El campo contiene caracteres de control que no se admiten."
-            case (.quantity, .required): return "Revisa la cantidad del producto."
+            case (.name, .required): return "Enter the product name."
+            case (.store, .required): return "Specify a store for each product before reviewing the draft."
+            case (.name, .tooLong): return "Shorten the product name: up to 160 Unicode characters."
+            case (.quantity, .tooLong): return "Shorten the quantity: up to 80 Unicode characters."
+            case (.store, .tooLong): return "Shorten the store name: up to 80 Unicode characters."
+            case (_, .invalidCharacters): return "This field contains unsupported control characters."
+            case (.quantity, .required): return "Review the product quantity."
             }
         }
     }
 
     private static func interpretationMessage(_ error: any Error) -> LocalizedStringResource {
         switch error as? DraftInterpretationError {
-        case .inputTooLong: "El texto es demasiado largo. Interpreta una lista más corta; tu texto se conserva."
-        case .tooManyProducts: "La propuesta superaría los 50 productos. No se ha añadido ninguno; divide el texto y revisa el borrador."
-        case .noProducts: "No se han encontrado productos. Puedes reformular el texto o añadirlos a mano."
-        case .refused: "No se ha podido interpretar este texto. Puedes añadir los productos a mano."
-        case .unavailable: "El modelo de Apple Intelligence no está disponible en este momento. El borrador se conserva; puedes reintentar más tarde o continuar a mano."
-        case .failed, .none: "No se ha podido interpretar el texto. El borrador se conserva; puedes reintentar o continuar a mano."
+        case .inputTooLong: "The text is too long. Interpret a shorter list; your text is kept."
+        case .tooManyProducts: "The result would exceed 50 products. None were added; split the text and review the draft."
+        case .noProducts: "No products were found. You can rephrase the text or add them manually."
+        case .refused: "This text could not be interpreted. You can add products manually."
+        case .unavailable: "The Apple Intelligence model is currently unavailable. Your draft is kept; you can retry later or continue manually."
+        case .failed, .none: "The text could not be interpreted. Your draft is kept; you can retry or continue manually."
         }
     }
 
     private static func speechMessage(_ error: any Error) -> LocalizedStringResource {
         switch error as? SpeechCaptureError {
-        case .permissionDenied: "El micrófono no tiene permiso. Puedes permitirlo en Ajustes o escribir los productos a mano."
-        case .unavailable, .unsupportedLocale: "La transcripción en español no está disponible en este dispositivo. Puedes escribir el texto o añadir los productos a mano."
-        case .microphoneUnavailable: "No hay un micrófono disponible. Puedes continuar a mano."
-        default: "La grabación se ha interrumpido. El texto reconocido se conserva; puedes continuar a mano o volver a dictar."
+        case .permissionDenied: "Microphone access is not allowed. You can allow it in Settings or enter products manually."
+        case .unavailable: "Transcription is unavailable on this device. You can type the text or add products manually."
+        case .unsupportedLocale: "Transcription is unavailable in the selected language on this device. You can type the text or add products manually."
+        case .microphoneUnavailable: "No microphone is available. You can continue manually."
+        default: "Recording was interrupted. The recognized text is kept; you can continue manually or dictate again."
         }
     }
 }

@@ -12,54 +12,54 @@ struct DraftInputSection: View {
 
     var body: some View {
         Section {
-            TextField("Por ejemplo: jabón, cerveza y yogures en Mercadona", text: $viewModel.text, axis: .vertical)
+            TextField("For example: bread at Aldi", text: $viewModel.text, axis: .vertical)
                 .lineLimit(3...)
-                .accessibilityLabel("Texto de la compra")
+                .accessibilityLabel("Shopping text")
                 .disabled(isDictating || !viewModel.hasLoaded)
 
             switch viewModel.activity {
             case .idle:
-                Button("Dictar", systemImage: "mic") {
+                Button("Dictate", systemImage: "mic") {
                     viewModel.startDictation()
                 }
                 .disabled(!viewModel.hasLoaded)
-                Button("Interpretar texto", systemImage: "sparkles") {
+                Button("Interpret text", systemImage: "sparkles") {
                     viewModel.interpretText()
                 }
                 .disabled(!viewModel.canInterpret)
             case .interpreting:
-                ProgressView("Interpretando el texto…")
-                Button("Cancelar interpretación", role: .cancel) {
+                ProgressView("Interpreting text…")
+                Button("Cancel interpretation", role: .cancel) {
                     viewModel.cancelInterpretation()
                 }
             case .preparingSpeech:
-                ProgressView("Preparando el dictado…")
-                Button("Cancelar dictado", role: .cancel) {
+                ProgressView("Preparing dictation…")
+                Button("Cancel dictation", role: .cancel) {
                     viewModel.cancelDictation()
                 }
             case .recording:
-                Label("Escuchando…", systemImage: "waveform")
-                Button("Terminar dictado", systemImage: "stop.fill") {
+                Label("Listening…", systemImage: "waveform")
+                Button("Finish dictation", systemImage: "stop.fill") {
                     viewModel.finishDictation()
                 }
-                Button("Cancelar dictado", role: .cancel) {
+                Button("Cancel dictation", role: .cancel) {
                     viewModel.cancelDictation()
                 }
             case .finishingSpeech:
-                ProgressView("Terminando el dictado…")
-                Button("Cancelar dictado", role: .cancel) {
+                ProgressView("Finishing dictation…")
+                Button("Cancel dictation", role: .cancel) {
                     viewModel.cancelDictation()
                 }
             }
 
             if viewModel.availability != .available {
-                Button("Comprobar disponibilidad") {
+                Button("Check availability") {
                     viewModel.refreshAvailability()
                 }
                 .disabled(viewModel.activity != .idle)
             }
         } header: {
-            Text("Escribe o dicta")
+            Text("Type or dictate")
         } footer: {
             Text(viewModel.availabilityMessage)
         }

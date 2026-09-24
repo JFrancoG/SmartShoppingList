@@ -664,6 +664,8 @@ extension SharedShoppingViewModelTests {
         #expect(model.items.count == 4)
         #expect(!model.canTogglePurchaseItem(items[1]))
         #expect(!model.canFinalizePurchase)
-        #expect(model.notice == "La compra se ha confirmado, pero no se ha podido actualizar la lista. Actualiza antes de continuar.")
+        var notice = try #require(model.notice)
+        notice.locale = Locale(identifier: "es")
+        #expect(String(localized: notice) == "La compra se ha confirmado, pero no se ha podido actualizar la lista. Actualiza antes de continuar.")
     }
 }

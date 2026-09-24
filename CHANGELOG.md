@@ -4,12 +4,18 @@
 
 ### Added
 
+- 2026-09-24 | ✨ feat(ios): localize the app in English and Spanish
+
 - 2026-09-22 | ✨ feat(purchase): add atomic purchases with recoverable retries
 
 - 2026-09-19 | ✨ feat(shared): add shared shopping flow
 - 2026-09-19 | ✨ feat(ios): add editable shopping drafts
 
 ### Documentation
+
+- 2026-09-24 | 📝 docs: reconcile delivery validation status
+
+- 2026-09-24 | 📝 docs: consolidate bilingual validation evidence
 
 - 2026-09-23 | 📝 docs(design): define accessible design system
 

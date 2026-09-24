@@ -9,7 +9,7 @@ struct AddItemsView: View {
         NavigationStack {
             Form {
                 if !viewModel.hasLoaded {
-                    ProgressView("Recuperando el borrador…")
+                    ProgressView("Restoring draft…")
                 }
 
                 if let shared {
@@ -20,13 +20,13 @@ struct AddItemsView: View {
                     .disabled(shared?.draftIsLocked == true)
 
                 Section {
-                    Button("Añadir producto a mano", systemImage: "plus") {
+                    Button("Add product manually", systemImage: "plus") {
                         viewModel.beginAddingItem()
                     }
                     .disabled(!viewModel.canAddItem)
 
                     if viewModel.items.isEmpty {
-                        Text("Todavía no hay productos en el borrador.")
+                        Text("There are no products in the draft yet.")
                             .foregroundStyle(.secondary)
                     }
 
@@ -38,54 +38,54 @@ struct AddItemsView: View {
                         }
                     }
                 } header: {
-                    Text("Productos · \(viewModel.items.count)")
+                    Text("Products · \(viewModel.items.count)")
                 } footer: {
-                    Text("Revisa cada producto, su cantidad y la tienda. Puedes añadir hasta 50 productos por lote.")
+                    Text("Review each product, its quantity and store. You can add up to 50 products per batch.")
                 }
                 .disabled(shared?.draftIsLocked == true)
 
                 Section {
-                    Button("Revisar borrador", systemImage: "checklist") {
+                    Button("Review draft", systemImage: "checklist") {
                         viewModel.reviewDraft()
                     }
                     .disabled(viewModel.items.isEmpty || viewModel.activity != .idle)
 
                     if viewModel.preparedItems != nil {
-                        Text("Borrador revisado. Todavía no se ha enviado al grupo.")
+                        Text("Draft reviewed. It has not been sent to the group yet.")
                         if let shared {
-                            Button("Elegir tiendas y confirmar", systemImage: "person.2") {
+                            Button("Choose stores and confirm", systemImage: "person.2") {
                                 Task {
                                     await shared.prepareReview()
                                 }
                             }
                             .disabled(!shared.canMutate || shared.group == nil)
                             if shared.group == nil {
-                                Text("Accede a tu grupo en Comprar para enviar estos productos.")
+                                Text("Open your group in Shop to send these products.")
                             }
                         }
                     }
                 } footer: {
-                    Text("Los productos siguen siendo un borrador hasta que confirmes su incorporación al grupo.")
+                    Text("Products remain in your draft until you confirm adding them to the group.")
                 }
                 .disabled(shared?.draftIsLocked == true)
 
                 if let notice = viewModel.notice {
                     Section {
                         Text(notice)
-                        Button("Cerrar aviso") {
+                        Button("Dismiss notice") {
                             viewModel.dismissNotice()
                         }
                     }
                 }
 
                 if let notice = viewModel.persistenceNotice {
-                    Section("Conservación del borrador") {
+                    Section("Draft storage") {
                         Text(notice)
                     }
                 }
             }
             .disabled(!viewModel.hasLoaded)
-            .navigationTitle("Añadir")
+            .navigationTitle("Add")
             .sheet(isPresented: $viewModel.isEditorPresented) {
                 DraftItemEditor(viewModel: viewModel)
             }

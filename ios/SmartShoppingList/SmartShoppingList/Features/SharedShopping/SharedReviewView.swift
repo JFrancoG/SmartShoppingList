@@ -16,51 +16,51 @@ struct SharedReviewView: View {
                             if let quantity = item.quantity {
                                 Text(quantity)
                             }
-                            Text("Tienda indicada: \(item.store)")
+                            Text("Specified store: \(item.store)")
                                 .foregroundStyle(.secondary)
                         }
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityElement(children: .combine)
                     }
                 } header: {
-                    Text("Productos revisados · \(viewModel.reviewedItems.count)")
+                    Text("Reviewed products · \(viewModel.reviewedItems.count)")
                 } footer: {
-                    Text("Para corregir productos o cantidades, vuelve al borrador antes de confirmar.")
+                    Text("To correct products or quantities, return to the draft before confirming.")
                 }
                 Section {
                     ForEach($viewModel.storeChoices) { $choice in
-                        Picker("Tienda para «\(choice.id)»", selection: $choice.selection) {
-                            Text("Selecciona una opción").tag("")
-                            Text("Confirmar el nombre «\(choice.id)»").tag("new")
+                        Picker("Store for “\(choice.id)”", selection: $choice.selection) {
+                            Text("Select an option").tag("")
+                            Text("Confirm the name “\(choice.id)”").tag("new")
                             ForEach(viewModel.stores) { store in
                                 Text(store.name).tag(store.id.uuidString)
                             }
                         }
                         .pickerStyle(.navigationLink)
                         .disabled(viewModel.isBusy)
-                        .accessibilityHint("Elige una tienda del grupo o confirma el nombre que has revisado.")
+                        .accessibilityHint("Choose a store from the group or confirm the name you reviewed.")
                     }
                 } header: {
-                    Text("Confirma las tiendas")
+                    Text("Confirm stores")
                 } footer: {
-                    Text("Confirma una opción para cada nombre. Si ese nombre ya existe en el grupo, se usará la misma tienda.")
+                    Text("Confirm an option for each name. If that name already exists in the group, the same store will be used.")
                 }
                 Section {
-                    Button("Confirmar incorporación al grupo", systemImage: "plus.circle") {
+                    Button("Confirm adding to group", systemImage: "plus.circle") {
                         Task {
                             await viewModel.confirmReviewedBatch()
                         }
                     }
                     .disabled(!viewModel.canConfirmReview)
-                    .accessibilityHint("Añade todos los productos revisados al grupo con las tiendas elegidas.")
+                    .accessibilityHint("Adds all reviewed products to the group with the chosen stores.")
                 } footer: {
-                    Text("Los productos se compartirán únicamente al confirmar este envío.")
+                    Text("Products will only be shared when you confirm this submission.")
                 }
             }
-            .navigationTitle("Revisar envío")
+            .navigationTitle("Review submission")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Volver", role: .cancel) {
+                    Button("Back", role: .cancel) {
                         dismiss()
                     }
                     .disabled(viewModel.isBusy)
