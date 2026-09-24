@@ -5,9 +5,12 @@ struct SharedPurchaseSection: View {
 
     var body: some View {
         Section {
-            if viewModel.items.isEmpty && !viewModel.isBusy {
-                Text("No products loaded. Refresh to check this store.")
+            if viewModel.storeItemsState == .loading {
+                ProgressView("Loading pending products…")
+            } else if let message = viewModel.storeItemsMessage {
+                Text(message)
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             ForEach(viewModel.items) { item in
                 Button {
@@ -55,10 +58,13 @@ struct SharedPurchaseSection: View {
                     await viewModel.finalizePurchase()
                 }
             } label: {
-                Label {
-                    Text(viewModel.purchaseActionTitle)
-                } icon: {
+                HStack(alignment: .firstTextBaseline) {
                     Image(systemName: "cart.badge.checkmark")
+                        .accessibilityHidden(true)
+                    Text(viewModel.purchaseActionTitle)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
             .disabled(!viewModel.canFinalizePurchase)
