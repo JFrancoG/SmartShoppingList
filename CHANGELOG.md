@@ -32,6 +32,8 @@
 
 ### Fixed
 
+- 2026-09-24 | 🐛 fix(ios): fix draft extraction and pending notices
+
 - 2026-09-24 | 🐛 fix(ios): improve draft editor accessibility
 
 - 2026-09-24 | 🐛 fix(ios): present shopping notices above scrollable content

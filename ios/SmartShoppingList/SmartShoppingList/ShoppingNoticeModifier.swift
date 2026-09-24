@@ -7,21 +7,28 @@ struct ShoppingNoticeModifier: ViewModifier {
     let dismiss: @MainActor @Sendable (ShoppingNotice) -> Void
     @State private var presentedNotice: ShoppingNotice?
     @State private var isPresented = false
+    @State private var presentationID = UUID()
     @State private var acknowledgedNotice: ShoppingNotice?
 
     func body(content: Content) -> some View {
+        let currentPresentationID = presentationID
         content
-            .alert(
-                Text(presentedNotice?.title ?? "Shopping list notice"),
-                isPresented: $isPresented,
-                presenting: presentedNotice
-            ) { snapshot in
-                Button("Dismiss notice", role: .cancel) {
-                    acknowledgedNotice = snapshot
-                    dismiss(snapshot)
-                }
-            } message: { snapshot in
-                Text(snapshot.message)
+            .background {
+                Color.clear
+                    .alert(
+                        Text(presentedNotice?.title ?? "Shopping list notice"),
+                        isPresented: presentationBinding(for: currentPresentationID),
+                        presenting: presentedNotice
+                    ) { snapshot in
+                        Button("Dismiss notice", role: .cancel) {
+                            guard currentPresentationID == presentationID else { return }
+                            acknowledgedNotice = snapshot
+                            dismiss(snapshot)
+                        }
+                    } message: { snapshot in
+                        Text(snapshot.message)
+                    }
+                    .id(presentationID)
             }
             .onChange(of: notice, initial: true) { _, _ in
                 acknowledgedNotice = nil
@@ -42,9 +49,20 @@ struct ShoppingNoticeModifier: ViewModifier {
             }
     }
 
+    private func presentationBinding(for id: UUID) -> Binding<Bool> {
+        // A closing alert may write again after the next presentation has started.
+        Binding {
+            id == presentationID && isPresented
+        } set: { presented in
+            guard id == presentationID else { return }
+            isPresented = presented
+        }
+    }
+
     private func presentIfPossible() {
         guard isEnabled, !isPresented, let notice, notice != acknowledgedNotice else { return }
         presentedNotice = notice
+        presentationID = UUID()
         isPresented = true
     }
 }
