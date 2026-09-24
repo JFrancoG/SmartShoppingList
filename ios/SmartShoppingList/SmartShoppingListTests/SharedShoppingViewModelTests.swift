@@ -287,6 +287,20 @@ private actor SharedFlowAPI: SharedShoppingAPI {
     private(set) var purchaseItems: [SharedItem] = []
     var purchaseError: SharedAPIError? = .transport
     private var failRefreshAfterPurchase = false
+    private var pendingItemsGate: SharedFlowGate?
+    private var pendingItemsError: SharedAPIError?
+    private var emptyPendingItems = false
+    private var failCurrentUser = false
+
+    func configurePendingItems(gate: SharedFlowGate? = nil, error: SharedAPIError? = nil, empty: Bool = false) {
+        pendingItemsGate = gate
+        pendingItemsError = error
+        emptyPendingItems = empty
+    }
+
+    func setCurrentUserFailure(_ fails: Bool) {
+        failCurrentUser = fails
+    }
 
     func allowPurchaseButFailRefresh() {
         purchaseError = nil
@@ -415,7 +429,7 @@ private actor SharedFlowAPI: SharedShoppingAPI {
 
     func currentUser(token: String) async throws -> SharedUser {
         await currentUserGate?.pause()
-        if failRefreshAfterPurchase && !sentPurchases.isEmpty {
+        if failCurrentUser || (failRefreshAfterPurchase && !sentPurchases.isEmpty) {
             throw SharedAPIError.transport
         }
         return session.user
@@ -462,7 +476,13 @@ private actor SharedFlowAPI: SharedShoppingAPI {
     }
 
     func pendingItems(groupID: UUID, storeID: UUID, token: String) async throws -> [SharedItem] {
-        purchaseItems.filter { $0.storeId == storeID }
+        let result = emptyPendingItems ? [] : purchaseItems.filter { $0.storeId == storeID }
+        let error = pendingItemsError
+        await pendingItemsGate?.pause()
+        if let error {
+            throw error
+        }
+        return result
     }
 }
 
@@ -698,5 +718,100 @@ extension SharedShoppingViewModelTests {
         var notice = try #require(model.notice)
         notice.locale = Locale(identifier: "es")
         #expect(String(localized: notice) == "La compra se ha confirmado, pero no se ha podido actualizar la lista. Actualiza antes de continuar.")
+    }
+}
+
+
+extension SharedShoppingViewModelTests {
+    @Test
+    func `an empty store is confirmed only after its response arrives`() async throws {
+        let api = SharedFlowAPI()
+        let items = try await api.preparePurchaseItems()
+        let model = try makeModel(api: api, credentials: MemorySharedCredentialStore(session: api.session))
+        await model.load()
+        model.selectedStoreID = items[0].storeId
+        #expect(model.storeItemsState == .notLoaded)
+        let gate = SharedFlowGate()
+        await api.configurePendingItems(gate: gate, empty: true)
+        async let loading: Void = model.loadSelectedStore()
+        await gate.waitUntilReached()
+        #expect(model.storeItemsState == .loading)
+        #expect(!model.canFinalizePurchase)
+        await gate.open()
+        await loading
+        #expect(model.storeItemsState == .loaded)
+        #expect(model.items.isEmpty)
+    }
+
+    @Test
+    func `dismissing a load error cannot turn it into a confirmed empty store`() async throws {
+        let api = SharedFlowAPI()
+        let items = try await api.preparePurchaseItems()
+        let model = try makeModel(api: api, credentials: MemorySharedCredentialStore(session: api.session))
+        await model.load()
+        model.selectedStoreID = items[0].storeId
+        await api.configurePendingItems(error: .transport)
+        await model.loadSelectedStore()
+        model.dismissNotice()
+        #expect(model.storeItemsState == .failed)
+        #expect(model.items.isEmpty)
+        await api.configurePendingItems(empty: true)
+        await model.refresh()
+        #expect(model.storeItemsState == .loaded)
+        #expect(model.items.isEmpty)
+    }
+
+    @Test(arguments: [true, false])
+    func `a failed refresh preserves checks but blocks purchases until verified`(beforeItems: Bool) async throws {
+        let api = SharedFlowAPI()
+        let items = try await api.preparePurchaseItems()
+        let model = try makeModel(api: api, credentials: MemorySharedCredentialStore(session: api.session))
+        await model.load()
+        model.selectedStoreID = items[0].storeId
+        await model.loadSelectedStore()
+        model.togglePurchaseItem(items[0])
+        await api.setCurrentUserFailure(beforeItems)
+        await api.configurePendingItems(error: beforeItems ? nil : .transport)
+        await model.refresh()
+        #expect(model.storeItemsState == .failed)
+        #expect(model.items.map(\.id) == items.prefix(5).map(\.id))
+        #expect(model.purchaseSelection.map(\.id) == [items[0].id])
+        #expect(!model.canTogglePurchaseItem(items[0]))
+        #expect(!model.canFinalizePurchase)
+        await model.finalizePurchase()
+        #expect(await api.sentPurchases.isEmpty)
+        await api.setCurrentUserFailure(false)
+        await api.configurePendingItems()
+        await model.refresh()
+        #expect(model.storeItemsState == .loaded)
+        #expect(model.canFinalizePurchase)
+    }
+
+    @Test
+    func `switching stores clears old rows and ignores their delayed response`() async throws {
+        let api = SharedFlowAPI()
+        let items = try await api.preparePurchaseItems()
+        let model = try makeModel(api: api, credentials: MemorySharedCredentialStore(session: api.session))
+        await model.load()
+        model.selectedStoreID = items[0].storeId
+        await model.loadSelectedStore()
+        model.togglePurchaseItem(items[0])
+        let gate = SharedFlowGate()
+        await api.configurePendingItems(gate: gate)
+        async let refreshing: Void = model.refresh()
+        await gate.waitUntilReached()
+        model.selectedStoreID = items[5].storeId
+        #expect(model.items.isEmpty)
+        #expect(model.storeItemsState == .notLoaded)
+        await gate.open()
+        await refreshing
+        #expect(model.items.isEmpty)
+        #expect(model.storeItemsState == .notLoaded)
+        await api.configurePendingItems()
+        await model.loadSelectedStore()
+        #expect(model.items.map(\.id) == [items[5].id])
+        #expect(model.storeItemsState == .loaded)
+        model.selectedStoreID = items[0].storeId
+        #expect(model.purchaseSelection.map(\.id) == [items[0].id])
     }
 }

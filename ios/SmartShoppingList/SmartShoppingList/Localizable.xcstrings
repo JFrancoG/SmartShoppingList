@@ -648,16 +648,6 @@
         }
       }
     },
-    "No products loaded. Refresh to check this store.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sin productos cargados. Actualiza para consultar esta tienda."
-          }
-        }
-      }
-    },
     "No products were found. You can rephrase the text or add them manually.": {
       "localizations": {
         "es": {
@@ -1811,6 +1801,56 @@
           "stringUnit": {
             "state": "translated",
             "value": "Aviso de la lista de la compra"
+          }
+        }
+      }
+    },
+    "Could not load this store. Refresh to try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se ha podido cargar esta tienda. Actualiza para reintentarlo."
+          }
+        }
+      }
+    },
+    "Loading pending products…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cargando productos pendientes…"
+          }
+        }
+      }
+    },
+    "No pending products in this store.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay productos pendientes en esta tienda."
+          }
+        }
+      }
+    },
+    "Refresh to load this store.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actualiza para cargar esta tienda."
+          }
+        }
+      }
+    },
+    "The list could not be refreshed. Products shown may be out of date. Refresh before continuing.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se ha podido actualizar la lista. Los productos mostrados pueden estar desactualizados. Actualiza antes de continuar."
           }
         }
       }

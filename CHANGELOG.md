@@ -36,6 +36,8 @@
 
 ### Fixed
 
+- 2026-09-25 | 🐛 fix(purchase): preserve safe store loading states
+
 - 2026-09-24 | 🐛 fix(ios): fix draft extraction and pending notices
 
 - 2026-09-24 | 🐛 fix(ios): improve draft editor accessibility

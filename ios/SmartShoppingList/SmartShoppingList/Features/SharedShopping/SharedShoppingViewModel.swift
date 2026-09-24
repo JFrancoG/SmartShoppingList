@@ -8,8 +8,16 @@ struct DraftStoreChoice: Identifiable {
     var selection = ""
 }
 
+enum StoreItemsState {
+    case notLoaded
+    case loading
+    case loaded
+    case failed
+}
+
 @Observable @MainActor
 final class SharedShoppingViewModel {
+    private(set) var storeItemsState = StoreItemsState.notLoaded
     private(set) var session: SharedSession?
     private(set) var pendingInvitation: PendingInvitation?
     private(set) var invitationPreview: InvitationPreview?
@@ -28,7 +36,14 @@ final class SharedShoppingViewModel {
     private(set) var challenge: SharedChallenge?
     private(set) var reviewedItems: [PreparedDraftItem] = []
     var storeChoices: [DraftStoreChoice] = []
-    var selectedStoreID: UUID?
+    var selectedStoreID: UUID? {
+        didSet {
+            guard oldValue != selectedStoreID else { return }
+            items = []
+            loadedStoreID = nil
+            storeItemsState = .notLoaded
+        }
+    }
     var groupName = ""
     var isReviewPresented = false {
         didSet {
@@ -81,6 +96,21 @@ final class SharedShoppingViewModel {
     }
     var selectedStoreName: String {
         stores.first { $0.id == selectedStoreID }?.name ?? ""
+    }
+
+    var storeItemsMessage: LocalizedStringResource? {
+        switch storeItemsState {
+        case .notLoaded:
+            "Refresh to load this store."
+        case .loading:
+            nil
+        case .loaded:
+            items.isEmpty ? "No pending products in this store." : nil
+        case .failed:
+            items.isEmpty
+                ? "Could not load this store. Refresh to try again."
+                : "The list could not be refreshed. Products shown may be out of date. Refresh before continuing."
+        }
     }
 
     func load() async {
@@ -423,13 +453,17 @@ final class SharedShoppingViewModel {
         await performAction {
             items = []
             loadedStoreID = nil
+            storeItemsState = .loading
             do {
                 let loaded = try await api.pendingItems(groupID: group.id, storeID: storeID, token: session.accessToken)
                 guard selectedStoreID == storeID else { return }
                 items = loaded
                 loadedStoreID = storeID
+                storeItemsState = .loaded
                 notice = nil
             } catch {
+                guard selectedStoreID == storeID else { return }
+                storeItemsState = .failed
                 await handle(error)
             }
         }
@@ -527,12 +561,17 @@ final class SharedShoppingViewModel {
     @discardableResult
     private func refreshSessionAndLists() async -> Bool {
         guard let api, var current = session else { return false }
+        var requestedStoreID = selectedStoreID
+        loadedStoreID = nil
+        storeItemsState = selectedStoreID == nil ? .notLoaded : .loading
         do {
             current.user = try await api.currentUser(token: current.accessToken)
             try await credentials.saveSession(current)
             session = current
             sessionIsVerified = true
             restorePurchaseSelection()
+            requestedStoreID = selectedStoreID
+            storeItemsState = selectedStoreID == nil ? .notLoaded : .loading
             notice = nil
             if let group = current.user.group {
                 stores = try await api.stores(groupID: group.id, token: current.accessToken)
@@ -541,14 +580,26 @@ final class SharedShoppingViewModel {
                     items = []
                 }
                 if let storeID = selectedStoreID {
-                    loadedStoreID = nil
-                    items = try await api.pendingItems(groupID: group.id, storeID: storeID, token: current.accessToken)
+                    requestedStoreID = storeID
+                    storeItemsState = .loading
+                    let loaded = try await api.pendingItems(groupID: group.id, storeID: storeID, token: current.accessToken)
+                    guard selectedStoreID == storeID else { return false }
+                    items = loaded
                     loadedStoreID = storeID
+                    storeItemsState = .loaded
                 }
+            } else {
+                stores = []
+                selectedStoreID = nil
             }
             await previewPendingInvitation()
             return true
         } catch {
+            if selectedStoreID == requestedStoreID {
+                storeItemsState = selectedStoreID == nil ? .notLoaded : .failed
+            } else if (error as? SharedAPIError)?.isSessionInvalid != true {
+                return false
+            }
             await handle(error)
             return false
         }
@@ -649,6 +700,7 @@ final class SharedShoppingViewModel {
         invitationPreview = nil
         shareURL = nil
         selectedStoreID = nil
+        storeItemsState = .notLoaded
     }
 }
 
@@ -673,6 +725,7 @@ extension SharedShoppingViewModel {
         invitationPreview = preview.invitationPreview
         pendingOperation = preview.pendingOperation
         stores = preview.stores
+        selectedStoreID = preview.selectedStoreID
         items = preview.items
         invitations = preview.invitations
         shareURL = preview.shareURL
@@ -682,8 +735,8 @@ extension SharedShoppingViewModel {
         notice = preview.notice
         reviewedItems = preview.reviewedItems
         storeChoices = preview.storeChoices
-        selectedStoreID = preview.selectedStoreID
         loadedStoreID = preview.selectedStoreID
+        storeItemsState = preview.selectedStoreID == nil ? .notLoaded : .loaded
         purchaseSelectionOwner = preview.session?.user.id
         if let storeID = preview.selectedStoreID {
             purchaseSelections[storeID] = preview.purchaseSelection

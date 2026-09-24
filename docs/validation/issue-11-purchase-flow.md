@@ -103,3 +103,50 @@ El recorrido físico guiado está confirmado dentro de los límites anteriores y
 ## Preparación del commit y push
 
 El usuario autorizó commit y push el 22 de septiembre. Se reutilizan los resultados anteriores del mismo código; durante la preparación de entrega solo se ajusta documentación y la entrada del changelog. La revisión final del diff y `git diff --check` pasan. La publicación se verifica contra la rama remota y se registra en #11; esta autorización no incluye PR, merge, cierre ni despliegue.
+
+## Acabado de compra: VoiceOver en inglés — 24 de septiembre de 2026
+
+Se retoma la validación sobre `main`, commit `bde1a3d65069572cdc5986c006561c79fd724c8b`, después de integrar #11 y #7. Los estados de ramas/PR de los apartados anteriores son históricos. Entorno del recorrido guiado: iPhone 11 con la compilación instalada en la prueba de iconos, iOS 27.2, interfaz inglesa, VoiceOver y tamaño de texto normal. No se volvió a leer el número de build del sistema. Resultados comunicados por el usuario; no son una inspección automatizada de accesibilidad.
+
+- Al enfocar una fila se leen nombre, cantidad, estado seleccionado/no seleccionado y rol «button». Al seleccionarla se anuncia el nuevo estado.
+- Con un producto seleccionado, el botón anuncia «Finish shopping 1, button».
+- Al finalizar se presenta el aviso de compra confirmada y VoiceOver lo lee automáticamente.
+- Al cerrar el aviso, el foco vuelve al botón de origen, que anuncia «Finish shopping zero». El botón continúa existiendo; no se pierde el foco al desaparecer la fila comprada.
+- El usuario confirma que solo desaparece el producto comprado y los demás siguen pendientes.
+- Con selección cero, el usuario confirma el estado deshabilitado anunciado por VoiceOver y que el doble toque no inicia otra compra.
+
+Esta evidencia cubre selección, confirmación y retorno al control de origen en inglés. No acredita todavía el estado de tienda completamente vacía, el recorrido equivalente en español, texto máximo en Comprar ni anuncio/foco de conflicto y reintento de compra. Las pruebas funcionales anteriores se conservan sin repetirlas ni atribuirles esta cobertura nueva.
+
+
+### Recorte del botón a texto máximo — #17
+
+El usuario aporta la captura «Captura de pantalla 2026-09-24 a las 23.46.28.png»: en inglés y tamaño máximo, «Finish shopping · 0» se recorta por el borde izquierdo. La rama original de #11 ya estaba integrada y eliminada. Se abre [#17](https://github.com/JFrancoG/SmartShoppingList/issues/17) y `codex/issue-17-purchase-accessibility` desde `bde1a3d`, conservando el registro anterior.
+
+Corrección local limitada a `SharedPurchaseSection`: el label del botón usa una fila con símbolo decorativo y texto de ancho adaptable, crecimiento vertical y alineación inicial de las líneas. Conserva el texto localizado, contador, botón nativo, acción, hint y condición de deshabilitado. No reduce la fuente ni cambia reglas de compra. Fuente de layout: [Apple, fixedSize(horizontal:vertical:)](https://developer.apple.com/documentation/swiftui/view/fixedsize(horizontal:vertical:)).
+
+Revisión independiente del diff: sin hallazgos estáticos. Auditoría de estilo sobre el archivo cambiado y `git diff --check` correctos. Previews MCP en iPhone 18 Pro/iOS 27.2: Large y XXX Large en inglés muestran el CTA completo; AX5 en inglés/español renderiza sin errores, pero el CTA queda fuera del encuadre inicial y esas imágenes no acreditan la corrección del recorte a tamaño máximo. El intento de anclar la preview al final del Form no produjo el desplazamiento y se retiró.
+
+Build e instalación en iPhone 11 correctos, log `RunProject-Log-20260924-235259.txt`: únicamente EXC-002. Se deja la app ejecutándose, sin debugger adjunto, para repetir la inspección física con contador 0 y 1 a texto máximo. Esa confirmación y la lectura de VoiceOver tras el ajuste quedan pendientes. No se crean tests unitarios de modificadores visuales ni se repiten suites de negocio por este cambio de layout. Sin commit/push.
+
+
+El usuario confirma «sí, ahora correcto» tras repetir en el iPhone 11 la inspección en inglés a texto máximo de `Finish shopping · 0` y `Finish shopping · 1` sobre la compilación corregida. Queda validado el recorte físico para ambos contadores. La lectura de VoiceOver después de cambiar el contenido del botón y la comprobación equivalente de este ajuste en español siguen pendientes; no se repite la compra funcional por esta corrección visual.
+
+
+El usuario confirma también la lectura de VoiceOver tras el ajuste del botón. Se limita el resto de la validación visual a fallos concretos: por decisión explícita del usuario, la matriz extensa de accesibilidad se repetirá al integrar el design system.
+
+### Estados de carga y recuperación de tienda — 25 septiembre, #17
+
+Implementación local en `codex/issue-17-purchase-accessibility`: Comprar distingue tienda aún sin cargar, carga en curso, respuesta válida sin pendientes y error. Los mensajes están localizados en inglés y español. Si falla un refresco, conserva las filas y las marcas de la misma tienda, advierte que pueden estar desactualizadas y bloquea su selección/confirmación hasta una respuesta válida. Cambiar de tienda retira las filas anteriores; una respuesta tardía no las publica en la tienda nueva. No altera la operación pendiente ni las versiones seleccionadas.
+
+Evidencia automatizada: cuatro pruebas Swift Testing nuevas, cinco casos, con sincronización determinista sin esperas temporizadas. RED: 137 casos anteriores correctos y cinco fallos esperados; esa ejecución terminó en iPhone 11 porque el cambio solicitado al simulador era ambiguo. GREEN: destino verificado iPhone 17 (27.2), plan Fast, 142 casos correctos y cero fallos; resumen nativo 83 declaraciones, cero omisiones. Los seis elementos `notRun` del inventario MCP están fuera del plan Fast. Bundle: `Test-SmartShoppingList-2026.09.25_00-05-06-+0200.xcresult`.
+
+Se comprueban carga frente a vacío confirmado, error tras cerrar aviso, conservación de marcas y bloqueo de compra ante fallo temprano de sesión o de consulta, recuperación al refrescar y descarte de respuesta de otra tienda. Revisiones independientes del estado/concurrencia y de UI/localización sin hallazgos nuevos; auditoría de estilo en los tres archivos Swift y diff sin errores. Log completo de compilación: solo la excepción aceptada EXC-002 de extracción de AppIntents.
+
+Compilación e instalación en iPhone 11 correctas, sin debugger: `RunProject-Log-20260925-000600.txt`. El usuario confirma la validación física breve en inglés: con un producto seleccionado, activa modo avión y desactiva wifi, refresca y cierra el aviso. Se conservan productos y selección, permanece el mensaje de lista posiblemente desactualizada y `Finish shopping` queda deshabilitado. Tras recuperar conexión y refrescar, desaparece ese mensaje, el producto sigue seleccionado y el botón vuelve a estar habilitado. No se confirma otra compra en este recorrido.
+
+Esta evidencia manual cubre pérdida y recuperación de conexión en la misma tienda; no acredita por sí sola el estado vacío físico ni nuevos recorridos de foco o anuncios de VoiceOver. Se mantiene la decisión de posponer la matriz visual extensa hasta el design system. Sin commit/push.
+
+
+### Preparación de entrega de #17 — 25 septiembre
+
+El usuario autoriza commit, push, PR, merge, cierre de issue y retirada de la rama si no existen bloqueos. Se reutiliza el GREEN y la compilación física anteriores del mismo código; desde esa ejecución solo cambia documentación. Los criterios de #17 se reconcilian con la decisión explícita de aplazar la matriz visual extensa al design system, sin presentar los ensayos diferidos como aprobados. El resultado remoto definitivo se registra en la issue y en la PR.

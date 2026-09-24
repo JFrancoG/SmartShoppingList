@@ -1,6 +1,6 @@
 # Plan de implementación
 
-Fecha de creación: 18 de septiembre de 2026. Última revisión: 24 de septiembre de 2026.
+Fecha de creación: 18 de septiembre de 2026. Última revisión: 25 de septiembre de 2026.
 
 Especificación de referencia: [MVP aprobado](mvp-spec.md). Este documento conserva las fases, dependencias y condiciones para avanzar; no amplía el contrato funcional ni registra el progreso de cada tarea.
 
@@ -92,6 +92,12 @@ Orden de ejecución previsto:
 3. Corregir los hallazgos de avisos/foco/recorte ya registrados y consolidar ES/EN. Preparar previews de estados y tamaños, con layouts adaptables a iOS 27.
 4. Ejecutar la [matriz de accesibilidad](accessibility.md#ejecución-de-la-validación): cuatro apariencias, texto grande, controles alternativos, material y preferencias. Registrar evidencia por entorno/idioma en las issues e informes existentes; la página de invitación tiene evaluación web separada.
 5. Revisar todos los criterios aplicables antes del congelado. Exigir ≥4,5:1 para texto normal propio, ≥7:1 en HC y ≥3:1 para gráficos esenciales, más los resultados del recorrido real. No afirmar AAA global ni publicar etiquetas de accesibilidad por pasar el cálculo.
+
+### Alcance de comprobación de Comprar: decisión del 25 de septiembre
+
+En [#17](https://github.com/JFrancoG/SmartShoppingList/issues/17), el usuario decide limitar las comprobaciones actuales a defectos concretos y recuperación funcional porque la UI cambiará al aplicar el design system. Se conserva la evidencia física en inglés del botón de compra a tamaño máximo, VoiceOver y pérdida/recuperación de conexión, junto con las pruebas de carga, vacío confirmado y error. La [validación del flujo](validation/issue-11-purchase-flow.md) detalla sus límites.
+
+La matriz extensa ES/EN de tamaños, apariencias y foco/anuncios de éxito, conflicto y reintento se ejecutará sobre la UI integrada con el design system. El vacío confirmado cuenta ahora con prueba automatizada; su inspección física se incorpora a ese recorrido. Esta decisión limita el cierre de #17 a las correcciones y evidencia registradas; no acredita toda la accesibilidad ni cierra la fase 3 o el MVP.
 
 ### Iconos de la app: decisión del 24 de septiembre
 
