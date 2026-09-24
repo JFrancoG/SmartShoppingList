@@ -1,0 +1,7 @@
+Mode: built-in image_gen
+
+Use case: logo-brand
+Asset type: full-bleed iOS app icon source artwork for SmartShoppingList, to import into Apple Icon Composer.
+Primary request: Generate one polished square 1024 x 1024 pixel app icon for a smart shared grocery shopping list app. Create a single bold, distinctive shopping bag symbol with an integrated checkmark suggesting a completed shopping list. Simple sculptural geometry, subtly dimensional material, crisp silhouette, restrained premium finish, excellent readability at small icon sizes. Center the symbol and make it large with balanced breathing room.
+Scene/backdrop: continuous opaque background covering the entire square canvas edge to edge, including all four square corners. Harmonious high-contrast colors suitable for an everyday shopping utility.
+Constraints: exact 1:1 square composition, 1024 x 1024 pixels. This is the actual flat icon artwork, not a mockup. No rounded outer corners, no squircle, no inset icon tile, no outer frame or border, no white outer margins, no device, no text, no letters, no watermark. The background must completely fill the image. One coherent main symbol, no scattered decorations or extra objects.

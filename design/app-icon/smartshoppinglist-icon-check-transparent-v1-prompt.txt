@@ -1,0 +1,6 @@
+Mode: built-in image_gen edit
+
+Use case: background-extraction
+Input image: edit target, supplied original grocery shopping bag with WHITE CHECKMARK, not the brain variant.
+Primary request: Remove ONLY the green background and make it genuinely transparent with an alpha channel. Preserve ALL foreground subjects completely intact and unchanged: yellow shopping bag, white handle, white checkmark, lettuce leaves, tomato including green stem, and baguette. Preserve original positions, proportions, framing, colors, lighting, textures, and all object details. Do not redraw, restyle, crop or redesign anything.
+Mask requirements: Remove the green backdrop everywhere, including visible background gaps inside the handle and between groceries. Preserve the green lettuce and tomato stem; they are foreground, not backdrop. Clean smooth anti-aliased edges, no green fringes or halos. Remove background cast shadow with the backdrop; keep shading on foreground objects. Actual transparent pixels, not a checkerboard painted into the image, not a white or solid background. Output RGBA PNG, same square framing as source.

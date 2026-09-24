@@ -1,0 +1,9 @@
+Mode: built-in image_gen edit
+
+Use case: precise-object-edit
+Input image: edit target, ORIGINAL square shopping bag icon with white checkmark.
+Task: Create an exactly registered transparent overlay containing ONLY the existing ivory HANDLE and the existing ivory CHECKMARK. Remove all other pixels: green background, yellow bag, groceries and external cast shadows.
+ABSOLUTE PRIORITY: PRESERVE ORIGINAL POSITIONS AND SCALE. This is masking/extraction, not recomposition. Do not enlarge, shift, center, crop or redesign either object. Retain the entire original square canvas, including the substantial transparent empty space below the checkmark. Output should align with the source when laid directly over it at the same canvas size.
+Geometry in source 1024x1024 coordinates: handle bounding box approximately left 350, top 103, right 670, bottom 400. Checkmark bounding box approximately left 320, top 463, right 714, bottom 766. Handle occupies x34.2%-65.4%, y10.1%-39.1%. Checkmark occupies x31.25%-69.7%, y45.2%-74.8%. Preserve these normalized coordinates precisely if rendering at a different square resolution. Bottom 25% of the canvas remains completely empty/transparent. Do not stretch objects to fill it.
+Preserve original handle silhouette and rounded ends, checkmark shape and angle, ivory color, rounded sculptural surfaces, highlights and shading. Do not include shadows cast onto the removed yellow bag. No other objects.
+Output: RGBA PNG with real alpha transparency, preferably exactly 1024x1024. Clean antialiased contours without stray pixels or colored fringes. No background fill, no checkerboard painted into image, no text.

@@ -93,6 +93,10 @@ Orden de ejecución previsto:
 4. Ejecutar la [matriz de accesibilidad](accessibility.md#ejecución-de-la-validación): cuatro apariencias, texto grande, controles alternativos, material y preferencias. Registrar evidencia por entorno/idioma en las issues e informes existentes; la página de invitación tiene evaluación web separada.
 5. Revisar todos los criterios aplicables antes del congelado. Exigir ≥4,5:1 para texto normal propio, ≥7:1 en HC y ≥3:1 para gráficos esenciales, más los resultados del recorrido real. No afirmar AAA global ni publicar etiquetas de accesibilidad por pasar el cálculo.
 
+### Iconos de la app: decisión del 24 de septiembre
+
+[#16](https://github.com/JFrancoG/SmartShoppingList/issues/16) incorpora los archivos Icon Composer Brain y Check y los originales de `design/` aportados por el usuario. Brain es principal; Check se selecciona únicamente cuando Foundation Models informa hardware no compatible. iOS presenta un aviso nativo al cambiar de icono. La [evidencia](validation/issue-16-app-icons.md) distingue reglas probadas, bundles compilados y ensayo real. Esta entrega directa en `main`, autorizada por el usuario, incluye los ajustes recomendados de Xcode 27.2 y no cierra la fase ni integra los tokens de las pantallas.
+
 ### Comprobaciones de consolidación
 
 La implementación bilingüe se concreta en [#13: localización ES/EN](https://github.com/JFrancoG/SmartShoppingList/issues/13), autorizada el 24 de septiembre en rama independiente sobre el recorrido de compra. Inglés es el idioma fuente; español conserva traducción completa. La [decisión técnica](architecture/ios-draft.md) conecta voz e IA con el idioma efectivo de la app; #7 conserva el ensayo real de ambos idiomas. Esta unidad no sustituye la integración visual ni los hallazgos de accesibilidad pendientes.

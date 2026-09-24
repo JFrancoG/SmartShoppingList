@@ -1,0 +1,7 @@
+Mode: built-in image_gen edit
+
+Use case: precise-object-edit
+Input image: edit target, APPROVED spatially registered ivory handle and checkmark on transparent canvas.
+Change ONLY the material color of the two existing objects from ivory to very dark neutral charcoal gray, almost black, base color approximately #252527. Use restrained graphite highlights and near-black shadows to preserve the original soft dimensional relief. This should match a dark charcoal version of the same sculptural icon. No metallic shine, no flattening into a silhouette.
+ABSOLUTE INVARIANTS: exact same full square canvas, exact same shapes, silhouettes, positions, size, orientation, spacing and lighting direction. Do not move, enlarge, recenter, crop, redraw or recompose the handle or checkmark. This corrected source already has the required registration for icon layers; recolor it in place. The handle stays roughly x34%-65.5%, y10%-39.5%; checkmark x31%-70%, y45%-75%. Bottom quarter of canvas remains completely empty/transparent.
+Preserve rounded handle tips, checkmark shape and angle, smooth bevels and relief. Keep genuine alpha transparency outside both objects and inside handle. Clean antialiased edges with no ivory/yellow fringes. No background fill or black backdrop, no checkerboard texture, no new objects, no text. Output square RGBA PNG containing ONLY the same handle and checkmark in near-black charcoal.

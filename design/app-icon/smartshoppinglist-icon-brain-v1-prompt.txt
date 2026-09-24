@@ -1,0 +1,8 @@
+Mode: built-in image_gen edit
+
+Use case: precise-object-edit
+Asset type: SmartShoppingList app icon, square full-bleed artwork for Icon Composer.
+Input image: edit target, existing yellow grocery bag icon.
+Primary request: Change ONLY the white checkmark on the front of the yellow bag into a recognizable stylized brain emblem. The brain must be ivory white, raised sculptural relief with the same smooth material, softly rounded edges, lighting and subtle shadow as the original checkmark. Give it a clear brain silhouette with two hemispheres and a few clean, broad grooves, readable at small icon sizes, not anatomical realism. Center the brain on the bag where the checkmark was, with similar visual prominence.
+Invariants: preserve the original yellow bag shape, white handle, green leaves, red tomato, baguette, green background, framing, composition, colors, textures, lighting and shadows. Do not add any other objects or symbols. Completely remove the checkmark.
+Output: exactly 1024 x 1024 pixels, 1:1 square, opaque full-bleed green background reaching every edge and all four square corners. No rounded outer corners, no framing, no inset tile, no text, no watermark.

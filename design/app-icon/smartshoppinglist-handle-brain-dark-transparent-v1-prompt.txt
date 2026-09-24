@@ -1,0 +1,7 @@
+Mode: built-in image_gen edit
+
+Use case: precise-object-edit
+Input image: edit target, isolated ivory inverted-U shopping bag handle and ivory brain emblem on an alpha-transparent square canvas.
+Request: Recolor ONLY both existing objects to very dark neutral charcoal gray, almost black, for the dark variant of the same app icon. Target base material approximately #252527, with restrained graphite highlights and deeper near-black shadows so the existing rounded sculptural relief and brain grooves remain legible. No ivory, white or beige material remains. Do not flatten the objects into silhouettes and do not add metallic shine.
+STRICT INVARIANTS: preserve EXACT original object silhouettes, shape, size, orientation, relative spacing and positions within the full square canvas. This is only a material color change, not a new composition. Do not move, enlarge, recenter or crop anything. Keep the original curved handle tips, both brain hemispheres, grooves, bevels and lighting direction. In normalized canvas coordinates handle approximately x34%-65.5%, y10%-39.5%; brain approximately x33.5%-66.5%, y43%-76.5%. Keep the large empty lower canvas area.
+Output: square RGBA PNG, genuine transparent alpha background unchanged, including inside the handle and between brain hemispheres. Clean smooth antialiased edges without white or yellow fringes. No solid background, no black backdrop, no painted checkerboard. Only the same handle and brain in dark charcoal. No bag, groceries, symbols, text or additional objects.

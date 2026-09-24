@@ -1,0 +1,8 @@
+Mode: built-in image_gen edit
+
+Use case: precise-object-edit
+Input image: edit target, SmartShoppingList yellow shopping bag with ivory brain emblem.
+Primary request: Extract ONLY the existing ivory bag HANDLE and the existing ivory BRAIN emblem onto a genuinely transparent background. Remove the entire yellow bag, green background, lettuce, tomato including stem, baguette, and shadows cast onto those removed objects.
+Critical invariants: Keep exactly the same square canvas and exact original placement and scale of both retained objects. Do NOT zoom, recenter, resize, reposition, or crop them. In the 1024 x 1024 reference the handle occupies approximately x350–670, y103–401, and the brain x346–678, y442–779. Retain these normalized bounds even if output resolution differs. Leave the large originally empty area below the brain empty and transparent. This is a registered overlay layer for the original icon, not a newly laid out composition.
+Preserve the precise inverted-U handle shape and rounded tips, the brain silhouette and both hemispheres with all grooves, ivory color, smooth dimensional material, highlights and shading on the objects. All yellow bag visible between the brain hemispheres must become transparent; keep recessed surface shading inside brain grooves. Do not redesign either object or add anything.
+Output: RGBA PNG, 1:1 square, preferably 1024 x 1024, genuine alpha transparency everywhere else including inside the handle. Clean smooth antialiased edges, no white/green/yellow fringe, no colored background, no painted checkerboard, no external cast shadows, no text. Only handle and brain, in their original positions.

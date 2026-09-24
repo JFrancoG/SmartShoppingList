@@ -1,0 +1,8 @@
+Mode: built-in image_gen edit
+
+Use case: precise-object-edit
+Input image: edit target, isolated yellow shopping bag body on transparent canvas.
+Change ONLY this: remove the reconstructed back rim and the orange inner cavity at the top of the bag. Make that entire upper opening/interior/back wall region transparent. Keep ONLY the FRONT PANEL of the bag as a foreground compositing layer that will sit IN FRONT OF groceries supplied on a separate layer. This must NOT depict an empty open container. Do not reconstruct any hidden bag surfaces.
+Exact top cut boundary: follow the EXISTING lower lip of the orange opening, where the bright yellow FRONT FACE begins. This is a very shallow downward curved edge: approximately x230,y390 at the left, x625,y424 in the middle, x1025,y390 at the right on the 1254-square source. Remove all orange interior, rear rim, rear wall and any thin strip above this front edge. Everything above that front-face edge is actual alpha transparency, so products behind can show through unobstructed.
+Keep all front-face pixels below this edge unchanged: same plain yellow surface, original highlights, side folds, shading, bottom rounded corners, shape, position and scale. No handles, symbols, products or background. Absolutely no recentering, enlarging, reframing or cropping. Preserve exact original full square canvas and generous top and bottom transparent margins. This is a registered overlay, not a recomposed product picture.
+Output RGBA PNG with genuine alpha transparency, clean antialiased edges, no fake checkerboard, no solid backdrop, no new outlines, no new objects.

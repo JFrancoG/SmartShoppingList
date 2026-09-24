@@ -2,7 +2,7 @@
 
 Versión 1 · 23 de septiembre de 2026 · plataforma mínima: iOS 27.
 
-Estado: **definición documental para el acabado del MVP**. Los colores y sus pares se validan matemáticamente; su integración en assets, vistas y controles, y la accesibilidad de la app en ejecución, quedan pendientes. Este documento no declara conformidad global AA/AAA ni aprobación definitiva del icono.
+Estado: **definición documental para el acabado del MVP**. Los colores y sus pares se validan matemáticamente; su integración en assets, vistas y controles, y la accesibilidad de la app en ejecución, quedan pendientes. Este documento no declara conformidad global AA/AAA. Los iconos Brain/Check se incorporan por aprobación del usuario del 24 de septiembre (#16), con alcance y evidencia separados de la integración visual de las pantallas.
 
 Documentos relacionados: [fuentes y novedades verificadas](research/design-system-sources.md), [matriz de contraste generada](validation/design-system-contrast.md), [criterios y ensayo de accesibilidad](accessibility.md), [spec](mvp-spec.md) y [plan](implementation-plan.md).
 

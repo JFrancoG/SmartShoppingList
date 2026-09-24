@@ -1,0 +1,9 @@
+Mode: built-in image_gen edit
+
+Use case: precise-object-edit
+Image 1: EDIT TARGET, isolated yellow FRONT PANEL on a transparent square canvas.
+Image 2: REFERENCE ONLY, original complete grocery bag icon. Use it to recover only the two tiny visible side portions of the rear lip.
+Request: Modify image 1 only by restoring the SMALL original golden rear-rim/inner-wall fragments visible at the far left and far right of the bag mouth in image 2. In the reference, one little dark-gold crescent is visible just left of the lettuce, and another little dark-gold crescent is visible just right of the baguette. Preserve exactly those small exposed side fragments, including their rounded golden rims. Do NOT connect them with a rear edge. Do NOT reconstruct any hidden rear wall or central interior. The entire central area above the FRONT upper edge stays transparent so groceries placed behind this foreground layer show through.
+Reference fragment locations in normalized original square coordinates: left fragment around x18.4%-25%, y29.5%-33.2%; right fragment around x77%-81.6%, y29.5%-33.2%. Restore the actual visible source silhouettes only, not rectangular patches or exaggerated loops. These should be subtle natural rounded returns at the two outer corners, matching the original bag.
+Strict invariants: all other parts of image 1 remain unchanged, including blank golden-yellow front, lighting, material, folds, side silhouette and lower corners. Same entire square canvas, SAME position and scale; no recentering, cropping or enlarging. Bag bounds approximately x15%-85%, bottom y87%. No handles, no checkmark, no brain, no products, no solid background. Keep the generous transparent space above and below.
+Deliver RGBA PNG with actual transparent background, antialiased clean edges. Only the front bag panel plus the two tiny visible rear-rim side fragments. No full opening/ellipse across the top, no reconstructed hidden surfaces, no painted checkerboard.

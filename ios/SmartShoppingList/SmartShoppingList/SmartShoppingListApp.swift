@@ -2,6 +2,8 @@ import SwiftUI
 
 @main
 struct SmartShoppingListApp: App {
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var iconController = AppIconController()
     @State private var shopping: SharedShoppingViewModel? = {
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("-shopping-notice-validation") {
@@ -24,6 +26,9 @@ struct SmartShoppingListApp: App {
                 ContentView(viewModel: shopping.draft, shared: shopping)
             }
             #endif
+        }
+        .onChange(of: scenePhase, initial: true) { _, phase in
+            Task { await iconController.sceneDidChange(to: phase) }
         }
     }
 }

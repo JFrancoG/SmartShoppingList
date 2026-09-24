@@ -1,0 +1,7 @@
+Mode: built-in image_gen edit
+
+Use case: precise-object-edit
+Input image: edit target, transparent grocery bag icon.
+Primary request: Keep ONLY the ivory white bag HANDLE and the ivory white CHECKMARK, as two isolated objects on a genuinely transparent background. Completely remove the yellow bag body, all groceries (lettuce, tomato and stem, baguette), all stray colored pixels, and their cast shadows. All removed areas must become transparent.
+Strict invariants: The existing white inverted-U shaped handle in the upper center and the existing white checkmark in the lower center must retain their original exact shapes, size, relative positions, orientation, ivory color, rounded sculptural material, surface shading, and highlights. Preserve their complete silhouettes, including rounded lower handle tips and checkmark ends. Do not move them together or join them. Keep the original square canvas and spacing. Do not add outlines of the bag or groceries. Only two objects should remain.
+Output: RGBA PNG with real alpha transparency everywhere except the handle and checkmark. Clean smooth antialiased edges without yellow or green fringe. No solid background, no painted checkerboard, no text, no other elements.

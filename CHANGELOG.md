@@ -4,6 +4,8 @@
 
 ### Added
 
+- 2026-09-24 | ✨ feat(ios): select app icon by device capability
+
 - 2026-09-24 | ✨ feat(ios): localize the app in English and Spanish
 
 - 2026-09-22 | ✨ feat(purchase): add atomic purchases with recoverable retries

@@ -1,0 +1,6 @@
+Mode: built-in image_gen edit
+
+Use case: precise-object-edit
+Input image: edit target, original SmartShoppingList icon with green background.
+Request: Remove EVERYTHING except the ORIGINAL GREEN BACKGROUND. Completely remove the yellow bag, white handle, white checkmark, lettuce, tomato and baguette, plus all of their cast shadows. Seamlessly inpaint the previously occluded area by extending the original green backdrop. Preserve the visible original background color, hue, saturation, soft subtle lighting gradient and delicate texture. The result must look like the very same original backdrop before any objects were placed on it. No new dramatic gradients, no new spotlight, no vignette enhancement, no horizon, no object-shaped ghosting or residual shadows. Just the clean continuous original green background.
+Output: fully opaque square PNG, full bleed edge to edge including all four square corners, same square framing. Prefer 1024x1024 pixels. No objects, no text, no symbols, no borders, no rounded corners, no transparency.
