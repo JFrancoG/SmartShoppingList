@@ -13,6 +13,10 @@
 
 ### Documentation
 
+- 2026-09-24 | 📝 docs: complete draft validation evidence
+
+- 2026-09-24 | 📝 docs: record Device Hub microphone limitation
+
 - 2026-09-24 | 📝 docs: reconcile delivery validation status
 
 - 2026-09-24 | 📝 docs: consolidate bilingual validation evidence
@@ -29,6 +33,12 @@
 - 2026-09-19 | 📝 docs: organize MVP tracking
 
 ### Fixed
+
+- 2026-09-24 | 🐛 fix(ios): fix draft extraction and pending notices
+
+- 2026-09-24 | 🐛 fix(ios): improve draft editor accessibility
+
+- 2026-09-24 | 🐛 fix(ios): present shopping notices above scrollable content
 
 - 2026-09-22 | 🐛 fix(server): preserve authentication error responses
 - 2026-09-22 | 🐛 fix(ios): harden draft interpretation and dictation

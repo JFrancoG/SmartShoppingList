@@ -5,6 +5,31 @@ import Testing
 
 @Suite(.tags(.fast)) @MainActor
 struct SharedShoppingViewModelTests {
+    @Test("Root alerts wait until the presented sheet finishes dismissing")
+    func noticesWaitForSheetDismissal() throws {
+        let model = try makeModel(api: SharedFlowAPI(), credentials: MemorySharedCredentialStore())
+        #expect(model.canPresentRootNotice)
+        model.isReviewPresented = true
+        #expect(!model.canPresentRootNotice)
+        model.isReviewPresented = false
+        #expect(!model.canPresentRootNotice)
+        model.reviewPresentationDidDismiss()
+        #expect(model.canPresentRootNotice)
+
+        model.isInvitationsPresented = true
+        model.isInvitationsPresented = false
+        #expect(!model.canPresentRootNotice)
+        model.invitationsPresentationDidDismiss()
+        #expect(model.canPresentRootNotice)
+
+        model.draft.beginAddingItem()
+        #expect(!model.canPresentRootNotice)
+        model.draft.cancelEditor()
+        #expect(!model.canPresentRootNotice)
+        model.draft.editorPresentationDidDismiss()
+        #expect(model.canPresentRootNotice)
+    }
+
     @Test("A reopened uncertain batch retries its original intent and consumes only confirmed draft rows")
     func persistedRetry() async throws {
         let first = ShoppingDraftItem(name: "Leche sin lactosa", quantity: "2 litros", store: "Día")
@@ -27,6 +52,12 @@ struct SharedShoppingViewModelTests {
         await model.load()
         await model.retryPendingOperation()
         #expect(model.pendingOperation == original)
+        #expect(model.draft.items == [first, later])
+        let failureNotice = try #require(model.presentedNotice)
+        model.dismissPresentedNotice(failureNotice)
+        #expect(model.notice == nil)
+        #expect(model.pendingOperation == original)
+        #expect(await credentials.loadOperation() == original)
         #expect(model.draft.items == [first, later])
         await model.retryPendingOperation()
         #expect(await api.sentBatches == [request, request])

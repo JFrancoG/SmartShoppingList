@@ -68,6 +68,11 @@ struct SharedReviewView: View {
             }
             .interactiveDismissDisabled(viewModel.isBusy)
         }
+        .modifier(ShoppingNoticeModifier(
+            notice: viewModel.presentedNotice,
+            isEnabled: viewModel.isReviewPresented,
+            dismiss: viewModel.dismissPresentedNotice
+        ))
     }
 }
 

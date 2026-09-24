@@ -1,5 +1,10 @@
 import SwiftUI
 
+/// Identifies the action independently from the product row used by ForEach.
+enum DraftItemAccessibilityTarget: Hashable {
+    case edit(UUID)
+}
+
 struct DraftItemRow: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ScaledMetric(relativeTo: .body) private var sectionSpacing: CGFloat = 12
@@ -7,6 +12,7 @@ struct DraftItemRow: View {
     @ScaledMetric(relativeTo: .body) private var verticalPadding: CGFloat = 4
 
     let item: ShoppingDraftItem
+    let accessibilityFocus: AccessibilityFocusState<DraftItemAccessibilityTarget?>.Binding
     let onEdit: () -> Void
     let onRemove: () -> Void
 
@@ -52,6 +58,8 @@ struct DraftItemRow: View {
                 }
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityLabel("Edit \(item.name)")
+                .accessibilityFocused(accessibilityFocus, equals: .edit(item.id))
+                .id(DraftItemAccessibilityTarget.edit(item.id))
                 if !dynamicTypeSize.isAccessibilitySize {
                     Spacer()
                 }
@@ -69,7 +77,8 @@ struct DraftItemRow: View {
 }
 
 #Preview(traits: .shoppingDraft) {
+    @Previewable @AccessibilityFocusState var focusedControl: DraftItemAccessibilityTarget?
     Form {
-        DraftItemRow(item: DraftPreviewSupport.items[0]) {} onRemove: {}
+        DraftItemRow(item: DraftPreviewSupport.items[0], accessibilityFocus: $focusedControl) {} onRemove: {}
     }
 }

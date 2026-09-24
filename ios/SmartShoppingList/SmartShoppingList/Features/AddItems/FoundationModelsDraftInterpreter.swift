@@ -146,6 +146,9 @@ struct FoundationModelsDraftInterpreter: DraftInterpreting {
         A quantity belongs only to the product it describes, not to the other products in the list.
         store is the explicit store only when its relationship to the product is unambiguous;
         otherwise use null. When a single store qualifies the whole list, copy that store into every product in that list.
+        When the person has not chosen between alternative stores, keep the requested products with store null.
+        Alternative stores do not create additional product mentions: never duplicate products for each possible store.
+        A later reference such as "them" refers to the existing products, not a new request for those products.
         If there are more than 50 products, set exceedsProductLimit to true; never present 50 as the full list.
         Choose noProducts if the text does not request shopping products. Do not create a shopping draft in that case.
         Choose shopping for a shopping request or a product list, and extract its requested products.
@@ -183,6 +186,6 @@ private struct GeneratedShoppingProduct {
     @Guide(description: "Explicit literal quantity; null if missing or ambiguous")
     var quantity: String?
 
-    @Guide(description: "Explicit unambiguous store; null if missing or ambiguous")
+    @Guide(description: "Explicit chosen store; null if missing, ambiguous, or the person has not chosen between alternatives")
     var store: String?
 }

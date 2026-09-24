@@ -4,17 +4,10 @@ struct SharedOperationSection: View {
     let viewModel: SharedShoppingViewModel
 
     var body: some View {
-        if viewModel.notice != nil || viewModel.pendingOperation != nil || viewModel.isBusy {
+        if viewModel.pendingOperation != nil || viewModel.isBusy {
             Section("Group status") {
                 if viewModel.isBusy {
                     ProgressView("Loading group…")
-                }
-                if let notice = viewModel.notice {
-                    Text(notice)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Button("Dismiss notice") {
-                        viewModel.dismissNotice()
-                    }
                 }
                 if viewModel.pendingOperation != nil {
                     Text("A submission is awaiting confirmation. Its data is kept so you can retry without duplicating it.")
