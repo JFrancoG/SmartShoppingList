@@ -13,6 +13,8 @@
 
 ### Documentation
 
+- 2026-09-24 | 📝 docs: record Device Hub microphone limitation
+
 - 2026-09-24 | 📝 docs: reconcile delivery validation status
 
 - 2026-09-24 | 📝 docs: consolidate bilingual validation evidence
