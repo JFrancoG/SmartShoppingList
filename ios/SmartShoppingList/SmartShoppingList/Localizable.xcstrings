@@ -820,6 +820,16 @@
         }
       }
     },
+    "Quantity": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cantidad"
+          }
+        }
+      }
+    },
     "Quantity, optional": {
       "localizations": {
         "es": {

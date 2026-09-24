@@ -32,6 +32,8 @@
 
 ### Fixed
 
+- 2026-09-24 | 🐛 fix(ios): improve draft editor accessibility
+
 - 2026-09-24 | 🐛 fix(ios): present shopping notices above scrollable content
 
 - 2026-09-22 | 🐛 fix(server): preserve authentication error responses
