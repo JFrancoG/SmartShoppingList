@@ -13,6 +13,8 @@
 
 ### Documentation
 
+- 2026-09-24 | 📝 docs: reconcile delivery validation status
+
 - 2026-09-24 | 📝 docs: consolidate bilingual validation evidence
 
 - 2026-09-23 | 📝 docs(design): define accessible design system
