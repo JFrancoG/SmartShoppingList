@@ -60,7 +60,7 @@ La interacción automatizada de Xcode devolvió una sesión inexistente, aunque 
 
 ## Compilación final y destino físico
 
-La compilación final para pruebas en simulador pasó sin warnings el 19 de septiembre a las 14:08 CEST, después de la auditoría final de estilo de los 19 archivos Swift del bloque. Log: `/var/folders/wt/r327qtw12_s5tbbcnx9dzqv80000gn/T/ActionArtifacts/default/BuildProject/BuildProject-Log-20260919-140809.txt`.
+La compilación final para pruebas en simulador completó el 19 de septiembre a las 14:08 CEST, después de la auditoría final de estilo de los 19 archivos Swift del bloque. La afirmación inicial «sin warnings» se corrige: la revisión posterior de los logs completos identificó el aviso de extracción de metadatos App Intents, omitido por el resumen MCP. Ese diagnóstico específico queda cubierto por [EXC-002](../dependency-exceptions.md#exc-002--extracción-de-metadatos-app-intents-sin-adopción), aceptada el 21 de septiembre; no se declara ausencia global de avisos. Log: `/var/folders/wt/r327qtw12_s5tbbcnx9dzqv80000gn/T/ActionArtifacts/default/BuildProject/BuildProject-Log-20260919-140809.txt`.
 
 Se seleccionó «iPhone14 de Jesús» (iOS 27.0) y se solicitó RunProject. El build `Debug-iphoneos`, incluida la firma automática, terminó correctamente. La operación quedó esperando el arranque; al detener la ejecución de prueba, la herramienta devolvió `The app failed to launch after building successfully`. No se confirmó instalación ni interacción física. Log: `/var/folders/wt/r327qtw12_s5tbbcnx9dzqv80000gn/T/ActionArtifacts/default/RunProject/RunProject-Log-20260919-135655.txt`. Se restauró el destino iPhone 18 Pro y quedó seleccionado el plan Fast.
 

@@ -3,6 +3,7 @@ import Testing
 import Vapor
 import VaporTesting
 import FluentKit
+import FluentSQL
 import FluentPostgresDriver
 import Foundation
 
@@ -135,4 +136,79 @@ extension TodoDTO: Equatable {
     static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.id == rhs.id && lhs.title == rhs.title
     }
+}
+
+// Exercise the configured responder chain, not the authentication service in isolation.
+extension SmartShoppingListServerTests {
+    @Test(arguments: [(HTTPMethod.GET, "/v1/me"), (.DELETE, "/v1/session")])
+    func `authentication routes return contractual errors without a session`(
+        method: HTTPMethod,
+        path: String
+    ) async throws {
+        let response = try await app.sendRequest(method, path)
+        try expectContractError(response, status: .unauthorized, code: "invalid_session")
+    }
+
+    @Test(arguments: [("/v1/auth/challenges", "{\"unknown\":true}"), ("/v1/auth/apple", "{}")])
+    func `invalid authentication bodies preserve the public error contract`(path: String, body: String) async throws {
+        let response = try await app.sendRequest(
+            .POST,
+            path,
+            headers: ["Content-Type": "application/json"],
+            body: ByteBuffer(string: body)
+        )
+        try expectContractError(response, status: .badRequest, code: "invalid_request")
+    }
+
+    @Test
+    func `revoked sessions request reauthentication through the real routes`() async throws {
+        let user = try await ShoppingFixture.user()
+        let before = try await ShoppingFixture.request(.GET, "/v1/me", user)
+        try #require(before.status == .ok)
+        let logout = try await ShoppingFixture.request(.DELETE, "/v1/session", user)
+        try #require(logout.status == .noContent)
+        let after = try await ShoppingFixture.request(.GET, "/v1/me", user)
+        try expectContractError(after, status: .unauthorized, code: "invalid_session")
+    }
+
+    @Test
+    func `expired sessions request reauthentication through the real routes`() async throws {
+        let user = try await ShoppingFixture.user()
+        let sql = try shoppingSQL(database)
+        try await sql.raw("""
+            UPDATE app_sessions SET expires_at = clock_timestamp() - INTERVAL '1 second'
+            WHERE user_id = \(bind: user.id)
+            """).run()
+        let response = try await ShoppingFixture.request(.GET, "/v1/me", user)
+        try expectContractError(response, status: .unauthorized, code: "invalid_session")
+    }
+
+    @Test
+    func `body collection failures preserve the public error contract`() async throws {
+        let response = try await app.sendRequest(
+            .POST,
+            "/v1/auth/apple",
+            headers: ["Content-Type": "application/json"],
+            body: ByteBuffer(string: String(repeating: " ", count: 131_073))
+        )
+        try expectContractError(response, status: .payloadTooLarge, code: "body_too_large")
+    }
+
+    @Test
+    func `unregistered API routes preserve the public error contract`() async throws {
+        let response = try await app.sendRequest(.GET, "/v1/does-not-exist")
+        try expectContractError(response, status: .notFound, code: "not_found")
+    }
+}
+
+private func expectContractError(_ response: TestingHTTPResponse, status: HTTPStatus, code: String) throws {
+    try #require(response.status == status)
+    #expect(response.headers.contentType == .json)
+    let body = try ShoppingFixture.object(response)
+    #expect(Set(body.keys) == ["code", "message", "requestId"])
+    #expect(body["code"] == .string(code))
+    let message = try #require(body["message"]?.string)
+    #expect((1...500).contains(message.unicodeScalars.count))
+    let requestID = try #require(body["requestId"]?.string)
+    #expect(UUID(uuidString: requestID) != nil)
 }

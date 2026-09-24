@@ -4,3 +4,7 @@
 .env.*
 !.env.example
 *.xcresult/
+*.p8
+*.p12
+*.pem
+*.key

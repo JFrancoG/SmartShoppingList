@@ -21,6 +21,7 @@ let package = Package(
             name: "SmartShoppingListServer",
             dependencies: [
                 .product(name: "FluentKit", package: "fluent-kit"),
+                .product(name: "FluentSQL", package: "fluent-kit"),
                 .product(name: "FluentPostgresDriver", package: "fluent-postgres-driver"),
                 .product(name: "Vapor", package: "vapor"),
                 .product(name: "JWTKit", package: "jwt-kit"),
@@ -32,6 +33,7 @@ let package = Package(
             dependencies: [
                 .target(name: "SmartShoppingListServer"),
                 .product(name: "VaporTesting", package: "vapor"),
+                .product(name: "FluentSQL", package: "fluent-kit"),
                 .product(name: "JWTKit", package: "jwt-kit"),
             ],
             swiftSettings: swiftSettings

@@ -14,6 +14,9 @@ Una persona dicta lo que necesita comprar y dónde. Revisa los productos interpr
 - [Preparación de Git](docs/git-setup.md): configuración local y referencia de la inicialización ya completada.
 - [Servidor](server/README.md): requisitos y comandos de PostgreSQL, compilación, pruebas y ejecución.
 - [Borrador iOS](docs/architecture/ios-draft.md): decisiones de entrada, revisión y conservación local.
+- [Recorrido compartido](docs/architecture/shared-shopping.md): identidad, grupos, persistencia y reintentos.
+- [Configurar el acceso compartido](docs/setup/shared-shopping.md): Apple, orígenes HTTPS, enlaces universales y ensayo con dos usuarios.
+- [Validación del bloque 4](docs/validation/issue-4-shared-flow.md): pruebas locales y requisitos reales pendientes.
 - [Validación del borrador](docs/validation/issue-3-ios-draft.md): pruebas, disponibilidad real de modelos y comprobaciones pendientes.
 - [Validación del arranque](docs/validation/issue-1-server-bootstrap.md): versiones evaluadas, resultados y límites de la prueba técnica del servidor.
 - [Excepciones de dependencias](docs/dependency-exceptions.md): diagnósticos externos aceptados expresamente, alcance y condiciones de retirada.
@@ -21,7 +24,7 @@ Una persona dicta lo que necesita comprar y dónde. Revisa los productos interpr
 ## Estructura
 
 - `ios/SmartShoppingList/`: proyecto Xcode de la app.
-- `server/`: paquete Swift del servidor Vapor y su plantilla de pruebas.
+- `server/`: servidor Vapor, migraciones PostgreSQL y pruebas HTTP del contrato.
 - `docs/`: especificación, fases y documentación técnica compartidas.
 
 Los tres directorios se versionan juntos desde esta raíz.
@@ -40,7 +43,7 @@ La validación acordada combina entrada manual en el iPhone físico sin Apple In
 
 Abrir `ios/SmartShoppingList/SmartShoppingList.xcodeproj` con Xcode 27, seleccionar el esquema compartido `SmartShoppingList` y un iPhone o simulador con iOS 27. Ejecutar la app para preparar el borrador local. Para las pruebas, seleccionar el plan `Fast` o `Integration` y ejecutar Test; ambos usan Swift Testing y no requieren IA ni micrófono.
 
-La entrada manual permite añadir nombre, cantidad opcional y tienda. La revisión valida el borrador; todavía no lo envía al grupo. Las pruebas reales de voz, Foundation Models y físico tienen requisitos y evidencia separados en el informe enlazado.
+La entrada manual permite añadir nombre, cantidad opcional y tienda. Con el acceso compartido configurado, la revisión exige confirmar las tiendas antes de incorporar el lote al grupo. La pestaña Comprar permite acceder con Apple, crear un grupo o aceptar una invitación y consultar sus pendientes por tienda. Sin configurar el servidor, el borrador local sigue disponible. La compra, edición e historial completos quedan para la fase 2. Las pruebas reales de voz, Foundation Models y físico tienen requisitos y evidencia separados en los informes enlazados.
 
 ## Compilación del servidor
 

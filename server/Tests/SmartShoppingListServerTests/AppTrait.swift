@@ -10,6 +10,13 @@ var app: Application {
     get throws { try #require(_application) }
 }
 @TaskLocal var _database: (any Database)?
+@TaskLocal var _databases: Databases?
+
+var testDatabases: Databases {
+    get throws {
+        try #require(_databases)
+    }
+}
 
 var database: any Database {
     get throws { try #require(_database) }
@@ -34,9 +41,11 @@ struct AppTrait: TestTrait, SuiteTrait, TestScoping {
             try await configure(app, databases: databases, databaseConfiguration: configuration)
             configured = true
             try await app.asyncBoot()
-            try await $_database.withValue(databases.database()) {
-                try await $_application.withValue(app) {
-                    try await function()
+            try await $_databases.withValue(databases) {
+                try await $_database.withValue(databases.database()) {
+                    try await $_application.withValue(app) {
+                        try await function()
+                    }
                 }
             }
         } catch {
@@ -45,7 +54,10 @@ struct AppTrait: TestTrait, SuiteTrait, TestScoping {
 
         if configured {
             do {
-                try await databases.revert(migrations: CreateTodo(), on: app)
+                try await databases.revert(
+                    migrations: CreateTodo(), CreateSharedShopping(), CreateAppleAuthentication(),
+                    on: app
+                )
             } catch {
                 if failure == nil {
                     failure = error
@@ -106,6 +118,6 @@ enum TestDatabaseConfiguration {
             password: environment("TEST_DATABASE_PASSWORD") ?? "vapor_test_password",
             database: databaseName,
             tls: .disable
-        ))
+        ), maxConnectionsPerEventLoop: 4)
     }
 }

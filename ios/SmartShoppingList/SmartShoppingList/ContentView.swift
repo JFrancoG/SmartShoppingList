@@ -2,9 +2,14 @@ import SwiftUI
 
 struct ContentView: View {
     let viewModel: ShoppingDraftViewModel
+    var shared: SharedShoppingViewModel? = nil
 
     var body: some View {
-        AddItemsView(viewModel: viewModel)
+        if let shared {
+            SharedRootView(viewModel: shared)
+        } else {
+            AddItemsView(viewModel: viewModel)
+        }
     }
 }
 

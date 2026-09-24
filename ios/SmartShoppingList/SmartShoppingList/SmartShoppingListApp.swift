@@ -2,17 +2,11 @@ import SwiftUI
 
 @main
 struct SmartShoppingListApp: App {
-    @State private var draft = ShoppingDraftViewModel(
-        interpreter: FoundationModelsDraftInterpreter(),
-        speech: SpeechCaptureService(),
-        persistence: FileDraftPersistence(
-            fileURL: URL.applicationSupportDirectory.appending(path: "SmartShoppingList/draft-v1.json")
-        )
-    )
+    @State private var shopping = SharedAppFactory.make()
 
     var body: some Scene {
         WindowGroup {
-            ContentView(viewModel: draft)
+            ContentView(viewModel: shopping.draft, shared: shopping)
         }
     }
 }

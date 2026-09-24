@@ -37,6 +37,7 @@ final class ShoppingDraftViewModel {
     @ObservationIgnored private var interpretationID: UUID?
     @ObservationIgnored private var interpretationTask: Task<Void, Never>?
     @ObservationIgnored private var captureID: UUID?
+    @ObservationIgnored private var textBeforeDictation: String?
     @ObservationIgnored private var finishingID: UUID?
     @ObservationIgnored private var captureTask: Task<Void, Never>?
     @ObservationIgnored private var pendingSnapshot: ShoppingDraftSnapshot?
@@ -175,7 +176,7 @@ final class ShoppingDraftViewModel {
             refreshAvailability()
         } else {
             cancelInterpretation()
-            cancelDictation()
+            stopDictation(discardTranscript: false)
             Task {
                 await flushPersistence()
             }
@@ -232,6 +233,7 @@ final class ShoppingDraftViewModel {
         let id = UUID()
         let prefix = text == interpretedText ? "" : text.trimmingCharacters(in: .whitespacesAndNewlines)
         captureID = id
+        textBeforeDictation = text
         activity = .preparingSpeech
         notice = nil
         let task = Task {
@@ -255,6 +257,7 @@ final class ShoppingDraftViewModel {
             captureID = nil
             captureTask = nil
             if activity != .finishingSpeech {
+                textBeforeDictation = nil
                 activity = .idle
             }
         }
@@ -278,15 +281,25 @@ final class ShoppingDraftViewModel {
             await task?.value
             guard finishingID == id else { return }
             finishingID = nil
+            textBeforeDictation = nil
             activity = .idle
         }
     }
 
     @discardableResult
     func cancelDictation() -> Task<Void, Never> {
+        stopDictation(discardTranscript: true)
+    }
+
+    @discardableResult
+    private func stopDictation(discardTranscript: Bool) -> Task<Void, Never> {
         guard captureID != nil || finishingID != nil else { return Task {} }
         captureID = nil
         finishingID = nil
+        if discardTranscript, let textBeforeDictation {
+            text = textBeforeDictation
+        }
+        textBeforeDictation = nil
         let task = captureTask
         captureTask = nil
         task?.cancel()
@@ -302,9 +315,23 @@ final class ShoppingDraftViewModel {
         await saveTask?.value
     }
 
+    /// Remove only unchanged rows acknowledged by the server before clearing its retry envelope.
+    func consumeConfirmedItems(_ confirmed: [ShoppingDraftItem]) async -> Bool {
+        await load()
+        await flushPersistence()
+        guard !storageBlocked else { return false }
+        let originals = Dictionary(confirmed.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        cancelInterpretation()
+        items.removeAll { originals[$0.id] == $0 }
+        preparedItems = nil
+        queuePersistence()
+        await flushPersistence()
+        return persistenceNotice == nil
+    }
+
     private func stopForEditing() {
         cancelInterpretation()
-        cancelDictation()
+        stopDictation(discardTranscript: false)
         notice = nil
     }
 
@@ -349,7 +376,8 @@ final class ShoppingDraftViewModel {
         case .tooManyProducts: "La propuesta superaría los 50 productos. No se ha añadido ninguno; divide el texto y revisa el borrador."
         case .noProducts: "No se han encontrado productos. Puedes reformular el texto o añadirlos a mano."
         case .refused: "No se ha podido interpretar este texto. Puedes añadir los productos a mano."
-        default: "No se ha podido interpretar el texto. El borrador se conserva; puedes reintentar o continuar a mano."
+        case .unavailable: "El modelo de Apple Intelligence no está disponible en este momento. El borrador se conserva; puedes reintentar más tarde o continuar a mano."
+        case .failed, .none: "No se ha podido interpretar el texto. El borrador se conserva; puedes reintentar o continuar a mano."
         }
     }
 
