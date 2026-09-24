@@ -18,6 +18,7 @@ struct ShoppingRoutes: RouteCollection {
         api.post("invitations", ":invitationId", "preview", use: previewInvitation)
         api.post("invitations", ":invitationId", "accept", use: acceptInvitation)
         api.post("groups", ":groupId", "item-batches", use: addItems)
+        api.post("groups", ":groupId", "purchases", use: finalizePurchase)
         api.get("groups", ":groupId", "stores", ":storeId", "items", use: listItems)
     }
 
@@ -51,6 +52,22 @@ struct ShoppingRoutes: RouteCollection {
             group: group,
             operation: body.uuid("operationId"),
             items: items
+        ).response()
+    }
+
+    private func finalizePurchase(_ request: Request) async throws -> Response {
+        let user = try await authentication.authenticate(request)
+        let group = try parameter("groupId", request: request)
+        let body = try APIObject.body(
+            request, allowed: ["operationId", "storeId", "items"], required: ["operationId", "storeId", "items"]
+        )
+        guard case .array(let values) = body.values["items"] else { throw APIProblem.invalidRequest }
+        return try await service().finalizePurchase(
+            user: user,
+            group: group,
+            operation: body.uuid("operationId"),
+            store: body.uuid("storeId"),
+            items: values.map(ShoppingSelectedItem.init)
         ).response()
     }
 

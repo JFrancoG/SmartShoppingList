@@ -179,6 +179,33 @@ actor SharedHTTPAPI: SharedShoppingAPI {
         return response.items
     }
 
+    func finalizePurchase(
+        _ request: FinalizePurchaseRequest,
+        groupID: UUID,
+        token: String
+    ) async throws -> PurchaseResult {
+        guard (1...50).contains(request.items.count),
+              Set(request.items.map(\.id)).count == request.items.count else { throw SharedAPIError.invalidResponse }
+        let response: PurchaseResult = try await send(
+            path: "v1/groups/\(id(groupID))/purchases",
+            method: "POST",
+            body: request,
+            token: token,
+            status: 200,
+            purchaseContext: PurchaseConflictContext(groupID: groupID, request: request)
+        )
+        let versions = Dictionary(uniqueKeysWithValues: request.items.map { ($0.id, $0.expectedVersion) })
+        guard response.items.count == request.items.count,
+              Set(response.items.map(\.id)) == Set(versions.keys),
+              response.items.allSatisfy({ item in
+                  guard let version = versions[item.id], version < 9_007_199_254_740_991 else { return false }
+                  return item.groupId == groupID && item.storeId == request.storeId && item.status == "purchased"
+                      && item.version == version + 1 && item.purchasedBy != nil
+                      && item.purchasedAt == response.confirmedAt
+              }) else { throw SharedAPIError.invalidResponse }
+        return response
+    }
+
     func pendingItems(groupID: UUID, storeID: UUID, token: String) async throws -> [SharedItem] {
         let items = try await pages(
             PendingItemPage.self,
@@ -248,7 +275,8 @@ actor SharedHTTPAPI: SharedShoppingAPI {
         method: String,
         body: Body,
         token: String?,
-        status: Int
+        status: Int,
+        purchaseContext: PurchaseConflictContext? = nil
     ) async throws -> Response {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
@@ -259,7 +287,8 @@ actor SharedHTTPAPI: SharedShoppingAPI {
             method: method,
             body: encoded,
             token: token,
-            status: status
+            status: status,
+            purchaseContext: purchaseContext
         )
         return try decode(Response.self, from: data)
     }
@@ -270,7 +299,8 @@ actor SharedHTTPAPI: SharedShoppingAPI {
         body: Data?,
         token: String?,
         status: Int,
-        query: [URLQueryItem] = []
+        query: [URLQueryItem] = [],
+        purchaseContext: PurchaseConflictContext? = nil
     ) async throws -> Data {
         try Task.checkCancellation()
         let endpoint = configuration.baseURL.appending(path: path)
@@ -311,6 +341,10 @@ actor SharedHTTPAPI: SharedShoppingAPI {
         guard response.url == request.url, data.count <= 1_024 * 1_024 else { throw SharedAPIError.invalidResponse }
         guard response.statusCode == status else {
             let failure = try? SharedJSON.decoder().decode(ServerFailure.self, from: data)
+            if failure?.code == "item_conflict", let purchaseContext {
+                guard response.statusCode == 409 else { throw SharedAPIError.invalidResponse }
+                try purchaseContext.validate(data)
+            }
             let retryAfter = response.value(forHTTPHeaderField: "Retry-After").flatMap(Int.init)
             throw SharedAPIError.server(
                 status: response.statusCode,
@@ -475,5 +509,68 @@ extension PendingItemPage {
     enum CodingKeys: String, CodingKey {
         case items
         case nextCursor
+    }
+}
+
+
+private struct PurchaseConflictContext {
+    let groupID: UUID
+    let request: FinalizePurchaseRequest
+
+    func validate(_ data: Data) throws {
+        guard let payload = try? SharedJSON.decoder().decode(PurchaseConflictPayload.self, from: data),
+              (1...request.items.count).contains(payload.conflicts.count),
+              Set(payload.conflicts.map(\.itemId)).count == payload.conflicts.count else {
+            throw SharedAPIError.invalidResponse
+        }
+        for conflict in payload.conflicts {
+            guard let selected = request.items.first(where: { $0.id == conflict.itemId }) else {
+                throw SharedAPIError.invalidResponse
+            }
+            if conflict.reason == "not_found" {
+                guard conflict.current == nil else { throw SharedAPIError.invalidResponse }
+                continue
+            }
+            guard let item = conflict.current, item.id == conflict.itemId, item.groupId == groupID,
+                  (1...9_007_199_254_740_991).contains(item.version) else {
+                throw SharedAPIError.invalidResponse
+            }
+            let valid: Bool
+            switch conflict.reason {
+            case "store_mismatch":
+                valid = item.storeId != request.storeId
+            case "not_pending":
+                valid = item.storeId == request.storeId && ["purchased", "cancelled"].contains(item.status)
+            case "version_mismatch":
+                valid = item.storeId == request.storeId && item.status == "pending"
+                    && item.version != selected.expectedVersion
+            default:
+                valid = false
+            }
+            guard valid else { throw SharedAPIError.invalidResponse }
+        }
+    }
+}
+
+private struct PurchaseConflictPayload: Decodable {
+    let conflicts: [PurchaseConflict]
+}
+
+private struct PurchaseConflict: Decodable {
+    let itemId: UUID
+    let reason: String
+    let current: SharedItem?
+}
+
+private extension PurchaseConflict {
+    init(from decoder: any Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        itemId = try values.decode(UUID.self, forKey: .itemId)
+        reason = try values.decode(String.self, forKey: .reason)
+        current = try values.decode(SharedItem?.self, forKey: .current)
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case itemId, reason, current
     }
 }

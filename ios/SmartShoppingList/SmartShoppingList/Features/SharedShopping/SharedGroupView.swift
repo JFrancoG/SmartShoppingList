@@ -103,28 +103,7 @@ struct SharedGroupView: View {
                             }
                         }
                         if viewModel.selectedStoreID != nil {
-                            Section {
-                                if viewModel.items.isEmpty && !viewModel.isBusy {
-                                    Text("Sin productos cargados. Actualiza para consultar esta tienda.")
-                                        .foregroundStyle(.secondary)
-                                }
-                                ForEach(viewModel.items) { item in
-                                    VStack(alignment: .leading) {
-                                        Text(item.name)
-                                            .font(.headline)
-                                        if let quantity = item.quantity {
-                                            Text(quantity)
-                                                .foregroundStyle(.secondary)
-                                        }
-                                    }
-                                    .fixedSize(horizontal: false, vertical: true)
-                                    .accessibilityElement(children: .combine)
-                                }
-                            } header: {
-                                Text("Pendientes · \(viewModel.selectedStoreName)")
-                            } footer: {
-                                Text("Esta lista muestra la última consulta. Actualiza para ver los cambios del grupo.")
-                            }
+                            SharedPurchaseSection(viewModel: viewModel)
                         }
                     } else {
                         Section {

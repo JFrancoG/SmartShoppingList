@@ -146,3 +146,25 @@ extension ShoppingCursor {
         self = cursor
     }
 }
+
+struct ShoppingSelectedItem: Sendable {
+    private let validatedID: UUID
+    private let validatedVersion: Int64
+
+    var id: UUID { validatedID }
+    var expectedVersion: Int64 { validatedVersion }
+
+    var json: APIJSON {
+        .object(["id": .string(id.uuidString.lowercased()), "expectedVersion": .integer(expectedVersion)])
+    }
+}
+
+extension ShoppingSelectedItem {
+    init(_ value: APIJSON) throws {
+        let object = try APIObject(value, allowed: ["id", "expectedVersion"], required: ["id", "expectedVersion"])
+        validatedID = try object.uuid("id")
+        guard case .integer(let version) = object.values["expectedVersion"],
+              (1...9_007_199_254_740_991).contains(version) else { throw APIProblem.invalidRequest }
+        validatedVersion = version
+    }
+}

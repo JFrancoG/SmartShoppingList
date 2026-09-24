@@ -61,6 +61,12 @@
     "Cada enlace permite que una persona se una durante 24 horas. Compártelo ahora: el enlace no se recupera al volver a abrir la app." : {
 
     },
+    "Cambia la selección local. La compra se guarda al pulsar Finalizar compra." : {
+
+    },
+    "Cambiar de tienda o salir de esta pantalla no confirma la compra. Actualiza para consultar cambios del grupo." : {
+
+    },
     "Cancelar" : {
 
     },
@@ -103,6 +109,12 @@
     "Confirma una opción para cada nombre. Si ese nombre ya existe en el grupo, se usará la misma tienda." : {
 
     },
+    "Confirma únicamente los productos seleccionados de esta tienda para todo el grupo." : {
+
+    },
+    "Confirmar compra" : {
+
+    },
     "Confirmar el nombre «%@»" : {
 
     },
@@ -128,6 +140,9 @@
 
     },
     "Descartar invitación" : {
+
+    },
+    "Desmarcar los productos que han cambiado" : {
 
     },
     "Dictar" : {
@@ -202,9 +217,6 @@
     "Escuchando…" : {
 
     },
-    "Esta lista muestra la última consulta. Actualiza para ver los cambios del grupo." : {
-
-    },
     "Estado del grupo" : {
 
     },
@@ -212,6 +224,9 @@
 
     },
     "Este intento de acceso ya no es válido. Inicia de nuevo el acceso con Apple." : {
+
+    },
+    "Finalizar compra · %lld" : {
 
     },
     "Gestionar invitaciones" : {
@@ -224,6 +239,9 @@
 
     },
     "Hay otra invitación guardada. Resuelve o descarta la anterior para revisar el nuevo enlace." : {
+
+    },
+    "Hay productos seleccionados que han cambiado o ya no están pendientes." : {
 
     },
     "Hay un envío pendiente de confirmación. Conservamos sus datos para reintentarlo sin duplicarlo." : {
@@ -254,6 +272,9 @@
 
     },
     "Invitaciones creadas" : {
+
+    },
+    "La compra se ha confirmado. Los productos no seleccionados siguen pendientes." : {
 
     },
     "La conexión del grupo todavía no está configurada. Puedes preparar productos en Añadir." : {
@@ -293,6 +314,9 @@
 
     },
     "Los productos siguen siendo un borrador hasta que confirmes su incorporación al grupo." : {
+
+    },
+    "Marca los productos que vas a comprar. Los demás seguirán pendientes." : {
 
     },
     "No hay invitaciones cargadas." : {
@@ -430,6 +454,12 @@
     "Selecciona una tienda" : {
 
     },
+    "Seleccionado" : {
+
+    },
+    "Seleccionados: %lld de 50 como máximo" : {
+
+    },
     "Sesión" : {
 
     },
@@ -437,6 +467,9 @@
 
     },
     "Sin productos cargados. Actualiza para consultar esta tienda." : {
+
+    },
+    "Sin seleccionar" : {
 
     },
     "Solo la persona que creó el grupo puede gestionar invitaciones." : {

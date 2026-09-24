@@ -66,3 +66,36 @@ struct SharedAPIKeychainTests {
         try await store.saveOperation(nil)
     }
 }
+
+
+extension SharedAPIKeychainTests {
+    @Test
+    func `Reopening keychain preserves the purchase selection versions and operation id`() async throws {
+        let service = "PurchaseKeychainTests.\(UUID().uuidString)"
+        let store = SharedKeychainStore(service: service)
+        let fixture = try SharedPreviewFixture.sample()
+        let selected = try #require(fixture.items.first)
+        let operation = PendingSharedOperation.purchase(
+            userID: fixture.session.user.id,
+            groupID: fixture.group.id,
+            request: FinalizePurchaseRequest(
+                operationId: UUID(),
+                storeId: selected.storeId,
+                items: [SelectedPurchaseItem(id: selected.id, expectedVersion: selected.version)]
+            ),
+            selection: [selected]
+        )
+        do {
+            try await store.saveOperation(operation)
+            let reopened = SharedKeychainStore(service: service)
+            #expect(try await reopened.loadOperation() == operation)
+            try await store.saveSession(nil)
+            #expect(try await reopened.loadOperation() == operation)
+            try await store.saveOperation(nil)
+            #expect(try await store.loadOperation() == nil)
+        } catch {
+            try? await store.saveOperation(nil)
+            throw error
+        }
+    }
+}

@@ -4,10 +4,16 @@
 
 ### Added
 
+- 2026-09-22 | ✨ feat(purchase): add atomic purchases with recoverable retries
+
 - 2026-09-19 | ✨ feat(shared): add shared shopping flow
 - 2026-09-19 | ✨ feat(ios): add editable shopping drafts
 
 ### Documentation
+
+- 2026-09-23 | 📝 docs(design): define accessible design system
+
+- 2026-09-22 | 📝 docs: consolidate physical purchase validation
 
 - 2026-09-22 | 📝 docs: consolidate hosted validation evidence
 - 2026-09-22 | 📝 docs: record Linux review and delivery blockers
@@ -20,6 +26,10 @@
 
 - 2026-09-22 | 🐛 fix(server): preserve authentication error responses
 - 2026-09-22 | 🐛 fix(ios): harden draft interpretation and dictation
+
+### Tests
+
+- 2026-09-22 | ✅ test(purchase): cover changes after selection
 
 ### Maintenance
 

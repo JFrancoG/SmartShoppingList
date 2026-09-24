@@ -1,6 +1,6 @@
 # Plan de implementación
 
-Fecha de creación: 18 de septiembre de 2026. Última revisión: 19 de septiembre de 2026.
+Fecha de creación: 18 de septiembre de 2026. Última revisión: 23 de septiembre de 2026.
 
 Especificación de referencia: [MVP aprobado](mvp-spec.md). Este documento conserva las fases, dependencias y condiciones para avanzar; no amplía el contrato funcional ni registra el progreso de cada tarea.
 
@@ -12,6 +12,7 @@ Una persona desarrolla con ayuda de Codex, con jornadas disponibles de 4–8 hor
 |---|---|
 | [Especificación](mvp-spec.md) | Alcance aprobado, reglas funcionales y criterios de aceptación |
 | [Contrato técnico](contracts/mvp-api.md) | Tipos y operaciones compartidos, integridad, sesiones, invitaciones y conflictos; ejemplos verificables |
+| [Sistema de diseño](design-system.md) y [accesibilidad](accessibility.md) | Tokens y componentes, pares permitidos, criterios de interfaz y protocolo de comprobación; fuentes y ratios enlazados |
 | Este plan | Fases, ventanas objetivo, dependencias y resultados esperados |
 | [GitHub Issues](https://github.com/JFrancoG/SmartShoppingList/issues) | Plan de cada bloque, situación, bloqueos, decisiones de ejecución y evidencia de cierre |
 
@@ -68,13 +69,31 @@ El resultado de esta fase es el recorrido completo descrito en la spec:
 - Historial mínimo por entrada y nueva entrada para una nueva necesidad; estados de carga, vacío y error, refresco y consulta de la última lista recuperada.
 - Preparar las nuevas pantallas para español e inglés y adaptar la selección de idioma de Speech/Foundation Models, evitando el español fijo del recorrido inicial. Comprobar disponibilidad real por idioma con #7; la traducción y revisión completas se consolidan en fase 3.
 
-Las issues de esta fase se concretan al cerrar las incertidumbres iniciales, con dependencias y criterios de aceptación propios.
+La primera unidad es [#11: selección y finalización segura de compra](https://github.com/JFrancoG/SmartShoppingList/issues/11), sobre el código compartido de #4. Comprende checks locales por tienda, compra atómica de IDs/versiones explícitos, recuperación del envío y conflictos. Su [diseño](architecture/shared-shopping.md#selección-y-finalización-de-compra-11) y [validación](validation/issue-11-purchase-flow.md) separan pruebas locales de activación alojada y ensayo físico. Abrir este bloque no cierra #4/#7 ni da por completa la fase 2.
+
+Edición/cancelación desde la app, historial y consulta de tienda por voz se concretarán como siguientes unidades con dependencias y criterios propios. La localización completa y el acabado de accesibilidad conservan su ventana de fase 3.
 
 ### Extra opcional después del recorrido de compra: Siri
 
 El 22 de septiembre el usuario decidió planificar [#10: entrada al borrador con Siri y App Intents](https://github.com/JFrancoG/SmartShoppingList/issues/10) después de completar el recorrido de compra. La primera acción recibirá producto, tienda y cantidad opcional para añadir una entrada al borrador local, conservando los datos existentes y la revisión posterior. Se preparará para español e inglés y se validará con Siri/Atajos reales. La frase exacta de invocación y la ejecución con app cerrada necesitan validación; no se acreditan por habilitar Siri AI. Es un extra planificado, todavía no implementado, que no sustituye los criterios pendientes del MVP ni bloquea el cierre de #4/#7. Antes de iniciarlo se revisará el margen de entrega.
 
 ## Fase 3: validar y corregir
+
+### Sistema de diseño y accesibilidad: decisión del 23 de septiembre
+
+El usuario solicita un sistema coherente inspirado en el icono candidato, actualizado respecto a la referencia de iOS 26. La [definición visual](design-system.md) fija verde como acento, amarillo como apoyo, colores semánticos y cuatro variantes automáticas. La [revisión de actualidad](research/design-system-sources.md) incorpora las novedades de Apple para iOS 27 y las guías W3C recientes, manteniendo WCAG 2.2 como base estable. No se amplía el alcance funcional.
+
+Esta revisión entrega documentación y [ratios reproducibles](validation/design-system-contrast.md). La aplicación de tokens y el ensayo de UI siguen pendientes; ni la fecha de esta sección ni los ratios cierran la fase. La integración se concreta como una unidad coherente de acabado cuando corresponda activarla en GitHub Issues; se reutiliza un item equivalente si existe. #7 conserva la validación del borrador y sus hallazgos, sin duplicar su seguimiento ni cerrar criterios por esta documentación.
+
+Orden de ejecución previsto:
+
+1. Integrar assets sRGB con cuatro variantes, acceso semántico y componentes reutilizables; conservar controles y materiales nativos donde proceda. Ejecutar el verificador de pares, sin introducir librerías de UI.
+2. Aplicar tipografía, espaciado y estados al recorrido de Añadir/Comprar, sesión e invitación; mantener selección provisional, confirmación del servidor y reintentos del contrato.
+3. Corregir los hallazgos de avisos/foco/recorte ya registrados y consolidar ES/EN. Preparar previews de estados y tamaños, con layouts adaptables a iOS 27.
+4. Ejecutar la [matriz de accesibilidad](accessibility.md#ejecución-de-la-validación): cuatro apariencias, texto grande, controles alternativos, material y preferencias. Registrar evidencia por entorno/idioma en las issues e informes existentes; la página de invitación tiene evaluación web separada.
+5. Revisar todos los criterios aplicables antes del congelado. Exigir ≥4,5:1 para texto normal propio, ≥7:1 en HC y ≥3:1 para gráficos esenciales, más los resultados del recorrido real. No afirmar AAA global ni publicar etiquetas de accesibilidad por pasar el cálculo.
+
+### Comprobaciones de consolidación
 
 Las comprobaciones acompañan al desarrollo y se consolidan antes de congelar funcionalidades:
 
@@ -84,6 +103,7 @@ Las comprobaciones acompañan al desarrollo y se consolidan antes de congelar fu
 - Checks sin escrituras, selección separada por tienda, conservación del borrador/selección ante errores y correcciones del usuario respetadas. Persistencia tras cierre/reapertura y reinicio del servidor.
 - Micrófono/IA no disponibles, tiendas ambiguas, pérdida de red y reintento explícito; VoiceOver, texto grande y uso manual en la interfaz real.
 - Revisar la presentación de errores al confirmar un envío y de avisos de interpretación con borradores largos: el aviso debe percibirse desde la posición actual de la pantalla, sin obligar a hacer scroll hasta arriba o abajo y sin depender únicamente del color. El 22 de septiembre se confirmó que el aviso de interpretación queda oculto al final cuando ya hay varios productos. Hallazgo físico y aplazamiento acordado a esta fase en la [validación de #4](validation/issue-4-shared-flow.md#ensayo-físico-con-railway--21-de-septiembre-de-2026).
+- Consolidar los estados de compra observados el 22 de septiembre en [#11](validation/issue-11-purchase-flow.md#ajustes-de-interfaz-registrados-para-fase-3): evitar los dos avisos repetidos ante falta de red, adaptar «sin duplicar productos» al tipo de operación y hacer perceptible el conflicto que aparece al final del formulario. Distinguir «No hay productos pendientes en esta tienda» tras una consulta vacía de una lista todavía no cargada o una consulta fallida. Revalidar con VoiceOver y scroll sin perder el envío recuperable.
 - Comunicar automáticamente los errores de validación del editor a VoiceOver, mediante anuncio o foco apropiado y sin duplicaciones. Al pulsar Aplicar sin tienda, el ensayo del 22 de septiembre no anunció el error; solo pudo leerse al navegar hasta él. Conservar los datos y revalidar error/corrección en [#7](https://github.com/JFrancoG/SmartShoppingList/issues/7).
 - Evitar que el ejemplo del campo de entrada se recorte con texto de accesibilidad al máximo: el ensayo del 22 de septiembre terminó el placeholder en «yo…» (yogures). Valorar un ejemplo más breve o ayuda multilínea; mantener una etiqueta accesible independiente.
 - Restaurar el foco de VoiceOver al producto editado o a su acción Editar al cerrar el editor del borrador. El ensayo del 22 de septiembre desde Device Hub conectado al iPhone 14 devolvió el foco al encabezado Añadir, perdiendo la posición; registrar la revalidación en [#7](https://github.com/JFrancoG/SmartShoppingList/issues/7).

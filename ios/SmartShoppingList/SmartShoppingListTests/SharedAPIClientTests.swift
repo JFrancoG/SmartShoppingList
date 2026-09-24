@@ -284,3 +284,98 @@ private actor LostResponseSharedTransport: SharedHTTPTransport {
         )
     }
 }
+
+extension SharedAPIClientTests {
+    @Test(arguments: [
+        "",
+        ",\"conflicts\":[]",
+        ",\"conflicts\":[{\"itemId\":\"00000000-0000-4000-8000-000000000030\",\"reason\":\"not_found\"}]",
+        ",\"conflicts\":[{\"itemId\":\"00000000-0000-4000-8000-000000000099\",\"reason\":\"not_found\",\"current\":null}]"
+    ])
+    func `Incomplete purchase conflicts cannot resolve an uncertain operation`(_ conflicts: String) async throws {
+        let transport = FixtureSharedTransport { request in
+            try Self.response(
+                request,
+                status: 409,
+                body: "{\"code\":\"item_conflict\",\"message\":\"Changed\",\"requestId\":\"00000000-0000-4000-8000-000000000900\"\(conflicts)}"
+            )
+        }
+        let client = try client(transport)
+        await #expect(throws: SharedAPIError.invalidResponse) {
+            try await client.finalizePurchase(Self.purchaseRequest(), groupID: Self.groupID, token: Self.token)
+        }
+    }
+
+    @Test
+    func `A complete purchase conflict is a definitive rejection for the selected item`() async throws {
+        let transport = FixtureSharedTransport { request in
+            try Self.response(
+                request,
+                status: 409,
+                body: """
+                {"code":"item_conflict","message":"Changed","requestId":"00000000-0000-4000-8000-000000000900",
+                "conflicts":[{"itemId":"00000000-0000-4000-8000-000000000030","reason":"version_mismatch",
+                "current":\(Self.item(id: 30, version: 2, name: "Pan corregido"))}]}
+                """
+            )
+        }
+        let client = try client(transport)
+        do {
+            _ = try await client.finalizePurchase(Self.purchaseRequest(), groupID: Self.groupID, token: Self.token)
+            Issue.record("An item conflict must reject the purchase")
+        } catch let error as SharedAPIError {
+            #expect(!error.isUncertain)
+            guard case .server(409, "item_conflict", _, _) = error else {
+                Issue.record("A valid conflict was not recognized")
+                return
+            }
+        }
+    }
+
+    @Test(arguments: [true, false])
+    func `Purchase wire response must confirm exactly the selected ids`(_ matchingID: Bool) async throws {
+        let transport = FixtureSharedTransport { request in
+            let body = try #require(request.httpBody)
+            let payload = String(decoding: body, as: UTF8.self)
+            #expect(request.httpMethod == "POST")
+            #expect(request.url?.path == "/v1/groups/00000000-0000-4000-8000-000000000010/purchases")
+            #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer \(Self.token)")
+            #expect(payload.contains("\"operationId\":\"abcdef01-0000-4000-8000-000000000111\""))
+            #expect(payload.contains("\"items\":[{\"expectedVersion\":1,\"id\":\"00000000-0000-4000-8000-000000000030\"}]"))
+            let id = matchingID ? "30" : "99"
+            return try Self.response(
+                request,
+                status: 200,
+                body: """
+                {"confirmedAt":"2026-09-22T10:00:00Z","items":[{
+                "id":"00000000-0000-4000-8000-0000000000\(id)",
+                "groupId":"00000000-0000-4000-8000-000000000010","storeId":"00000000-0000-4000-8000-000000000020",
+                "name":"Pan","quantity":null,"status":"purchased","version":2,
+                "createdBy":"00000000-0000-4000-8000-000000000002","createdAt":"2026-09-19T10:10:00Z",
+                "purchasedBy":"00000000-0000-4000-8000-000000000003","purchasedAt":"2026-09-22T10:00:00Z"}]}
+                """
+            )
+        }
+        let client = try client(transport)
+        if matchingID {
+            let result = try await client.finalizePurchase(Self.purchaseRequest(), groupID: Self.groupID, token: Self.token)
+            #expect(result.items.map(\.name) == ["Pan"])
+        } else {
+            await #expect(throws: SharedAPIError.invalidResponse) {
+                try await client.finalizePurchase(Self.purchaseRequest(), groupID: Self.groupID, token: Self.token)
+            }
+        }
+        #expect(await transport.requestCount == 1)
+    }
+
+    private static func purchaseRequest() throws -> FinalizePurchaseRequest {
+        FinalizePurchaseRequest(
+            operationId: try #require(UUID(uuidString: "ABCDEF01-0000-4000-8000-000000000111")),
+            storeId: storeID,
+            items: [SelectedPurchaseItem(
+                id: try #require(UUID(uuidString: "00000000-0000-4000-8000-000000000030")),
+                expectedVersion: 1
+            )]
+        )
+    }
+}
