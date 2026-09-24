@@ -24,3 +24,12 @@ Los permisos se piden únicamente al iniciar el dictado; el estado `.inactive` p
 La normalización usa la transformación NFC de Foundation (`String.applyingTransform` con `Any-NFC`) y comprueba equivalencia canónica antes de colapsar espacios. En el SDK 27 se reprodujo pérdida de escalares con `precomposedStringWithCanonicalMapping` al repetir U+0344 más de 32 veces; las regresiones exigen conservar la secuencia completa o rechazarla por su longitud, sin truncarla. Las formas y los límites permanecen alineados con el contrato.
 
 El esquema compartido ofrece los planes `Fast` (dominio y coordinación con dobles) e `Integration` (persistencia en disco temporal). Se seleccionan mediante tags de Swift Testing. El probe de modelos reales vive fuera del target automático para que la ausencia de hardware o assets no se confunda con cobertura determinista; su resultado real se registra por separado.
+
+
+### Presentación de avisos (24 de septiembre de 2026)
+
+Los avisos transitorios se presentan con una alerta nativa fuera del contenido desplazable. `ShoppingNotice` conserva el origen y el mensaje mostrado; al cerrar, el modelo solo descarta ese mensaje si sigue siendo el vigente. La validación del editor conserva los campos y permite repetir Aplicar después de cerrar el error.
+
+En el flujo compartido hay un único presentador raíz para ambas pestañas. Las hojas de editor, revisión e invitaciones presentan sus propios avisos; la raíz espera al callback `onDismiss`, también cuando la operación termina durante la animación de cierre. Ocultar un presentador no descarta el mensaje del modelo. El aviso persistente de almacenamiento y el conflicto de selección se reconocen sin eliminar su estado: la explicación de almacenamiento y los controles para corregir/reintentar permanecen disponibles. Un cambio de aviso candidato puede volver a presentar estas condiciones persistentes.
+
+Se confía en el foco de la alerta del sistema, sin un anuncio VoiceOver paralelo que pueda duplicar la lectura. Su lectura automática y el retorno de foco requieren validación real. Esto no modifica las reglas de envío, selección, compra, persistencia o interpretación, ni resuelve el hallazgo independiente de foco al volver del editor a la lista.

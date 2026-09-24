@@ -25,9 +25,20 @@ struct SharedRootView: View {
             guard invitation != nil else { return }
             selectedTab = .shop
         }
-        .sheet(isPresented: $viewModel.isReviewPresented) {
+        .sheet(isPresented: $viewModel.isReviewPresented, onDismiss: {
+            viewModel.reviewPresentationDidDismiss()
+        }) {
             SharedReviewView(viewModel: viewModel)
         }
+        .modifier(ShoppingNoticeModifier(
+            notice: viewModel.presentedNotice
+                ?? (selectedTab == .add ? viewModel.draft.presentedNotice : viewModel.purchaseSelectionNotice),
+            isEnabled: viewModel.canPresentRootNotice,
+            dismiss: { snapshot in
+                viewModel.dismissPresentedNotice(snapshot)
+                viewModel.draft.dismissPresentedNotice(snapshot)
+            }
+        ))
     }
 
     private enum SharedTab {

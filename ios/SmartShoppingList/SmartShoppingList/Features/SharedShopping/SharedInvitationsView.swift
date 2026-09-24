@@ -68,6 +68,11 @@ struct SharedInvitationsView: View {
                 }
             }
         }
+        .modifier(ShoppingNoticeModifier(
+            notice: viewModel.presentedNotice,
+            isEnabled: viewModel.isInvitationsPresented,
+            dismiss: viewModel.dismissPresentedNotice
+        ))
     }
 }
 

@@ -14,17 +14,6 @@ struct DraftItemEditor: View {
                 } footer: {
                     Text("Name: up to 160 characters. Quantity and store: up to 80. Quantity is optional.")
                 }
-
-                if let error = viewModel.editorError {
-                    Section {
-                        Label {
-                            Text(error)
-                        } icon: {
-                            Image(systemName: "exclamationmark.circle")
-                                .accessibilityHidden(true)
-                        }
-                    }
-                }
             }
             .navigationTitle("Product")
             .navigationBarTitleDisplayMode(.inline)
@@ -41,6 +30,10 @@ struct DraftItemEditor: View {
                 }
             }
         }
+        .modifier(ShoppingNoticeModifier(
+            notice: viewModel.presentedEditorNotice,
+            dismiss: viewModel.dismissPresentedNotice
+        ))
     }
 }
 

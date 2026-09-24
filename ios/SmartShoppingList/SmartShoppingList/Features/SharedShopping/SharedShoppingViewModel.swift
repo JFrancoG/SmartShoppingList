@@ -30,8 +30,22 @@ final class SharedShoppingViewModel {
     var storeChoices: [DraftStoreChoice] = []
     var selectedStoreID: UUID?
     var groupName = ""
-    var isReviewPresented = false
-    var isInvitationsPresented = false
+    var isReviewPresented = false {
+        didSet {
+            if isReviewPresented {
+                isReviewPresentationActive = true
+            }
+        }
+    }
+    var isInvitationsPresented = false {
+        didSet {
+            if isInvitationsPresented {
+                isInvitationsPresentationActive = true
+            }
+        }
+    }
+    private(set) var isReviewPresentationActive = false
+    private(set) var isInvitationsPresentationActive = false
 
     @ObservationIgnored let draft: ShoppingDraftViewModel
     @ObservationIgnored private let api: (any SharedShoppingAPI)?
@@ -475,6 +489,35 @@ final class SharedShoppingViewModel {
                 notice = "Sign-out could not be confirmed. Your access is kept so you can retry."
             }
         }
+    }
+
+    var presentedNotice: ShoppingNotice? {
+        notice.map { ShoppingNotice(source: .group, message: $0) }
+    }
+
+    var purchaseSelectionNotice: ShoppingNotice? {
+        guard purchaseSelectionNeedsReview else { return nil }
+        return ShoppingNotice(
+            source: .purchaseSelection,
+            message: "Some selected products have changed or are no longer pending."
+        )
+    }
+
+    var canPresentRootNotice: Bool {
+        !isReviewPresentationActive && !isInvitationsPresentationActive && !draft.isEditorPresentationActive
+    }
+
+    func reviewPresentationDidDismiss() {
+        isReviewPresentationActive = false
+    }
+
+    func invitationsPresentationDidDismiss() {
+        isInvitationsPresentationActive = false
+    }
+
+    func dismissPresentedNotice(_ snapshot: ShoppingNotice) {
+        guard snapshot.source == .group, notice == snapshot.message else { return }
+        notice = nil
     }
 
     func dismissNotice() {

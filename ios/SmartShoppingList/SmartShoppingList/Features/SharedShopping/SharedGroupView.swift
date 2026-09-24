@@ -152,7 +152,9 @@ struct SharedGroupView: View {
             .task(id: viewModel.selectedStoreID) {
                 await viewModel.loadSelectedStore()
             }
-            .sheet(isPresented: $viewModel.isInvitationsPresented) {
+            .sheet(isPresented: $viewModel.isInvitationsPresented, onDismiss: {
+                viewModel.invitationsPresentationDidDismiss()
+            }) {
                 SharedInvitationsView(viewModel: viewModel)
             }
         }

@@ -27,7 +27,14 @@ final class ShoppingDraftViewModel {
     private(set) var persistenceNotice: LocalizedStringResource?
     private(set) var hasLoaded: Bool
     var editorItem = ShoppingDraftItem()
-    var isEditorPresented = false
+    var isEditorPresented = false {
+        didSet {
+            if isEditorPresented {
+                isEditorPresentationActive = true
+            }
+        }
+    }
+    private(set) var isEditorPresentationActive = false
     private(set) var editorError: LocalizedStringResource?
 
     @ObservationIgnored private let interpreter: any DraftInterpreting
@@ -169,6 +176,35 @@ final class ShoppingDraftViewModel {
 
     func dismissNotice() {
         notice = nil
+    }
+
+    var presentedNotice: ShoppingNotice? {
+        if let notice {
+            return ShoppingNotice(source: .draft, message: notice)
+        }
+        if let persistenceNotice {
+            return ShoppingNotice(source: .storage, message: persistenceNotice)
+        }
+        return nil
+    }
+
+    var presentedEditorNotice: ShoppingNotice? {
+        editorError.map { ShoppingNotice(source: .editor, message: $0) }
+    }
+
+    func editorPresentationDidDismiss() {
+        isEditorPresentationActive = false
+    }
+
+    func dismissPresentedNotice(_ snapshot: ShoppingNotice) {
+        switch snapshot.source {
+        case .draft where notice == snapshot.message:
+            notice = nil
+        case .editor where editorError == snapshot.message:
+            editorError = nil
+        default:
+            break
+        }
     }
 
     func setActive(_ active: Bool) {

@@ -6,6 +6,46 @@ import Testing
 @Suite(.tags(.fast))
 struct ShoppingDraftViewModelTests {
     @Test
+    func `Dismissing an editor error preserves fields and allows another invalid attempt`() throws {
+        let model = makeModel(interpreter: ControlledDraftInterpreter(), items: [item(1)])
+        model.beginAddingItem()
+        model.editorItem.name = "Bread"
+        model.editorItem.store = ""
+        model.saveEditor()
+        let snapshot = ShoppingNotice(source: .editor, message: try #require(model.editorError))
+        let fields = model.editorItem
+        model.dismissPresentedNotice(snapshot)
+        #expect(model.editorError == nil)
+        #expect(model.isEditorPresented)
+        #expect(model.editorItem == fields)
+        #expect(model.items == [item(1)])
+        model.saveEditor()
+        #expect(model.editorError != nil)
+        model.editorItem.store = "Aldi"
+        model.saveEditor()
+        #expect(model.items.map(\.name).contains("Bread"))
+        #expect(!model.isEditorPresented)
+    }
+
+    @Test
+    func `Dismissing an old editor alert does not clear a newer validation error`() throws {
+        let model = makeModel(interpreter: ControlledDraftInterpreter(), items: [])
+        model.beginAddingItem()
+        model.saveEditor()
+        let old = ShoppingNotice(source: .editor, message: try #require(model.editorError))
+        model.editorItem.name = "Bread"
+        model.saveEditor()
+        let current = ShoppingNotice(source: .editor, message: try #require(model.editorError))
+        #expect(old != current)
+        model.dismissPresentedNotice(old)
+        #expect(model.editorError == current.message)
+        model.dismissPresentedNotice(current)
+        #expect(model.editorError == nil)
+        #expect(model.editorItem.name == "Bread")
+        #expect(model.items.isEmpty)
+    }
+
+    @Test
     func `A human correction discards an interpretation that finishes later`() async throws {
         let original = item(1, name: "leche", quantity: "1 litro", store: "Mercadona")
         let interpreter = ControlledDraftInterpreter()

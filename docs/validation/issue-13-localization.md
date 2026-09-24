@@ -165,6 +165,12 @@ Se considera resuelto este bloqueo de la prueba por el entorno, sin corrección 
 
 **Condición para futuras pruebas físicas de micrófono o cámara:** terminar la interacción de Device Hub —para este ensayo, salir de Device Hub— y manejar el iPhone directamente. Xcode puede permanecer abierto para compilar y recoger registros. No confundir esta limitación de interacción remota con un permiso denegado, un fallo del idioma o una regresión de Speech. La configuración de audio de los simuladores se comprueba por separado.
 
+### Bloqueo de pantalla y llamada entrante: iPhone 14
+
+El 24 de septiembre, siguiendo el ensayo directamente en el iPhone 14 y con Device Hub cerrado, el usuario confirmó que bloquear la pantalla durante un dictado con texto visible detiene la captura, conserva el texto y los productos, y permite volver a dictar tras desbloquear. Es una variante de interrupción del ciclo de vida; no se exige repetirla por cada idioma. La salida a Inicio ya había sido validada el 22 de septiembre.
+
+Después, el usuario confirmó el ensayo de llamada entrante desde el otro teléfono mientras dictaba: aceptar la llamada, colgar y volver a la app conserva el texto y los productos; la app no queda en `Listening` y un nuevo dictado vuelve a transcribir. Queda acreditada la interrupción por llamada y su recuperación en ese dispositivo. Son resultados manuales comunicados por el usuario, sin nueva captura de logs ni identificación adicional del binario; no acreditan cambio de entrada o desconexión de un micrófono externo. No se modificó código para estos ensayos y permanecen abiertos los hallazgos de accesibilidad.
+
 ## Matriz de ensayo y comprobaciones restantes
 
 Usar la app compilada desde esta rama. Cambiar su idioma en la configuración de idioma por app de iOS y volver a abrirla; para simulador también se puede elegir Application Language en el esquema de ejecución de Xcode. No hace falta cambiar la región. El ajuste por app puede requerir tener ambos idiomas añadidos en los ajustes generales del sistema.
@@ -176,3 +182,31 @@ Usar la app compilada desde esta rama. Cambiar su idioma en la configuración de
 5. Probar una frase sin compra en ambos idiomas: «Hoy hace buen tiempo y voy a pasear» / «The weather is nice today and I am going for a walk». No debe incorporar productos inventados.
 
 Registrar entorno, idioma, resultado y cualquier texto incorrecto en #13/#7. La disponibilidad del modelo, los idiomas instalados del sistema y el consentimiento del micrófono se comprueban por separado; una traducción o un test determinista no los acredita. No se cierra la issue ni se declara el MVP bilingüe validado hasta completar sus criterios y entregar los cambios.
+
+
+## Avisos visibles y validación del editor — seguimiento de #7 (24 de septiembre)
+
+Cambio local autorizado: los avisos de dictado/interpretación, editor, operaciones compartidas, almacenamiento y conflicto de selección pasan a alerta nativa. Un único presentador raíz evita duplicación entre pestañas; editor, revisión e invitaciones suspenden la raíz hasta terminar `onDismiss`. Cerrar un aviso no altera campos, selección ni datos de reintento. El almacenamiento y los conflictos mantienen su explicación/acción persistente. Los tres títulos nuevos disponen de traducción española.
+
+- Regresión previa: dos pruebas nuevas fallaron contra el descarte vacío del error del editor; los demás casos seguían correctos.
+- Resultado final en My Mac (Designed for iPad), Xcode 27.2 beta, plan Fast: **74 tests únicos, 130 ejecuciones, cero fallos y cero warnings de runtime**, resultado cerrado `Test-SmartShoppingList-2026.09.24_14-22-46-+0200.xcresult`. Los seis «not run» del resumen MCP pertenecen a casos fuera del plan Fast; el resultado nativo no declara casos omitidos dentro del plan.
+- Se verifica que cerrar el error conserva los campos y permite repetir Aplicar; un cierre antiguo no borra un error distinto; cerrar el error de red conserva la operación original en memoria y credenciales para reintentar; la alerta raíz espera al cierre de cada hoja.
+- Build con tests `BuildProject-Log-20260924-142232.txt` correcto, solo el warning App Intents documentado por EXC-002.
+- Revisión independiente estática de presentación/accesibilidad sin hallazgos pendientes tras completar las traducciones. Las previews detectaron una incompatibilidad del thunk con la referencia a método; el callback explicita `@MainActor @Sendable` y vuelve a compilar.
+- Preview iPhone 18 Pro/iOS 27.2 muestra la alerta española del editor centrada y legible. Los renders posteriores EN/XXX Large y ES/AX5 capturan parcialmente la transición de la alerta; no se usan como evidencia de legibilidad ni contraste completos. Se conserva una preview determinista del mensaje largo de almacenamiento a AX5 para inspección interactiva.
+
+Secuencia física de falta de conexión y recuperación completada, según las confirmaciones registradas a continuación. La alerta durante el cierre de revisión queda confirmada en el ensayo siguiente; la sustitución de avisos mientras otra alerta permanece abierta no se acredita con esa secuencia. AX5 del error del editor confirmado en el ensayo posterior; no equivale a validar todos los mensajes largos de almacenamiento. La conservación de campos tiene regresión automatizada; la confirmación manual siguiente acredita aparición y lectura del error del editor. El retorno del foco a la fila editada y el recorte de placeholders permanecen fuera de este ajuste. Esta validación no cierra #7; la entrega autorizada de este bloque se limita a commit y push de la rama.
+
+App compilada e instalada en iPhone14 de Jesús mediante RunProject a las 14:23:36, proceso 4636. Arranque correcto; no sustituye la prueba física de alertas/VoiceOver.
+
+El usuario confirma en el iPhone 14 el ensayo del editor: «correcto, sale el aviso las dos veces y lo lee automáticamente». Queda superada la aparición y lectura automática con VoiceOver al pulsar Aplicar sin tienda, cerrar el aviso y volver a pulsar Aplicar. Evidencia manual comunicada por el usuario sobre la app recién instalada; no acredita el retorno del foco a la fila, AX5 ni el resto de presentadores.
+
+El usuario confirma «Correcto» en el ensayo posterior de permiso de micrófono denegado, con VoiceOver activo: al pulsar Dictate aparece la alerta y se lee automáticamente sin buscarla mediante scroll; al cerrarla se conservan el texto y los productos. Resultado manual comunicado, separado del funcionamiento de la captura de audio y de la recuperación del permiso ya ensayados anteriormente.
+
+En el ensayo AX5 posterior, la captura de las 15:49:05 muestra la implementación antigua del aviso dentro del formulario, con icono azul y teclado visible. Se verificó mediante Xcode MCP que el proyecto original ejecutaba el proceso 4942 en el iPhone 14, mientras la sesión 4636 del worktree estaba terminada. Se detuvo esa ejecución y se lanzó el worktree corregido a las 15:50:46 (proceso 4975, arranque correcto). Esta captura no valida ni invalida la alerta nueva, y no demuestra un defecto causado por el teclado. AX5 pendiente de repetir sobre el binario corregido; no se modifica código por este resultado.
+
+Repetido el ensayo AX5 en la versión corregida, el usuario confirma «sí, ahora sí; al cerrar vuelve a donde estaba, en el producto». Queda superada la lectura y cierre de la alerta del editor al tamaño máximo solicitado y la vuelta al producto tras cerrar ese aviso. Este resultado no acredita el hallazgo distinto de restaurar el foco a una fila de la lista tras cerrar la hoja completa de edición, ni todas las alertas largas de almacenamiento.
+
+El usuario confirma «sí, correcto» al preparar la revisión con conexión, elegir tiendas, desactivar la red y confirmar el envío con VoiceOver activo. La revisión se cierra y la alerta de envío no confirmado aparece y se lee automáticamente. Al cerrarla se conservan el borrador y el control Retry submission. Queda superado este ensayo manual de presentación tras el cierre de la hoja. El reintento con red y su confirmación se comprobarán a continuación; no se infieren de este resultado.
+
+El usuario confirma «correcto» tras recuperar la conexión y pulsar Retry submission sobre el mismo envío. La confirmación aparece y se lee con VoiceOver; al cerrarla desaparece la operación pendiente y los productos aparecen una sola vez en el grupo. Queda completada la secuencia manual falta de conexión → alerta tras cierre de revisión → reintento → confirmación, sin nuevo envío desde el borrador. No se ha cambiado código ni repetido la suite para registrar estos resultados. Permanecen separados el retorno de foco al cerrar la hoja completa del editor, placeholders, estado vacío de compra, mensajes largos de almacenamiento y sustitución de mensajes mientras una alerta sigue abierta. El usuario autoriza consolidar este bloque mediante commit y push; #7 permanece abierta para sus criterios restantes.

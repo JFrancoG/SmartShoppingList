@@ -69,15 +69,6 @@ struct AddItemsView: View {
                 }
                 .disabled(shared?.draftIsLocked == true)
 
-                if let notice = viewModel.notice {
-                    Section {
-                        Text(notice)
-                        Button("Dismiss notice") {
-                            viewModel.dismissNotice()
-                        }
-                    }
-                }
-
                 if let notice = viewModel.persistenceNotice {
                     Section("Draft storage") {
                         Text(notice)
@@ -86,7 +77,9 @@ struct AddItemsView: View {
             }
             .disabled(!viewModel.hasLoaded)
             .navigationTitle("Add")
-            .sheet(isPresented: $viewModel.isEditorPresented) {
+            .sheet(isPresented: $viewModel.isEditorPresented, onDismiss: {
+                viewModel.editorPresentationDidDismiss()
+            }) {
                 DraftItemEditor(viewModel: viewModel)
             }
             .task {
@@ -108,6 +101,11 @@ struct AddItemsView: View {
                 viewModel.setActive(false)
             }
         }
+        .modifier(ShoppingNoticeModifier(
+            notice: viewModel.presentedNotice,
+            isEnabled: shared == nil && !viewModel.isEditorPresentationActive,
+            dismiss: viewModel.dismissPresentedNotice
+        ))
     }
 }
 
