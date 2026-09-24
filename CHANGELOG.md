@@ -13,6 +13,8 @@
 
 ### Documentation
 
+- 2026-09-24 | 📝 docs: complete draft validation evidence
+
 - 2026-09-24 | 📝 docs: record Device Hub microphone limitation
 
 - 2026-09-24 | 📝 docs: reconcile delivery validation status
