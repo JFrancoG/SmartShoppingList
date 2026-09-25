@@ -50,7 +50,7 @@ iPhone 11 = A; iPhone 14 = B, con dos cuentas del mismo grupo. Baseline instalad
 5. Cambiar un pendiente a otra tienda; refrescar ambas tiendas en el otro teléfono y comprobar que aparece una sola vez en la nueva. Vaciar cantidad debe eliminarla, sin cambiar identidad.
 6. Comprobación focalizada de accesibilidad: activar Editar y la confirmación, corregir un campo inválido, cerrar y recuperar el foco; comprobar que check y cancelación no se confunden. No se repite la matriz amplia antes de aplicar el design system.
 
-Pendiente adicional: persistencia tras reinicio local controlado del proceso del servidor. La pérdida de respuesta ya tiene prueba automatizada posterior al commit; cortar la red en un teléfono no demuestra por sí solo ese instante. No reiniciar producción para esta comprobación ni repetir el ensayo offline ya acreditado por #17 sin una regresión concreta.
+Persistencia tras reinicio local controlado del proceso del servidor: completada el 25 de septiembre; véase el resultado al final de este informe. La pérdida de respuesta ya tiene prueba automatizada posterior al commit; cortar la red en un teléfono no demuestra por sí solo ese instante. No reiniciar producción para esta comprobación ni repetir el ensayo offline ya acreditado por #17 sin una regresión concreta.
 
 La consulta de tienda por voz sigue como siguiente unidad obligatoria. App Intents #10 conserva su carácter opcional. Esta issue no cierra el MVP.
 
@@ -143,3 +143,26 @@ El salto a Store Aldi tras Keep product permanece abierto. No se añade otro mec
 Precisión posterior del responsable: se cerraba sin tocar ningún botón y el foco volvía a «Pending Aldi». Es un cierre espontáneo, no un descarte mediante Keep product.
 
 Restauración verificada byte a byte frente al archivo de c95484e. Build/instalación y arranque correctos: iPhone 11 a20:18:08 (PID3968), iPhone 14 a20:18:27 (PID7264); destino iPhone 11 restaurado. Solo EXC-002 aceptado en el log. Se reutilizan las 159 ejecuciones Fast, revisión del archivo restaurado y aceptación física previa de su alerta. No se declara resuelto el foco tras Keep product.
+
+
+### Persistencia tras reinicio local · 25 de septiembre, 20:37 CEST
+
+**PASS: 16 comprobaciones del recorrido HTTP/SQL.** Servidor nativo macOS compilado con Xcode MCP Service 27.0 desde `5b85d98`, sin cambios de código respecto al backend de #22. Build incremental correcto a las 20:35:14, sin warnings ni errores en su log. No se repite la suite Swift Testing: este ensayo complementa los resultados anteriores con un reinicio real del proceso.
+
+Se creó una base exclusiva con nombre aleatorio y sufijo `_testing` dentro de `db-test` (PostgreSQL local, puerto 5433). El ejecutable se lanzó en loopback, en modo production y desde un directorio temporal sin `.env` ni credenciales Apple. Se sembraron únicamente usuario, concesión y sesión sintéticos; grupo, productos, edición, cancelación y compra atravesaron las rutas HTTP reales. La concesión estaba recién validada para evitar llamadas externas; este ensayo no acredita el login ni la revalidación de Apple.
+
+Recorrido y resultados:
+
+- Incorporar cuatro productos. Editar uno: nuevo nombre, cantidad nula y cambio de tienda; versión 2 con el mismo ID, autor y fecha de alta. Cancelar otro y comprar un tercero; el cuarto permanece pendiente sin cambios.
+- Capturar `/v1/me`, tiendas y pendientes de ambas tiendas, además de las filas completas de productos, tiendas, grupo, usuario y recibos de operaciones.
+- Terminar el servidor con SIGTERM y salida 0. Los registros continúan disponibles mediante SQL mientras el servidor está detenido. Arrancar el mismo ejecutable con otro PID y la misma base; verificar que PostgreSQL no se ha reiniciado.
+- Las consultas HTTP y filas persistidas coinciden antes y después. Solo el cuarto producto sigue pendiente en la tienda original y el editado aparece una vez en la nueva. Cancelado y comprado conservan sus filas terminales, versiones y metadatos; no reaparecen en pendientes.
+- Repetir exactamente edición, cancelación, compra y lote con sus `operationId` originales: respuestas iguales y estado sin cambios. Permanecen cuatro productos y cinco recibos, sin duplicados, incrementos adicionales de versión ni cambios de fechas.
+
+Al terminar se detuvo el proceso temporal y se eliminó solo la base creada para este ensayo. `db-test` conserva su estado previo en ejecución; no se reinició PostgreSQL, no se tocó Railway y no se reinstalaron los iPhone.
+
+Evidencia local: `/tmp/ssl22-restart-validation/check.py`, `result.json`, `before.json`, `after.json` y `server-1.log`/`server-2.log`. `result.json` conserva horas, SHA del código y del ejecutable, PIDs, peticiones/respuestas sin cabeceras de autenticación, comprobaciones y limpieza. Build: `BuildProject-Log-20260925-203514.txt` en el directorio `ActionArtifacts/default/BuildProject` citado arriba.
+
+**Estado de aceptación física vigente:** el responsable confirma los recorridos funcionales en ambos iPhone y la accesibilidad focalizada. Con VoiceOver activo antes de abrir la alerta, Keep product devuelve el foco a Store Aldi, destino aceptado. La observación anterior de Refresh ocurrió al activar VoiceOver con el aviso ya abierto. La alternativa posterior se retiró sin commit ni instalación. Esto sustituye los pendientes físicos históricos de las secciones anteriores; no acredita una matriz amplia de accesibilidad.
+
+Con este ensayo queda resuelta la comprobación local de persistencia de #22. Sigue pendiente su entrega final por PR/merge y cierre; la consulta de tienda por voz y el cierre completo del MVP son trabajo posterior.

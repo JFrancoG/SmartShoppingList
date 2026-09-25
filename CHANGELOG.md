@@ -19,6 +19,8 @@
 
 ### Documentation
 
+- 2026-09-25 | 📝 docs: record server restart validation
+
 - 2026-09-24 | 📝 docs: complete draft validation evidence
 
 - 2026-09-24 | 📝 docs: record Device Hub microphone limitation
