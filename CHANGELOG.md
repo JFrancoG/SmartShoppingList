@@ -21,6 +21,8 @@
 
 ### Documentation
 
+- 2026-09-25 | 📝 docs: record voice query delivery scope
+
 - 2026-09-25 | 📝 docs: record server restart validation
 
 - 2026-09-24 | 📝 docs: complete draft validation evidence

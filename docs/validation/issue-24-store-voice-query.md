@@ -1,6 +1,6 @@
 # In-app store voice query — issue #24
 
-Status: implementation on `codex/issue-24-store-voice-query`, based on `dbd9ca5`. No backend change or deployment. Issue #24 remains open. The owner confirms the revised inline flow opens the matching store and reports no match; remaining accessibility/edge-case evidence is kept separate.
+Status: implementation published at `97b0997`, based on `dbd9ca5`. The owner confirms matching-store opening and the no-match notice, and authorizes PR, merge, issue closure and branch cleanup on September 25. The definitive Git delivery is recorded in issue #24. No backend change or deployment. Remaining physical accessibility/edge-case checks are retained in phase 3 of the implementation plan and are not reported as passed.
 
 ## Current behavior and owner feedback
 
@@ -32,7 +32,7 @@ Focused inline controls rendered/inspected on iPhone 18 Pro / iOS 27.2: EN Large
 
 The owner confirms the revised inline query works: a match opens the correct store's list; no match displays a notice. This confirms those two functional cases. The latest reply does not identify device/language, nor explicitly confirm VoiceOver, ambiguous branches, silence or lifecycle interruptions; those are not inferred from it. The accepted match/no-match cases do not need repeating solely to fill the checklist.
 
-## Focused physical acceptance
+## Remaining physical checks for phase 3
 
 1. Shop → microphone. Confirm capture starts immediately and the transcript appears on the same screen. Say “Show me the list for Aldi”, then Finish. A unique match must open that store's real pending list directly. Repeat “Dame la lista de Aldi” when validating Spanish.
 2. Try an unknown store or remain silent. Confirm one inline explanation and usable correction/manual selector. If several branches match, choose one inline.
@@ -40,4 +40,4 @@ The owner confirms the revised inline query works: a match opens the correct sto
 4. With VoiceOver active before starting, check the error announcement and logical focus after successful selection/cancellation. At maximum text size, scroll to the full message and activate any offered choice.
 5. Preserve a checked product while querying another store; return and verify its check remains. No purchase confirmation is needed to test this query.
 
-The accepted #22 edit/cancel matrix is not repeated. The owner authorized commit and push on September 25; the verified publication SHA is tracked in issue #24. PR/merge and final MVP closeout remain separate gates.
+The accepted #22 edit/cancel matrix and the confirmed match/no-match cases are not repeated solely for bookkeeping. The owner authorized full delivery of #24 on September 25. This functional delivery does not close phase 3, the milestone or final MVP validation; outstanding physical checks above remain visible in that plan.
