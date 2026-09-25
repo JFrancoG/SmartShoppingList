@@ -1,10 +1,10 @@
 # Sistema de diseño de SmartShoppingList
 
-Versión 1 · 23 de septiembre de 2026 · plataforma mínima: iOS 27.
+Versión 2 · 25 de septiembre de 2026 · plataforma mínima: iOS 27.
 
-Estado: **definición documental para el acabado del MVP**. Los colores y sus pares se validan matemáticamente; su integración en assets, vistas y controles, y la accesibilidad de la app en ejecución, quedan pendientes. Este documento no declara conformidad global AA/AAA. Los iconos Brain/Check se incorporan por aprobación del usuario del 24 de septiembre (#16), con alcance y evidencia separados de la integración visual de las pantallas.
+Estado: **base de color de [#20](https://github.com/JFrancoG/SmartShoppingList/issues/20), con aplicación a las pantallas pendiente**. Los 21 tokens tienen assets de cuatro variantes, acceso semántico y un tinte global compartido. Sus pares se validan matemáticamente; la aplicación a cada vista y componente, y la accesibilidad de la app en ejecución, requieren validación posterior. Este documento no declara conformidad global AA/AAA. Los iconos Brain/Check se incorporan por aprobación del usuario del 24 de septiembre (#16), con alcance y evidencia separados de la integración visual de las pantallas.
 
-Documentos relacionados: [fuentes y novedades verificadas](research/design-system-sources.md), [matriz de contraste generada](validation/design-system-contrast.md), [criterios y ensayo de accesibilidad](accessibility.md), [spec](mvp-spec.md) y [plan](implementation-plan.md).
+Documentos relacionados: [fuentes y novedades verificadas](research/design-system-sources.md), [matriz de contraste generada](validation/design-system-contrast.md), [evidencia de la base visual #20](validation/issue-20-visual-foundation.md), [criterios y ensayo de accesibilidad](accessibility.md), [spec](mvp-spec.md) y [plan](implementation-plan.md).
 
 ![Referencia de la misma compra en Light, Dark, HC Light y HC Dark: dos productos seleccionados con check y confirmación pendiente. Los valores exactos figuran en la tabla de tokens.](assets/design-system-preview.svg)
 
@@ -41,9 +41,9 @@ Valores **sRGB de 8 bits, opacos**, escritos como `#RRGGBB`. Esta tabla es la fu
 | text-primary | #14291C | #F2F8F1 | #000000 | #FFFFFF |
 | text-secondary | #405746 | #C3D3C5 | #203426 | #E1EDE3 |
 | text-tertiary | #526656 | #A6BBAA | #344E3B | #CBDDCE |
-| accent | #006B3C | #78DEA0 | #004D29 | #9AF3B7 |
-| on-accent | #FFFFFF | #082113 | #FFFFFF | #000000 |
-| accent-soft | #DDF1E2 | #173F29 | #E3F4E7 | #102A19 |
+| primary | #006B3C | #78DEA0 | #004D29 | #9AF3B7 |
+| on-primary | #FFFFFF | #082113 | #FFFFFF | #000000 |
+| primary-soft | #DDF1E2 | #173F29 | #E3F4E7 | #102A19 |
 | success | #23632C | #A6DA87 | #214A19 | #C5F2A9 |
 | success-soft | #E3F2E0 | #263C21 | #E7F5E1 | #1A2C13 |
 | warning | #745000 | #FFD36A | #533700 | #FFE29A |
@@ -58,12 +58,27 @@ Valores **sRGB de 8 bits, opacos**, escritos como `#RRGGBB`. Esta tabla es la fu
 | on-yellow | #493500 | #2C2100 | #322300 | #000000 |
 <!-- palette:end -->
 
+### Contrato de assets y acceso desde SwiftUI
+
+La base de [#20](https://github.com/JFrancoG/SmartShoppingList/issues/20), autorizada el 25 de septiembre, conserva los valores aprobados y denomina `primary`, `on-primary` y `primary-soft` a los anteriores tokens `accent`, `on-accent` y `accent-soft`. No hay un `AccentColor` duplicado: el proyecto utiliza `AppPrimary` como tinte global.
+
+Cada token tiene un único colorset en `Resources/Assets.xcassets`. El nombre convierte el token de kebab-case a PascalCase, sin prefijo: `canvas` → `Canvas`, `text-primary` → `TextPrimary` y `surface-muted` → `SurfaceMuted`. Solo `primary` → `AppPrimary` y `separator` → `AppSeparator` conservan `App` por colisiones nativas. Los cuatro registros del asset corresponden a Any/Light, Dark, Any/Light con contraste alto y Dark con contraste alto. Todos usan idiom universal, espacio sRGB, canales RGB en formato byte `0xNN` y alpha `1.000`, sin variantes adicionales.
+
+Las vistas utilizan directamente los símbolos de `Color` y `ShapeStyle` que genera Xcode, sin enum ni conversión `.color` intermedios. La inferencia de tipo permite escribir el nombre en lowerCamelCase, como `.canvas`, `.textPrimary` o `.surfaceMuted`, con las excepciones `.appPrimary` y `.appSeparator`; no se construyen colores con cadenas ni se elige manualmente una variante.
+
+```swift
+.foregroundStyle(.onPrimary)
+.background(.appPrimary)
+```
+
+Cuando corresponde el estilo nativo de SwiftUI, usar `.foregroundStyle(.primary)`; el verde propio se expresa con `.appPrimary`. Evitar el prefijo `Color` cuando la inferencia sea suficiente. En Xcode 27.0, `primary` produce un aviso de colisión con `Color.primary` y no genera ese símbolo personalizado; `separator` colisiona con `UIColor.separator`. Esas son las dos excepciones a la regla sin prefijo.
+
 ### Responsabilidad de cada familia
 
 - `canvas`: fondo de contenido propio. `surface`: tarjeta o editor. `surface-muted`: agrupación secundaria. Su diferencia de luminancia no identifica por sí sola una acción.
 - `text-primary`: productos, títulos, datos y mensajes esenciales. `text-secondary`: tienda, cantidad, explicaciones. `text-tertiary`: metadatos de menor jerarquía; también cumple el objetivo de texto normal, sin bajar opacidad.
-- `accent`: acciones y check seleccionado; `on-accent`: texto/símbolo dentro del relleno. El texto del CTA cambia a tinta oscura en Dark y HC Dark.
-- `accent-soft`: fondo de fila seleccionada, acompañado de check y estado accesible. No significa «Comprado».
+- `primary`: acciones y check seleccionado; `on-primary`: texto/símbolo dentro del relleno. El texto del CTA cambia a tinta oscura en Dark y HC Dark.
+- `primary-soft`: fondo de fila seleccionada, acompañado de check y estado accesible. No significa «Comprado».
 - `success`, `warning`, `danger`, `info`: tinta del símbolo, título o texto de estado; cada `*-soft` es su fondo informativo. Una alerta puede usar `text-primary` para el detalle.
 - `border`: perímetros esenciales y anillo de foco sobre superficies base. `separator`: divisores puramente decorativos entre filas ya identificables sin esa línea.
 - `brand-yellow`/`on-yellow`: apoyo informativo de marca. No reutilizar blanco como tinta. El relleno no acredita un contorno de control; si se convierte en interactivo exige diseño y pares nuevos.
@@ -77,27 +92,27 @@ Cada lista de tokens separada por comas se expande como producto cartesiano. `te
 <!-- pairs:start -->
 | Foreground | Background | Clase |
 |---|---|---|
-| text-primary, text-secondary, text-tertiary, accent, success, warning, danger, info | canvas, surface, surface-muted | text |
-| text-primary | accent-soft, success-soft, warning-soft, danger-soft, info-soft | text |
-| accent | accent-soft | text |
+| text-primary, text-secondary, text-tertiary, primary, success, warning, danger, info | canvas, surface, surface-muted | text |
+| text-primary | primary-soft, success-soft, warning-soft, danger-soft, info-soft | text |
+| primary | primary-soft | text |
 | success | success-soft | text |
 | warning | warning-soft | text |
 | danger | danger-soft | text |
 | info | info-soft | text |
-| on-accent | accent | text |
+| on-primary | primary | text |
 | on-yellow | brand-yellow | text |
-| border | canvas, surface, surface-muted, accent-soft, success-soft, warning-soft, danger-soft, info-soft | ui |
-| accent, success, warning, danger, info | canvas, surface, surface-muted | ui |
+| border | canvas, surface, surface-muted, primary-soft, success-soft, warning-soft, danger-soft, info-soft | ui |
+| primary, success, warning, danger, info | canvas, surface, surface-muted | ui |
 | separator | canvas, surface, surface-muted | decorative |
 <!-- pairs:end -->
 
 Reglas de composición:
 
 1. Usar sólo pares autorizados. Un texto secundario dentro de un fondo de estado, un texto sobre amarillo o un botón sobre un banner requieren su par explícito; no basta con que los colores existan en la tabla.
-2. Los estados informativos usan su propia tinta sobre su propio fondo o sobre superficies base. No poner `danger` sobre `accent`, ni texto sobre el icono, degradados o fotografías.
-3. Checks: perímetro `border` sobre fila sin seleccionar; relleno `accent` y símbolo `on-accent` sobre fila seleccionada `accent-soft`. `accent`/`accent-soft` también valida la identificación exterior del check.
-4. Controles rellenos principales: `accent` contra una superficie base y `on-accent` dentro. Sus estados normal y pulsado conservan los colores; la respuesta nativa o un cambio de grosor los distingue sin reducir contraste. Otros estilos nativos necesitan verificación renderizada.
-5. Foco personalizado: anillo `border` de 2 pt fuera del control, con separación de 2 pt de superficie base. No dibujarlo directamente encima de `accent`. Conservar el foco nativo cuando exista y comprobar que barras y teclado no lo ocultan.
+2. Los estados informativos usan su propia tinta sobre su propio fondo o sobre superficies base. No poner `danger` sobre `primary`, ni texto sobre el icono, degradados o fotografías.
+3. Checks: perímetro `border` sobre fila sin seleccionar; relleno `primary` y símbolo `on-primary` sobre fila seleccionada `primary-soft`. `primary`/`primary-soft` también valida la identificación exterior del check.
+4. Controles rellenos principales: `primary` contra una superficie base y `on-primary` dentro. Sus estados normal y pulsado conservan los colores; la respuesta nativa o un cambio de grosor los distingue sin reducir contraste. Otros estilos nativos necesitan verificación renderizada.
+5. Foco personalizado: anillo `border` de 2 pt fuera del control, con separación de 2 pt de superficie base. No dibujarlo directamente encima de `primary`. Conservar el foco nativo cuando exista y comprobar que barras y teclado no lo ocultan.
 6. Una tarjeta sin borde puede agrupar contenido si el espacio y los encabezados lo hacen inequívoco. Para un campo o control que necesite contorno, usar `border`, nunca `separator`.
 7. Todo alpha, vibrancy, material, estado pulsado personalizado o mezcla P3 añade una composición distinta: medir el resultado real. No declarar que la tabla garantiza Liquid Glass.
 
@@ -130,7 +145,7 @@ SF Symbols de sistema, verificados en el SDK y a tamaño de texto: check para se
 | Entrada y revisión | Etiqueta persistente; ejemplo fuera del placeholder si no cabe. Manual siempre disponible junto a voz. Campos y avisos conservan los datos |
 | Captura de voz | Acción explícita iniciar/detener, estado «Escuchando» y transcripción visible. No depender de una onda, del rojo ni de un sonido |
 | Fila pendiente | Nombre, cantidad opcional y selección provisional. Acción Editar separada del check; ningún botón anidado dentro de otro |
-| Fila seleccionada | `accent-soft`, check completo y valor «Seleccionado, pendiente de confirmar»; no tachar ni etiquetar «Comprado» |
+| Fila seleccionada | `primary-soft`, check completo y valor «Seleccionado, pendiente de confirmar»; no tachar ni etiquetar «Comprado» |
 | Contador y CTA | «Finalizar compra · 3 productos» con pluralización. Con cero, acción deshabilitada y explicación. El contador no se oculta con letra grande |
 | Enviando | Progreso con nombre de la operación; impedir otro envío sin borrar el contexto. No anunciar éxito antes del servidor |
 | Compra confirmada | Texto «Compra confirmada» con check de éxito, tras respuesta válida. Al desaparecer filas, foco a un destino lógico estable |
@@ -143,7 +158,7 @@ SF Symbols de sistema, verificados en el SDK y a tamaño de texto: check para se
 
 Los detalles funcionales y reintentos siguen la [spec](mvp-spec.md) y el [contrato](contracts/mvp-api.md). Este sistema no introduce nuevas pantallas, seleccionar todo, estadísticas ni ampliaciones de Siri.
 
-## 6. iOS 27, preferencias y aplicación futura
+## 6. iOS 27, preferencias e integración
 
 Las [fuentes actuales](research/design-system-sources.md) confirman refinamientos de Liquid Glass en iOS 27. Se priorizan `TabView`, navegación, hojas, menús y barras nativos. Las listas, editores y mensajes del contenido propio usan los pares sólidos anteriores. No aplicar vidrio a cada fila ni a banners de error.
 
@@ -159,16 +174,16 @@ Las [fuentes actuales](research/design-system-sources.md) confirman refinamiento
 | Dynamic Type / negrita | Refluir contenido, conservar controles y permitir scroll; sin recortar producto, error o CTA |
 | VoiceOver y controles alternativos | Nombre, rol, valor, orden, acciones y foco comprobados en el recorrido completo |
 
-Contrato de implementación posterior, sin añadir dependencias:
+Orden de integración, sin añadir dependencias:
 
-1. Crear colores nombrados en Asset Catalog, con Any/Light, Dark y las dos variantes High Contrast, color space sRGB. No copiar los HEX por las vistas.
-2. Exponer nombres semánticos centralizados y definir pares de foreground/background en componentes propios. Colores y tipografía nativos siguen siendo preferentes en superficies del sistema; no atribuirles los ratios de los tokens propios.
+1. La base de #20 incorpora los 21 colores en Asset Catalog, con Any/Light, Dark y las dos variantes High Contrast, color space sRGB, y acceso directo mediante los símbolos de Xcode, como `.appPrimary`. No copiar los HEX por las vistas. `AppPrimary` es el tinte global; afecta a los controles nativos que lo heredan y requiere inspección renderizada.
+2. La aplicación posterior define los pares de foreground/background en componentes propios y los utiliza en las pantallas. Colores y tipografía nativos siguen siendo preferentes en superficies del sistema; no atribuirles los ratios de los tokens propios. La base de assets no completa esta aplicación ni el ensayo de accesibilidad.
 3. Resolver preferencias con el entorno SwiftUI (`colorScheme`, `colorSchemeContrast`, `accessibilityReduceTransparency`, `accessibilityReduceMotion`, `accessibilityDifferentiateWithoutColor`, `accessibilityShowButtonShapes`, `dynamicTypeSize`). Verificar disponibilidad y nombres en el SDK usado antes de implementar.
 4. Preparar previews de los cuatro modos y estados principales, incluyendo texto grande ES/EN. Previews no sustituyen el ensayo físico ni la semántica real de VoiceOver.
 5. Ejecutar el [protocolo de accesibilidad](accessibility.md) y conservar evidencia por versión de iOS, dispositivo, ajuste, idioma y flujo. No declarar Accessibility Nutrition Labels sin validar los recorridos requeridos.
 
 ## 7. Mantenimiento
 
-Para cambiar un token, editar esta tabla, ejecutar `python3 scripts/validate_design_system.py --write` y revisar el informe y la lámina SVG; `python3 scripts/validate_design_system.py` comprueba umbrales y que ambos estén actualizados. Cambiar un uso exige añadir su par y revisar componente/estado. No se aceptan valores redondeados como prueba de umbral: 4,499 falla aunque se muestre 4,50.
+Para cambiar un token, editar esta tabla, sincronizar las cuatro variantes de su colorset y actualizar los usos del símbolo generado si cambia su nombre, ejecutar `python3 scripts/validate_design_system.py --write` y revisar el informe y la lámina SVG. `--write` sólo regenera esos dos documentos: nunca escribe assets. `python3 scripts/validate_design_system.py` comprueba umbrales, documentos actualizados y correspondencia de los assets con la tabla: nombres PascalCase con las excepciones `AppPrimary` y `AppSeparator`, cuatro combinaciones únicas de apariencia, idiom universal, sRGB opaco y bytes RGB idénticos. También rechaza JSON inválido, `AccentColor` y colorsets inesperados. Cambiar un uso exige añadir su par y revisar componente/estado. No se aceptan valores redondeados como prueba de umbral: 4,499 falla aunque se muestre 4,50.
 
-El informe mide pares opacos, no renderiza SwiftUI, no verifica la asignación de assets y no acredita la legibilidad de materiales o controles del sistema. La aceptación del MVP exige ambas partes: definición verificable y validación real.
+El informe mide pares opacos y el verificador compara los archivos de assets con su definición; no renderiza SwiftUI, no verifica la resolución de assets en ejecución y no acredita la legibilidad de materiales o controles del sistema. La aceptación del MVP exige ambas partes: definición verificable y validación real.

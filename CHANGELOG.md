@@ -4,6 +4,8 @@
 
 ### Added
 
+- 2026-09-25 | ✨ feat(design): add semantic colors in four appearances
+
 - 2026-09-24 | ✨ feat(ios): select app icon by device capability
 
 - 2026-09-24 | ✨ feat(ios): localize the app in English and Spanish

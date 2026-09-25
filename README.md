@@ -9,7 +9,7 @@ Una persona dicta lo que necesita comprar y dónde. Revisa los productos interpr
 - [Especificación del MVP](docs/mvp-spec.md): comportamiento aprobado, criterios de aceptación y exclusiones.
 - [Plan de implementación](docs/implementation-plan.md): fases, dependencias y condiciones para avanzar.
 - [Sistema de diseño](docs/design-system.md): identidad, tokens de color en cuatro apariencias, tipografía, componentes y estados para iOS 27.
-- [Accesibilidad](docs/accessibility.md): criterios Apple/W3C y protocolo del recorrido real; [contraste reproducible](docs/validation/design-system-contrast.md) y [fuentes actualizadas](docs/research/design-system-sources.md). La definición documental no acredita su integración en la app.
+- [Accesibilidad](docs/accessibility.md): criterios Apple/W3C y protocolo del recorrido real; [contraste reproducible](docs/validation/design-system-contrast.md) y [fuentes actualizadas](docs/research/design-system-sources.md). La base de colores de [#20](https://github.com/JFrancoG/SmartShoppingList/issues/20) no acredita su aplicación a las pantallas ni su validación renderizada.
 - [Contrato técnico del MVP](docs/contracts/mvp-api.md): operaciones OpenAPI, modelo, reintentos y ejemplos verificables para implementar cliente y servidor.
 - [GitHub Issues](https://github.com/JFrancoG/SmartShoppingList/issues): seguimiento operativo, planes de cada bloque, bloqueos y evidencias.
 - [Hito MVP · 27 septiembre](https://github.com/JFrancoG/SmartShoppingList/milestone/1): trabajo de la entrega; los primeros bloques son [servidor #1](https://github.com/JFrancoG/SmartShoppingList/issues/1), [contrato #2](https://github.com/JFrancoG/SmartShoppingList/issues/2), [entrada iOS #3](https://github.com/JFrancoG/SmartShoppingList/issues/3) y [colaboración #4](https://github.com/JFrancoG/SmartShoppingList/issues/4).
@@ -35,11 +35,11 @@ Los tres directorios se versionan juntos desde esta raíz.
 
 Dentro de `ios/SmartShoppingList/SmartShoppingList/`, las carpetas reflejan responsabilidades:
 
-- `App/`: entrada `SmartShoppingListApp`, pantalla raíz `AppRootView`, composición de dependencias (`SharedAppFactory`) y coordinación del icono durante el ciclo de vida. `App/Debug/` contiene la pantalla de diagnóstico de avisos, compilada solo en Debug.
+- `App/`: entrada `SmartShoppingListApp`, pantalla raíz `AppRootView`, composición de dependencias (`SharedAppFactory`) y coordinación del icono durante el ciclo de vida. `App/Debug/` contiene el diagnóstico de avisos y la muestra aislada de colores, compilados solo en Debug.
 - `Features/`: código propio de cada funcionalidad, actualmente `AddItems` y `SharedShopping`; sus modelos, vistas, previews y adaptadores permanecen junto a su recorrido.
 - `Services/`: infraestructura de acceso a la API compartida y Keychain.
 - `Shared/`: código utilizado por varias funcionalidades, como `AppLanguage` y los componentes de `Notices/`. No aloja código específico de una única feature.
-- `Resources/`: `Assets.xcassets`, los paquetes de Icon Composer en `Icons/`, los catálogos de textos en `Localization/` y `Info.plist` y entitlements en `Configuration/`. Estos últimos configuran la compilación y firma; no son recursos para copiar al bundle.
+- `Resources/`: `Assets.xcassets`, los paquetes de Icon Composer en `Icons/`, los catálogos de textos en `Localization/` y `Info.plist` y entitlements en `Configuration/`. El catálogo expone los 21 tokens mediante los símbolos que genera Xcode, como `.canvas` y `.surface`; solo `.appPrimary` y `.appSeparator` conservan el prefijo por colisiones nativas. Los archivos de configuración determinan compilación y firma; no son recursos para copiar al bundle.
 
 Las carpetas están sincronizadas con Xcode. Al mover configuración hay que actualizar también `INFOPLIST_FILE`, `CODE_SIGN_ENTITLEMENTS` y la exclusión de `Info.plist` del target. Un futuro ViewModel de aplicación pertenecerá a `App/` si coordina estado de ese ámbito; no se crea uno mientras no sea necesario.
 
