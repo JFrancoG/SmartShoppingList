@@ -4,6 +4,8 @@
 
 ### Added
 
+- 2026-09-25 | ✨ feat(shopping): edit and cancel pending items
+
 - 2026-09-25 | ✨ feat(design): add semantic colors in four appearances
 
 - 2026-09-24 | ✨ feat(ios): select app icon by device capability
@@ -16,6 +18,8 @@
 - 2026-09-19 | ✨ feat(ios): add editable shopping drafts
 
 ### Documentation
+
+- 2026-09-25 | 📝 docs: record server restart validation
 
 - 2026-09-24 | 📝 docs: complete draft validation evidence
 
@@ -37,6 +41,18 @@
 - 2026-09-19 | 📝 docs: organize MVP tracking
 
 ### Fixed
+
+- 2026-09-25 | 🐛 fix(ios): restore stable cancellation presentation
+
+- 2026-09-25 | 🐛 fix(ios): anchor cancellation alerts to products
+
+- 2026-09-25 | 🐛 fix(ios): restore shopping accessibility context
+
+- 2026-09-25 | 🐛 fix(ios): close unavailable product editors
+
+- 2026-09-25 | 🐛 fix(purchase): deselect changed products automatically
+
+- 2026-09-25 | 🐛 fix(ios): avoid duplicate shopping alerts
 
 - 2026-09-25 | 🐛 fix(purchase): preserve safe store loading states
 

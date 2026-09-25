@@ -2,6 +2,10 @@ import SwiftUI
 
 struct SharedPurchaseSection: View {
     let viewModel: SharedShoppingViewModel
+    @State private var cancellationItem: SharedItem?
+    @State private var confirmsCancellation = false
+    @State private var editorSourceID: UUID?
+    @AccessibilityFocusState(for: .voiceOver) private var focusedProductID: UUID?
 
     var body: some View {
         Section {
@@ -36,6 +40,29 @@ struct SharedPurchaseSection: View {
                 .disabled(!viewModel.canTogglePurchaseItem(item))
                 .accessibilityValue(viewModel.isPurchaseSelected(item) ? Text("Selected") : Text("Not selected"))
                 .accessibilityHint("Changes the local selection. The purchase is saved when you tap Finish shopping.")
+                .accessibilityFocused($focusedProductID, equals: item.id)
+                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                    Button("Edit product", systemImage: "pencil") {
+                        viewModel.beginEditingItem(item)
+                    }
+                    .disabled(!viewModel.canChangeItem(item))
+                    Button("No longer needed", systemImage: "trash", role: .destructive) {
+                        cancellationItem = item
+                        confirmsCancellation = true
+                    }
+                    .disabled(!viewModel.canChangeItem(item))
+                }
+                .contextMenu {
+                    Button("Edit product", systemImage: "pencil") {
+                        viewModel.beginEditingItem(item)
+                    }
+                    .disabled(!viewModel.canChangeItem(item))
+                    Button("No longer needed", systemImage: "trash", role: .destructive) {
+                        cancellationItem = item
+                        confirmsCancellation = true
+                    }
+                    .disabled(!viewModel.canChangeItem(item))
+                }
             }
         } header: {
             Text("Pending · \(viewModel.selectedStoreName)")
@@ -44,15 +71,12 @@ struct SharedPurchaseSection: View {
         }
 
         Section {
-            Text("Selected: \(viewModel.purchaseSelection.count) of up to 50")
-            if viewModel.purchaseSelectionNeedsReview {
-                Label("Some selected products have changed or are no longer pending.", systemImage: "exclamationmark.triangle")
-                    .fixedSize(horizontal: false, vertical: true)
-                Button("Deselect changed products") {
-                    viewModel.discardChangedPurchaseSelections()
+            if viewModel.editingItem != nil {
+                Button("Review product edit") {
+                    viewModel.isItemEditorPresented = true
                 }
-                .disabled(!viewModel.canMutate)
             }
+            Text("Selected: \(viewModel.purchaseSelection.count) of up to 50")
             Button {
                 Task {
                     await viewModel.finalizePurchase()
@@ -73,6 +97,26 @@ struct SharedPurchaseSection: View {
             Text("Confirm purchase")
         } footer: {
             Text("Switching stores or leaving this screen does not confirm the purchase. Refresh to check for group changes.")
+        }
+        .alert("Cancel pending product?", isPresented: $confirmsCancellation, presenting: cancellationItem) { item in
+            Button("No longer needed", role: .destructive) {
+                Task {
+                    await viewModel.cancelItem(item)
+                }
+            }
+            Button("Keep product", role: .cancel) {}
+        } message: { item in
+            Text("Remove \(item.name) from the group’s pending list without recording a purchase?")
+        }
+        .onChange(of: viewModel.isItemEditorPresentationActive) { _, isActive in
+            if isActive {
+                editorSourceID = viewModel.editingItem?.id
+                focusedProductID = nil
+            } else {
+                guard viewModel.presentedNotice == nil, let editorSourceID,
+                      viewModel.items.contains(where: { $0.id == editorSourceID }) else { return }
+                focusedProductID = editorSourceID
+            }
         }
     }
 }

@@ -14,6 +14,7 @@ protocol SharedShoppingAPI: Sendable {
     func acceptInvitation(_ invitation: PendingInvitation, token: String) async throws -> SharedGroup
     func addItems(_ request: AddItemsRequest, groupID: UUID, token: String) async throws -> [SharedItem]
     func finalizePurchase(_ request: FinalizePurchaseRequest, groupID: UUID, token: String) async throws -> PurchaseResult
+    func changeItem(_ request: SharedItemChangeRequest, item: SharedItem, token: String) async throws -> SharedItem
     func pendingItems(groupID: UUID, storeID: UUID, token: String) async throws -> [SharedItem]
 }
 
@@ -245,11 +246,13 @@ extension AddItemsRequest {
 enum PendingSharedOperation: Codable, Equatable {
     case createGroup(userID: UUID, request: CreateGroupRequest)
     case addItems(userID: UUID, groupID: UUID, request: AddItemsRequest, sourceDraft: ShoppingDraftSnapshot)
+    case changeItem(userID: UUID, original: SharedItem, request: SharedItemChangeRequest)
     case purchase(userID: UUID, groupID: UUID, request: FinalizePurchaseRequest, selection: [SharedItem])
 
     var userID: UUID {
         switch self {
-        case .createGroup(let userID, _), .addItems(let userID, _, _, _), .purchase(let userID, _, _, _): userID
+        case .createGroup(let userID, _), .addItems(let userID, _, _, _), .purchase(let userID, _, _, _),
+             .changeItem(let userID, _, _): userID
         }
     }
 
@@ -258,6 +261,7 @@ enum PendingSharedOperation: Codable, Equatable {
         case .createGroup(_, let request): request.operationId
         case .addItems(_, _, let request, _): request.operationId
         case .purchase(_, _, let request, _): request.operationId
+        case .changeItem(_, _, let request): request.operationId
         }
     }
 }
@@ -349,4 +353,45 @@ extension FinalizePurchaseRequest {
 struct PurchaseResult: Codable, Equatable {
     let items: [SharedItem]
     let confirmedAt: Date
+}
+
+
+/// The complete submitted representation is persisted before contacting the server.
+/// A nil replacement is an explicitly confirmed cancellation.
+struct SharedItemChangeRequest: Codable, Equatable {
+    let operationId: UUID
+    let expectedVersion: Int
+    let replacement: SharedNewItem?
+
+    private enum CodingKeys: String, CodingKey {
+        case operationId, expectedVersion, name, quantity, store
+    }
+
+    func encode(to encoder: any Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encode(operationId.uuidString.lowercased(), forKey: .operationId)
+        try values.encode(expectedVersion, forKey: .expectedVersion)
+        if let replacement {
+            try values.encode(replacement.name, forKey: .name)
+            try values.encode(replacement.quantity, forKey: .quantity)
+            try values.encode(replacement.store, forKey: .store)
+        }
+    }
+}
+
+extension SharedItemChangeRequest {
+    init(from decoder: any Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        operationId = try values.decode(UUID.self, forKey: .operationId)
+        expectedVersion = try values.decode(Int.self, forKey: .expectedVersion)
+        if values.contains(.name) || values.contains(.quantity) || values.contains(.store) {
+            replacement = SharedNewItem(
+                name: try values.decode(String.self, forKey: .name),
+                quantity: try values.decode(String?.self, forKey: .quantity),
+                store: try values.decode(SharedStoreReference.self, forKey: .store)
+            )
+        } else {
+            replacement = nil
+        }
+    }
 }

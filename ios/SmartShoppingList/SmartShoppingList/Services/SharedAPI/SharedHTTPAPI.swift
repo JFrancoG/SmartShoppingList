@@ -179,6 +179,38 @@ actor SharedHTTPAPI: SharedShoppingAPI {
         return response.items
     }
 
+    func changeItem(_ request: SharedItemChangeRequest, item: SharedItem, token: String) async throws -> SharedItem {
+        let editing = request.replacement != nil
+        let result: SharedItem = try await send(
+            path: "v1/groups/\(id(item.groupId))/items/\(id(item.id))" + (editing ? "" : "/cancellation"),
+            method: editing ? "PATCH" : "POST",
+            body: request,
+            token: token,
+            status: 200
+        )
+        guard result.id == item.id, result.groupId == item.groupId,
+              request.expectedVersion < 9_007_199_254_740_991,
+              result.version == request.expectedVersion + 1,
+              result.createdBy == item.createdBy, result.createdAt == item.createdAt,
+              result.purchasedBy == nil, result.purchasedAt == nil,
+              result.status == (editing ? "pending" : "cancelled") else {
+            throw SharedAPIError.invalidResponse
+        }
+        if let replacement = request.replacement {
+            guard result.name == replacement.name, result.quantity == replacement.quantity else {
+                throw SharedAPIError.invalidResponse
+            }
+            if case .existing(let store) = replacement.store, result.storeId != store {
+                throw SharedAPIError.invalidResponse
+            }
+        } else {
+            guard result.name == item.name, result.quantity == item.quantity, result.storeId == item.storeId else {
+                throw SharedAPIError.invalidResponse
+            }
+        }
+        return result
+    }
+
     func finalizePurchase(
         _ request: FinalizePurchaseRequest,
         groupID: UUID,

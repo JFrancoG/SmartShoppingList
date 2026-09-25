@@ -387,3 +387,62 @@ private actor ShoppingSQLGate {
         waitingForRelease = nil
     }
 }
+
+extension SmartShoppingListServerTests {
+    @Test(
+        "Item changes and purchases serialize without overwriting the first transition",
+        .timeLimit(.minutes(1)),
+        arguments: [false, true],
+        [false, true]
+    )
+    func itemChangePurchaseRace(cancelling: Bool, purchaseFirst: Bool) async throws {
+        let buyer = try await ShoppingFixture.user()
+        let editor = try await ShoppingFixture.user()
+        let group = try await ShoppingFixture.group(buyer)
+        try await ShoppingFixture.join(editor, group: group)
+        let fixture = try await PurchaseFixture.items(buyer, group: group)
+        let itemID = fixture.ids[0]
+        var fields: [String: APIJSON] = [
+            "operationId": .string(UUID().uuidString.lowercased()), "expectedVersion": .integer(1)
+        ]
+        if !cancelling {
+            fields["name"] = .string("Editado")
+            fields["quantity"] = .null
+            fields["store"] = .object(["id": .string(fixture.store)])
+        }
+        let payload = APIJSON.object(fields)
+        let change: @Sendable () async throws -> TestingHTTPResponse = {
+            try await ShoppingFixture.request(
+                cancelling ? .POST : .PATCH,
+                "/v1/groups/\(group)/items/\(itemID)" + (cancelling ? "/cancellation" : ""),
+                editor,
+                payload
+            )
+        }
+        let purchase: @Sendable () async throws -> TestingHTTPResponse = {
+            try await ShoppingFixture.request(
+                .POST,
+                "/v1/groups/\(group)/purchases",
+                buyer,
+                PurchaseFixture.body(store: fixture.store, ids: Array(fixture.ids.prefix(2)))
+            )
+        }
+        let responses = try await ShoppingFixture.overlappingRequests(
+            lockedBy: "SELECT id FROM items WHERE id = \(bind: itemID)::uuid FOR UPDATE",
+            waitingQuery: "%FROM items%FOR UPDATE%",
+            first: purchaseFirst ? purchase : change,
+            second: purchaseFirst ? change : purchase
+        )
+        #expect(responses.0.status == .ok)
+        #expect(responses.1.status == .conflict)
+        let sql = try shoppingSQL(database)
+        let row = try #require(try await sql.raw("SELECT * FROM items WHERE id = \(bind: itemID)::uuid").first())
+        #expect(try row.decode(column: "version", as: Int64.self) == 2)
+        #expect(try row.decode(column: "status", as: String.self) == (purchaseFirst ? "purchased" : (cancelling ? "cancelled" : "pending")))
+        #expect(try row.decode(column: "purchased_by", as: UUID?.self) == (purchaseFirst ? buyer.id : nil))
+        let purchased = try await sql.raw("SELECT id FROM items WHERE status = 'purchased'").all()
+        #expect(purchased.count == (purchaseFirst ? 2 : 0))
+        let repeated = try await change()
+        #expect(repeated.body.string == (purchaseFirst ? responses.1.body.string : responses.0.body.string))
+    }
+}

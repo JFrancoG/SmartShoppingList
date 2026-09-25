@@ -99,3 +99,33 @@ extension SharedAPIKeychainTests {
         }
     }
 }
+
+extension SharedAPIKeychainTests {
+    @Test("Reopening keychain retains the exact edited fields or cancellation intent", arguments: [false, true])
+    func itemChangeSurvivesReopening(cancelling: Bool) async throws {
+        let service = "ItemChangeKeychainTests.\(UUID().uuidString)"
+        let store = SharedKeychainStore(service: service)
+        let fixture = try SharedPreviewFixture.sample()
+        let item = try #require(fixture.items.first)
+        let operation = PendingSharedOperation.changeItem(
+            userID: fixture.session.user.id,
+            original: item,
+            request: SharedItemChangeRequest(
+                operationId: UUID(),
+                expectedVersion: item.version,
+                replacement: cancelling ? nil : SharedNewItem(name: "Pan integral", quantity: nil, store: .newName("Día"))
+            )
+        )
+        do {
+            try await store.saveOperation(operation)
+            let reopened = SharedKeychainStore(service: service)
+            #expect(try await reopened.loadOperation() == operation)
+            try await store.saveSession(nil)
+            #expect(try await reopened.loadOperation() == operation)
+        } catch {
+            try? await store.saveOperation(nil)
+            throw error
+        }
+        try await store.saveOperation(nil)
+    }
+}

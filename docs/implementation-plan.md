@@ -65,13 +65,17 @@ El resultado de esta fase es el recorrido completo descrito en la spec:
 
 - Onboarding y sesión conservada, invitaciones válidas e inválidas y guardado atómico del lote confirmado con reintentos seguros.
 - Consulta de tiendas por voz y selector sobre datos reales del grupo; edición de pendientes y distinción entre compra y cancelación.
-- Checks locales reversibles, contador y finalización con IDs explícitos: mantener pendientes los no seleccionados, conservar selección ante errores y resolver conflictos sin duplicar compras.
+- Checks locales reversibles, contador y finalización con IDs explícitos: mantener pendientes los no seleccionados, conservar selección ante errores y resolver conflictos sin duplicar compras. El 25 se acuerda desmarcar automáticamente los afectados tras una carga válida y avisar para que puedan volver a seleccionarse; se elimina la deselección manual obligatoria, manteniendo intactos los envíos inciertos.
 - Historial mínimo por entrada y nueva entrada para una nueva necesidad; estados de carga, vacío y error, refresco y consulta de la última lista recuperada.
 - Preparar las nuevas pantallas para español e inglés y adaptar la selección de idioma de Speech/Foundation Models, evitando el español fijo del recorrido inicial. Comprobar disponibilidad real por idioma con #7; la traducción y revisión completas se consolidan en fase 3.
 
 La primera unidad es [#11: selección y finalización segura de compra](https://github.com/JFrancoG/SmartShoppingList/issues/11), sobre el código compartido de #4. Comprende checks locales por tienda, compra atómica de IDs/versiones explícitos, recuperación del envío y conflictos. Su [diseño](architecture/shared-shopping.md#selección-y-finalización-de-compra-11) y [validación](validation/issue-11-purchase-flow.md) separan pruebas locales de activación alojada y ensayo físico. Abrir este bloque no cierra #4/#7 ni da por completa la fase 2.
 
-Edición/cancelación desde la app, historial y consulta de tienda por voz se concretarán como siguientes unidades con dependencias y criterios propios. La localización completa y el acabado de accesibilidad conservan su ventana de fase 3.
+La siguiente unidad, implementada y validada localmente el 25 de septiembre, es [#22: edición y cancelación segura de pendientes](https://github.com/JFrancoG/SmartShoppingList/issues/22). Incluye las rutas de edición/cancelación, su cliente iOS y los conflictos con compra; las pruebas de #11 sobre filas modificadas previamente no acreditan estos endpoints. El historial mínimo se comprueba conservando registros, estados, autor y fechas según la spec; no exige una pantalla nueva ni una API analítica.
+
+El orden para el cierre funcional es completar y probar #22, incorporar después la consulta de tienda por voz dentro de Comprar y realizar un recorrido conjunto con dos usuarios. La consulta por voz pertenece al MVP y es distinta del extra Siri/App Intents #10. Se reutiliza la evidencia vigente de acceso, invitaciones y recuperación; la regresión se concentra en transiciones, concurrencia, reintentos y persistencia afectados. La matriz visual extensa ES/EN se ejecuta tras aplicar el design system a las pantallas, conforme al acuerdo de #17.
+
+La fecha objetivo del 25 no acredita el cierre: antes de congelar deben estar implementados y comprobados los recorridos anteriores. La issue #22 contiene el plan y su matriz de aceptación, con [evidencia local](validation/issue-22-edit-cancel-items.md). Despliegue y ensayo físico siguen pendientes; las pruebas locales no equivalen al cierre funcional. La localización de las nuevas acciones y la accesibilidad focalizada acompañan a su implementación.
 
 ### Extra opcional después del recorrido de compra: Siri
 

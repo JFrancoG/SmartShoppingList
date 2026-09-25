@@ -19,6 +19,8 @@ struct ShoppingRoutes: RouteCollection {
         api.post("invitations", ":invitationId", "accept", use: acceptInvitation)
         api.post("groups", ":groupId", "item-batches", use: addItems)
         api.post("groups", ":groupId", "purchases", use: finalizePurchase)
+        api.patch("groups", ":groupId", "items", ":itemId", use: editItem)
+        api.post("groups", ":groupId", "items", ":itemId", "cancellation", use: cancelItem)
         api.get("groups", ":groupId", "stores", ":storeId", "items", use: listItems)
     }
 
@@ -68,6 +70,40 @@ struct ShoppingRoutes: RouteCollection {
             operation: body.uuid("operationId"),
             store: body.uuid("storeId"),
             items: values.map(ShoppingSelectedItem.init)
+        ).response()
+    }
+
+    private func editItem(_ request: Request) async throws -> Response {
+        try await changeItem(request, editing: true)
+    }
+
+    private func cancelItem(_ request: Request) async throws -> Response {
+        try await changeItem(request, editing: false)
+    }
+
+    private func changeItem(_ request: Request, editing: Bool) async throws -> Response {
+        let user = try await authentication.authenticate(request)
+        let group = try parameter("groupId", request: request)
+        let item = try parameter("itemId", request: request)
+        let keys: Set<String> = editing
+            ? ["operationId", "expectedVersion", "name", "quantity", "store"]
+            : ["operationId", "expectedVersion"]
+        let body = try APIObject.body(request, allowed: keys, required: keys)
+        let selected = try ShoppingSelectedItem(.object([
+            "id": .string(item.uuidString.lowercased()),
+            "expectedVersion": body.values["expectedVersion"] ?? .null
+        ]))
+        let replacement = try editing ? ShoppingNewItem(.object([
+            "name": body.values["name"] ?? .null,
+            "quantity": body.values["quantity"] ?? .null,
+            "store": body.values["store"] ?? .null
+        ])) : nil
+        return try await service().changeItem(
+            user: user,
+            group: group,
+            operation: body.uuid("operationId"),
+            item: selected,
+            replacement: replacement
         ).response()
     }
 

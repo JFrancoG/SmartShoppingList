@@ -441,3 +441,75 @@ extension ShoppingService {
         }
     }
 }
+
+
+extension ShoppingService {
+    /// The item lock serializes edits and cancellations with the purchase transaction.
+    /// A nil replacement represents the terminal cancellation transition.
+    func changeItem(
+        user: UUID,
+        group: UUID,
+        operation: UUID,
+        item: ShoppingSelectedItem,
+        replacement: ShoppingNewItem?
+    ) async throws -> APIReply {
+        let type = replacement == nil ? "cancelItem" : "editItem"
+        let fingerprint = try fingerprint(type: type, group: group, value: .object([
+            "item": item.json, "replacement": replacement?.json ?? .null
+        ]))
+        return try await database.transaction { transaction in
+            let sql = try shoppingSQL(transaction)
+            let current = try await lockUser(user, on: sql)
+            guard current == group else { throw APIProblem.notFound }
+            if let replay = try await reserve(
+                user: user,
+                operation: operation,
+                type: type,
+                group: group,
+                fingerprint: fingerprint,
+                currentGroup: current,
+                on: sql
+            ) {
+                return replay
+            }
+            guard let row = try await sql.raw("""
+                SELECT * FROM items WHERE id = \(bind: item.id) AND group_id = \(bind: group) FOR UPDATE
+                """).first() else { throw APIProblem.notFound }
+            let reply: APIReply
+            if try row.decode(column: "status", as: String.self) != "pending"
+                || row.decode(column: "version", as: Int64.self) != item.expectedVersion {
+                reply = try APIReply(status: .conflict, json: .object([
+                    "code": .string("item_conflict"),
+                    "message": .string("El producto ha cambiado. Actualiza la lista y revisa tu cambio."),
+                    "requestId": .string(UUID().uuidString.lowercased())
+                ]))
+            } else {
+                guard item.expectedVersion < 9_007_199_254_740_991 else { throw APIProblem.unavailable }
+                let updated: (any SQLRow)?
+                if let replacement {
+                    let resolved = try await resolveStores([replacement], group: group, on: sql)
+                    let store: UUID
+                    switch replacement.store {
+                    case .existing(let id): store = id
+                    case .named(_, let key):
+                        guard let id = resolved[key] else { throw APIProblem.unavailable }
+                        store = id
+                    }
+                    updated = try await sql.raw("""
+                        UPDATE items SET name = \(bind: replacement.name), quantity = \(bind: replacement.quantity),
+                            store_id = \(bind: store), version = version + 1
+                        WHERE id = \(bind: item.id) AND group_id = \(bind: group) RETURNING *
+                        """).first()
+                } else {
+                    updated = try await sql.raw("""
+                        UPDATE items SET status = 'cancelled', version = version + 1
+                        WHERE id = \(bind: item.id) AND group_id = \(bind: group) RETURNING *
+                        """).first()
+                }
+                guard let updated else { throw APIProblem.unavailable }
+                reply = try APIReply(status: .ok, json: Self.itemJSON(updated))
+            }
+            return try await save(reply, user: user, operation: operation, group: group, on: sql)
+        }
+    }
+}

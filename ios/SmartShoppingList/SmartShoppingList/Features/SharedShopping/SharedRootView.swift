@@ -30,9 +30,14 @@ struct SharedRootView: View {
         }) {
             SharedReviewView(viewModel: viewModel)
         }
+        .sheet(isPresented: $viewModel.isItemEditorPresented, onDismiss: {
+            viewModel.itemEditorPresentationDidDismiss()
+        }) {
+            SharedItemEditorView(viewModel: viewModel)
+        }
         .modifier(ShoppingNoticeModifier(
             notice: viewModel.presentedNotice
-                ?? (selectedTab == .add ? viewModel.draft.presentedNotice : viewModel.purchaseSelectionNotice),
+                ?? (selectedTab == .add ? viewModel.draft.presentedNotice : nil),
             isEnabled: viewModel.canPresentRootNotice,
             dismiss: { snapshot in
                 viewModel.dismissPresentedNotice(snapshot)
