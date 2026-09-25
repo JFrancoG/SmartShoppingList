@@ -2,6 +2,8 @@ import AuthenticationServices
 import SwiftUI
 
 struct SharedGroupView: View {
+    @Environment(\.scenePhase) private var scenePhase
+    @AccessibilityFocusState private var storeIsFocused: Bool
     @Environment(\.colorScheme) private var colorScheme
     @ScaledMetric(relativeTo: .body) private var appleButtonHeight = 44.0
     @Bindable var viewModel: SharedShoppingViewModel
@@ -96,7 +98,9 @@ struct SharedGroupView: View {
                                 }
                             }
                             .pickerStyle(.navigationLink)
-                            .disabled(viewModel.isBusy || !viewModel.sessionIsVerified)
+                            .disabled(viewModel.isBusy || !viewModel.sessionIsVerified || viewModel.storeQuery.activity != .idle)
+                            .accessibilityFocused($storeIsFocused)
+                            StoreQueryView(viewModel: viewModel.storeQuery, shared: viewModel)
                             if viewModel.stores.isEmpty {
                                 Text("No stores loaded. You can confirm a store when adding products.")
                                     .foregroundStyle(.secondary)
@@ -151,6 +155,22 @@ struct SharedGroupView: View {
             }
             .task(id: viewModel.selectedStoreID) {
                 await viewModel.loadSelectedStore()
+            }
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .background {
+                    viewModel.interruptStoreDictation()
+                }
+            }
+            .onDisappear {
+                viewModel.interruptStoreDictation()
+            }
+            .onChange(of: viewModel.group?.id) { _, _ in
+                viewModel.closeStoreQuery()
+            }
+            .onChange(of: viewModel.isStoreQueryVisible) { wasVisible, isVisible in
+                if wasVisible && !isVisible {
+                    storeIsFocused = true
+                }
             }
             .sheet(isPresented: $viewModel.isInvitationsPresented, onDismiss: {
                 viewModel.invitationsPresentationDidDismiss()
