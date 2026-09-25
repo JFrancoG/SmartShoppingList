@@ -4,6 +4,8 @@
 
 ### Added
 
+- 2026-09-25 | ✨ feat(design): add semantic colors in four appearances
+
 - 2026-09-24 | ✨ feat(ios): select app icon by device capability
 
 - 2026-09-24 | ✨ feat(ios): localize the app in English and Spanish
@@ -52,6 +54,8 @@
 - 2026-09-22 | ✅ test(purchase): cover changes after selection
 
 ### Maintenance
+
+- 2026-09-25 | 🔧 chore(ios): organize app, shared code and resources
 
 - 2026-09-22 | 📦 build(server): refresh HTTP and configuration dependencies
 - 2026-09-21 | 🔧 chore(ios): configure hosted shared shopping

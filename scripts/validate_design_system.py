@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Validate the opaque sRGB pairs specified in docs/design-system.md.
+"""Validate the opaque sRGB pairs and assets specified in docs/design-system.md.
 
-No third-party dependencies. Default: read-only validation, including report drift.
---write: regenerate the Markdown report (also reports and fails invalid pairs).
+No third-party dependencies. Default: read-only validation, including asset and report drift.
+--write: regenerate the Markdown report and SVG only; never modify the assets.
 """
 
 import argparse
 import hashlib
+import json
 import re
 import sys
 from html import escape
@@ -16,7 +17,14 @@ ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "docs/design-system.md"
 REPORT = ROOT / "docs/validation/design-system-contrast.md"
 PREVIEW = ROOT / "docs/assets/design-system-preview.svg"
+ASSETS = ROOT / "ios/SmartShoppingList/SmartShoppingList/Resources/Assets.xcassets"
 MODES = ("Light", "Dark", "HC Light", "HC Dark")
+APPEARANCES = (
+    frozenset(),
+    frozenset({("luminosity", "dark")}),
+    frozenset({("contrast", "high")}),
+    frozenset({("luminosity", "dark"), ("contrast", "high")}),
+)
 
 
 def table_rows(document, section):
@@ -83,7 +91,72 @@ def evaluate(document):
     return results, failures, hashlib.sha256(canonical).hexdigest()
 
 
-def render(results, failures, fingerprint):
+def validate_assets(document):
+    palette = {row[0]: row[1:] for row in table_rows(document, "palette")}
+    expected = {
+        ASSETS / (("App" if token in {"primary", "separator"} else "")
+                  + "".join(part.title() for part in token.split("-")) + ".colorset"): values
+        for token, values in palette.items()
+    }
+    actual = set(ASSETS.rglob("*.colorset"))
+    missing = expected.keys() - actual
+    unexpected = actual - expected.keys()
+    duplicate_accent = list(ASSETS.rglob("AccentColor.colorset"))
+    if missing or unexpected or duplicate_accent:
+        problems = []
+        if missing:
+            problems.append("missing: " + ", ".join(sorted(path.name for path in missing)))
+        if unexpected:
+            problems.append("unexpected: " + ", ".join(sorted(str(path.relative_to(ASSETS)) for path in unexpected)))
+        if duplicate_accent:
+            problems.append("AccentColor duplicates the AppPrimary tint")
+        raise ValueError("Asset catalog mismatch: " + "; ".join(problems))
+
+    for path, values in expected.items():
+        try:
+            asset = json.loads((path / "Contents.json").read_text(encoding="utf-8"))
+        except json.JSONDecodeError as error:
+            raise ValueError(f"{path.name}: invalid JSON: {error}") from error
+        if not isinstance(asset, dict) or not isinstance(asset.get("colors"), list) or len(asset["colors"]) != 4:
+            raise ValueError(f"{path.name}: expected exactly four color variants")
+        seen = set()
+        for variant in asset["colors"]:
+            if not isinstance(variant, dict) or variant.get("idiom") != "universal":
+                raise ValueError(f"{path.name}: every variant must use the universal idiom")
+            appearances = variant.get("appearances", [])
+            if not isinstance(appearances, list) or any(
+                not isinstance(item, dict) or set(item) != {"appearance", "value"}
+                or (item["appearance"], item["value"]) not in (("luminosity", "dark"), ("contrast", "high"))
+                for item in appearances
+            ):
+                raise ValueError(f"{path.name}: unsupported appearance; expected luminosity/dark or contrast/high")
+            combination = frozenset((item["appearance"], item["value"]) for item in appearances)
+            if len(combination) != len(appearances) or combination not in APPEARANCES or combination in seen:
+                raise ValueError(f"{path.name}: duplicate or unsupported appearance combination")
+            seen.add(combination)
+            index = APPEARANCES.index(combination)
+            mode = MODES[index]
+            color = variant.get("color")
+            if not isinstance(color, dict) or color.get("color-space") != "srgb":
+                raise ValueError(f"{path.name} / {mode}: expected sRGB")
+            components = color.get("components")
+            if not isinstance(components, dict) or set(components) != {"red", "green", "blue", "alpha"}:
+                raise ValueError(f"{path.name} / {mode}: expected red, green, blue and alpha components")
+            alpha = components["alpha"]
+            if not isinstance(alpha, str) or not re.fullmatch(r"1(?:\.0+)?", alpha):
+                raise ValueError(f"{path.name} / {mode}: expected opaque alpha (1.000)")
+            channels = [components[channel] for channel in ("red", "green", "blue")]
+            if not all(isinstance(value, str) and re.fullmatch(r"0x[0-9A-Fa-f]{2}", value) for value in channels):
+                raise ValueError(f"{path.name} / {mode}: expected sRGB byte components in 0xNN format")
+            actual_hex = "#" + "".join(value[2:].upper() for value in channels)
+            if actual_hex != values[index]:
+                raise ValueError(f"{path.name} / {mode}: {actual_hex} differs from canonical {values[index]}")
+        if seen != set(APPEARANCES):
+            raise ValueError(f"{path.name}: missing an appearance combination")
+    return len(expected)
+
+
+def render(results, failures, fingerprint, asset_count):
     essential = sum(row[2] != "decorative" for row in results) * len(MODES)
     decorative = sum(row[2] == "decorative" for row in results) * len(MODES)
     lines = [
@@ -100,8 +173,13 @@ def render(results, failures, fingerprint):
         "`ui`: 3:1 en los cuatro modos. `decorative`: no se usa para identificar un control o estado. "
         "La fórmula y criterios proceden de [WCAG 2.2](https://www.w3.org/TR/WCAG22/#dfn-relative-luminance); "
         "el umbral HC es una decisión del proyecto.", "",
-        "Sólo se acreditan estos pares nominales. No se ha ejecutado la app ni medido materiales, "
-        "antialiasing, assets, controles nativos, Dynamic Type, foco o VoiceOver. "
+        f"El verificador también comprueba los {asset_count} colorsets del catálogo: nombres derivados de los tokens "
+        "en PascalCase, con prefijo `App` solo en `AppPrimary` y `AppSeparator` para evitar colisiones, "
+        "cuatro variantes únicas con idiom universal, sRGB opaco y bytes RGB idénticos a la tabla. "
+        "Rechaza `AccentColor` y colorsets inesperados.", "",
+        "Sólo se acreditan estos pares nominales y su correspondencia con los archivos de assets. "
+        "No se ha ejecutado la app ni medido materiales, antialiasing, resolución de assets en ejecución, "
+        "controles nativos, Dynamic Type, foco o VoiceOver. "
         "No equivale a conformidad AA/AAA del producto.", "",
         "## Mínimos entre los pares exigidos", "",
         "| Modo | Texto mínimo | Par de texto limitante | UI mínimo |",
@@ -124,8 +202,10 @@ def render(results, failures, fingerprint):
     lines += ["", "## Reproducción", "", "Desde la raíz del repositorio, Python 3 sin paquetes externos:", "",
               "```bash", "python3 scripts/validate_design_system.py", "```", "",
               "Tras editar tokens o pares:", "", "```bash", "python3 scripts/validate_design_system.py --write", "```", "",
-              "La ejecución normal falla si algún par no pasa o el informe no coincide con las tablas. "
-              "La opción `--write` regenera el informe y también devuelve error si hay pares fallidos. "
+              "La ejecución normal falla si algún par no pasa, los assets no coinciden con el contrato "
+              "o el informe o la lámina SVG no coinciden con las tablas. "
+              "La opción `--write` regenera solo el informe y la lámina SVG; nunca escribe assets "
+              "y también devuelve error si hay pares fallidos o assets inválidos. "
               "Las comprobaciones de interfaz se conservan en el [protocolo de accesibilidad](../accessibility.md).", ""]
     return "\n".join(lines)
 
@@ -162,21 +242,21 @@ def render_preview(document):
             ("Yogures", "Sin seleccionar", False),
         ]):
             y = 268 + row * 90
-            background = p["accent-soft"] if selected else p["surface"]
+            background = p["primary-soft"] if selected else p["surface"]
             rect(x + 16, y, 323, 78, background)
-            rect(x + 30, y + 23, 30, 30, p["accent"] if selected else background, p["accent"] if selected else p["border"], 7)
+            rect(x + 30, y + 23, 30, 30, p["primary"] if selected else background, p["primary"] if selected else p["border"], 7)
             if selected:
-                parts.append(f'<path d="M {x + 37} {y + 38} l 6 6 l 11 -14" fill="none" stroke="{p["on-accent"]}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>')
+                parts.append(f'<path d="M {x + 37} {y + 38} l 6 6 l 11 -14" fill="none" stroke="{p["on-primary"]}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>')
             label(x + 76, y + 30, name, p["text-primary"], 20, 600)
-            label(x + 76, y + 57, detail, p["accent"] if selected else p["text-secondary"], 16)
+            label(x + 76, y + 57, detail, p["primary"] if selected else p["text-secondary"], 16)
         label(x + 20, 565, "Pendientes de confirmar", p["text-secondary"], 17)
-        rect(x + 16, 585, 323, 58, p["accent"], radius=14)
-        label(x + 35, 621, "Finalizar compra · 2 productos", p["on-accent"], 18, 600)
+        rect(x + 16, 585, 323, 58, p["primary"], radius=14)
+        label(x + 35, 621, "Finalizar compra · 2 productos", p["on-primary"], 18, 600)
         rect(x + 16, 661, 323, 62, p["warning-soft"])
         label(x + 30, 686, "!  Sin conexión", p["warning"], 17, 600)
         label(x + 30, 710, "La selección se conserva", p["text-primary"], 16)
         label(x + 20, 754, "Marca y estados", p["text-secondary"], 16)
-        for swatch, token in enumerate(("accent", "brand-yellow", "success", "danger", "info")):
+        for swatch, token in enumerate(("primary", "brand-yellow", "success", "danger", "info")):
             rect(x + 20 + swatch * 65, 767, 54, 22, p[token], radius=5)
         minimum = min(contrast(p[fg], p[bg]) for fg in ("text-primary", "text-secondary", "text-tertiary") for bg in ("canvas", "surface", "surface-muted"))
         label(x + 20, 823, f"Texto neutro mínimo: {minimum:.2f}:1", p["text-secondary"], 16)
@@ -191,7 +271,8 @@ def main():
     try:
         document = SOURCE.read_text(encoding="utf-8")
         results, failures, fingerprint = evaluate(document)
-        report = render(results, failures, fingerprint)
+        asset_count = validate_assets(document)
+        report = render(results, failures, fingerprint, asset_count)
         for path, content in ((REPORT, report), (PREVIEW, render_preview(document))):
             if args.write:
                 path.parent.mkdir(parents=True, exist_ok=True)
@@ -201,7 +282,8 @@ def main():
         if failures:
             print("\n".join(failures), file=sys.stderr)
             return 1
-        print(f"PASS: {len(results)} pairs × 4 modes; report and SVG match canonical tables")
+        print(f"PASS: {len(results)} pairs × 4 modes; {asset_count} assets × 4 variants match canonical sRGB bytes; "
+              "report and SVG match canonical tables")
         return 0
     except (ValueError, OSError) as error:
         print(f"Validation error: {error}", file=sys.stderr)
