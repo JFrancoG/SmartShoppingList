@@ -154,7 +154,11 @@ final class SharedShoppingViewModel {
     func refresh() async {
         guard hasLoaded, !isBusy, !storageFailed else { return }
         await performAction {
-            await refreshSessionAndLists()
+            let selectionNeededReview = purchaseSelectionNeedsReview
+            let refreshed = await refreshSessionAndLists()
+            if refreshed, !selectionNeededReview, purchaseSelectionNeedsReview, notice == nil {
+                notice = "Some selected products have changed or are no longer pending."
+            }
         }
     }
 
@@ -435,13 +439,13 @@ final class SharedShoppingViewModel {
             let refreshed = await refreshSessionAndLists()
             if case .purchase = operation {
                 if refreshed {
-                    notice = "The purchase is confirmed. Unselected products remain pending."
+                    notice = nil
                 } else {
                     notice = "The purchase is confirmed, but the list could not be refreshed. Refresh before continuing."
                 }
             } else if case .changeItem = operation {
                 notice = refreshed
-                    ? "The product change is confirmed in the group."
+                    ? nil
                     : "The product change is confirmed, but the list could not be refreshed. Refresh before continuing."
             } else {
                 notice = "The operation is confirmed in the group."
@@ -560,14 +564,6 @@ final class SharedShoppingViewModel {
 
     var presentedNotice: ShoppingNotice? {
         notice.map { ShoppingNotice(source: .group, message: $0) }
-    }
-
-    var purchaseSelectionNotice: ShoppingNotice? {
-        guard purchaseSelectionNeedsReview else { return nil }
-        return ShoppingNotice(
-            source: .purchaseSelection,
-            message: "Some selected products have changed or are no longer pending."
-        )
     }
 
     var canPresentRootNotice: Bool {

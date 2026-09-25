@@ -1195,7 +1195,8 @@
             "value": "Revisa la selección"
           }
         }
-      }
+      },
+      "extractionState": "stale"
     },
     "Reviewed products · %lld": {
       "localizations": {
@@ -1662,10 +1663,10 @@
             "value": "El cambio del producto está confirmado en el grupo."
           }
         }
-      }
+      },
+      "extractionState": "stale"
     },
     "The product change is confirmed, but the list could not be refreshed. Refresh before continuing.": {
-      "extractionState": "stale",
       "localizations": {
         "es": {
           "stringUnit": {
@@ -1703,7 +1704,8 @@
             "value": "La compra se ha confirmado. Los productos no seleccionados siguen pendientes."
           }
         }
-      }
+      },
+      "extractionState": "stale"
     },
     "The resource is unavailable or you do not have access. Refresh and try again.": {
       "localizations": {

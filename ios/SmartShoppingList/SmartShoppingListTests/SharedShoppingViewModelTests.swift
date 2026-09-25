@@ -688,6 +688,7 @@ extension SharedShoppingViewModelTests {
         #expect(Set(requests[0].items.map(\.id)) == Set(items.prefix(3).map(\.id)))
         #expect(reopened.pendingOperation == nil)
         #expect(reopened.purchaseSelection.isEmpty)
+        #expect(reopened.presentedNotice == nil)
         #expect(Set(reopened.items.map(\.id)) == Set(items[3...4].map(\.id)))
         #expect(await credentials.loadOperation() == nil)
     }
@@ -706,6 +707,11 @@ extension SharedShoppingViewModelTests {
         #expect(model.purchaseSelection.first?.version == 1)
         #expect(model.purchaseSelectionNeedsReview)
         #expect(!model.canFinalizePurchase)
+        let notice = try #require(model.presentedNotice)
+        model.dismissPresentedNotice(notice)
+        await model.refresh()
+        #expect(model.presentedNotice == nil)
+        #expect(model.purchaseSelectionNeedsReview)
         await model.finalizePurchase()
         #expect(await api.sentPurchases.isEmpty)
     }
@@ -987,5 +993,36 @@ extension SharedShoppingViewModelTests {
         await api.configureItemChange(error: nil)
         await model.saveItemEdit()
         #expect(model.items.first { $0.id == products[0].id }?.name == "Pan")
+    }
+}
+
+
+extension SharedShoppingViewModelTests {
+    @Test("Confirmed item edits and cancellations refresh the list without requiring an OK", arguments: [false, true])
+    func confirmedItemChangeNeedsNoAlert(cancelling: Bool) async throws {
+        let api = SharedFlowAPI()
+        let products = try await api.preparePurchaseItems()
+        await api.configureItemChange(error: nil)
+        let model = try makeModel(api: api, credentials: MemorySharedCredentialStore(session: api.session))
+        await model.load()
+        model.selectedStoreID = products[0].storeId
+        await model.loadSelectedStore()
+        if cancelling {
+            await model.cancelItem(products[0])
+        } else {
+            model.beginEditingItem(products[0])
+            model.editName = "Pan actualizado"
+            await model.saveItemEdit()
+        }
+        #expect(model.pendingOperation == nil)
+        #expect(model.storeItemsState == .loaded)
+        #expect(model.presentedNotice == nil)
+        let current = model.items.first { $0.id == products[0].id }
+        if cancelling {
+            #expect(current == nil)
+        } else {
+            #expect(current?.name == "Pan actualizado")
+            #expect(!model.isItemEditorPresented)
+        }
     }
 }

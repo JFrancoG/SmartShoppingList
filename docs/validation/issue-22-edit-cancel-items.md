@@ -1,6 +1,6 @@
 # Edición y cancelación segura de pendientes · #22
 
-Estado del 25 de septiembre de 2026: implementación validada localmente en `codex/issue-22-edit-cancel-items`, sobre `6e7a246`. El responsable ha autorizado commit, push, despliegue e instalación en ambos iPhone; activación en curso. La evidencia de despliegue e instalación se registrará en la issue #22. El ensayo físico y el cierre de la issue siguen pendientes; esta evidencia no constituye el cierre completo del MVP.
+Estado del 25 de septiembre de 2026: implementación `db32534` publicada en `codex/issue-22-edit-cancel-items`, desplegada en Railway e instalada en ambos iPhone. Edición y cancelación entre dispositivos confirmadas por el responsable. El ensayo detectó avisos redundantes y una alerta vacía; corrección iOS y evidencia descritas abajo. La issue permanece abierta; esto no constituye el cierre completo del MVP.
 
 ## Alcance comprobado
 
@@ -39,17 +39,35 @@ Editor y acción de cancelación con textos ES/EN, controles nativos y confirmac
 
 Revisiones independientes de arquitectura/contrato y SwiftUI/accesibilidad: se corrigieron la serialización del fixture, mensajes que confundían carga/fallo con ausencia, diagnóstico visible de validación y validación indebida de un campo de tienda oculto. Las regresiones de campo oculto y límite de escalares tras NFC pasan en Fast. Las revisiones finales no mantienen hallazgos abiertos. Revisión de estilo limitada al diff, sin reformatear código histórico.
 
-## Ensayo físico pendiente
+## Ensayo físico y corrección de avisos
 
-iPhone 11 = A; iPhone 14 = B, con dos cuentas del mismo grupo. Registrar versión/commit y despliegue reales antes de empezar. Usar dos o tres productos de prueba identificables, sin resetear el grupo ni datos existentes.
+iPhone 11 = A; iPhone 14 = B, con dos cuentas del mismo grupo. Baseline instalado: `db32534`; Railway activo `089d0da8-422a-40bc-9d6a-646fd466c2c3` con ese mismo SHA y healthcheck correcto a las 12:43 CEST. Ambos teléfonos en inglés. Usar dos o tres productos de prueba identificables, sin resetear el grupo ni datos existentes.
 
-1. A y B abren Comprar, eligen la misma tienda y refrescan. A marca un producto sin finalizar.
-2. B desliza ese producto, pulsa Editar, cambia nombre/cantidad y guarda. A refresca: ve el cambio y debe revisar/desmarcar su selección antigua antes de finalizar.
-3. Con otro producto marcado previamente en A, B abre «Ya no lo necesitamos». Primero cancela el diálogo: la fila sigue pendiente. Después confirma: desaparece de pendientes en B; al refrescar A tampoco aparece ni puede comprarse con el check antiguo.
+1. **Confirmado por el responsable:** A y B abren Comprar, eligen la misma tienda y refrescan. A marca un producto sin finalizar.
+2. **Confirmado por el responsable:** B desliza ese producto, pulsa Editar, cambia nombre/cantidad y guarda. A refresca: ve el cambio y debe revisar/desmarcar su selección antigua antes de finalizar.
+3. **Confirmado por el responsable:** Con otro producto marcado previamente en A, B abre «Ya no lo necesitamos». Primero cierra el popover tocando fuera (en esa presentación nativa no aparece «Keep product»): la fila sigue pendiente. Después confirma: desaparece de pendientes en B; al refrescar A tampoco aparece ni puede comprarse con el check antiguo.
 4. Conflicto real sin refresco: ambos cargan otro producto; A mantiene su edición abierta, B lo compra. A intenta guardar: recibe conflicto, conserva su propuesta y no reabre ni sobrescribe el producto comprado.
 5. Cambiar un pendiente a otra tienda; refrescar ambas tiendas en el otro teléfono y comprobar que aparece una sola vez en la nueva. Vaciar cantidad debe eliminarla, sin cambiar identidad.
 6. Comprobación focalizada de accesibilidad: activar Editar y la confirmación, corregir un campo inválido, cerrar y recuperar el foco; comprobar que check y cancelación no se confunden. No se repite la matriz amplia antes de aplicar el design system.
 
-Pendiente adicional: persistencia tras reinicio local controlado del proceso del servidor, y evidencia de la versión alojada. La pérdida de respuesta ya tiene prueba automatizada posterior al commit; cortar la red en un teléfono no demuestra por sí solo ese instante. No reiniciar producción para esta comprobación ni repetir el ensayo offline ya acreditado por #17 sin una regresión concreta.
+Pendiente adicional: persistencia tras reinicio local controlado del proceso del servidor. La pérdida de respuesta ya tiene prueba automatizada posterior al commit; cortar la red en un teléfono no demuestra por sí solo ese instante. No reiniciar producción para esta comprobación ni repetir el ensayo offline ya acreditado por #17 sin una regresión concreta.
 
 La consulta de tienda por voz sigue como siguiente unidad obligatoria. App Intents #10 conserva su carácter opcional. Esta issue no cierra el MVP.
+
+
+### Incidencia de avisos · 25 de septiembre
+
+En iPhone 11, una edición confirmada mostraba éxito, alerta vacía con OK y selección antigua. En iPhone 14, la compra posterior encontraba conflicto y encadenaba alerta vacía y selección antigua, además del bloque inline. El responsable confirma que los datos y el bloqueo son correctos. Este orden acredita edición antes de compra; el caso 4, compra antes de guardar la edición abierta, sigue pendiente.
+
+Corrección: snapshot de alerta conservado durante el cierre; sin confirmación modal de éxito normal de edición/cancelación/compra; sin fallback modal de selección. Se conserva un único aviso de conflicto y la recuperación en pantalla. Un refresh explícito solo avisa al descubrir una selección antigua nueva y si no existe otro error. Los fallos de red, el resultado incierto y el éxito con refresco fallido conservan su aviso.
+
+Regresión rojo-verde: las dos variantes nuevas (editar/cancelar) fallaron a las 13:26 por exigir un OK después del éxito. Tras el cambio, Fast a las 13:33:39 pasa 89 funciones / 153 ejecuciones, cero fallos. También verifica éxito de compra sin aviso, y que refrescar de nuevo una selección ya obsoleta no repite el aviso. EXC-002 continúa siendo el único warning observado. Backend e Integration reutilizan la evidencia anterior: esta corrección no cambia esas fronteras.
+
+Resultado Fast: `/var/folders/wt/r327qtw12_s5tbbcnx9dzqv80000gn/T/ActionArtifacts/default/RunAllTests/Test-SmartShoppingList-2026.09.25_13-33-39-+0200.xcresult`.
+
+La validación del presentador utiliza un fixture DEBUG aislado, sin credenciales ni red. El recorrido corregido entre ambos teléfonos y VoiceOver siguen pendientes de confirmación física.
+
+
+Fixture final EN en iPhone 17 Simulator/iOS 27.2: 3/3 escenarios correctos, sin alerta vacía. El primer aviso conserva su contenido hasta cerrarlo y entonces aparece el segundo; ocultar/restaurar conserva el aviso sin reconocerlo. Capturas y jerarquías en `ActionArtifacts/default/DeviceInteractionSynthesize/`, prefijo `Verify Notice Dismissal-`: reemplazo `13_34_18_560`, `13_34_38_266`, `13_34_54_490`, `13_35_06_415`; almacenamiento `13_35_29_020`, `13_35_42_390`; ocultación/restauración `13_36_49_166`, `13_37_07_966`, `13_37_21_432`, `13_37_37_482`. La sesión se cerró al terminar. Revisión independiente del diff final sin hallazgos; no acredita lectura ni retorno de foco con VoiceOver.
+
+Cliente corregido instalado y arrancado en iPhone 11 a las 13:38 mediante RunProject, PID 3775. Instalación del iPhone 14 y SHA final se registran en la issue tras completarse. Backend sin cambios: permanece desplegado `db32534`.

@@ -14,21 +14,23 @@ struct ShoppingNoticeModifier: ViewModifier {
         let currentPresentationID = presentationID
         content
             .background {
-                Color.clear
-                    .alert(
-                        Text(presentedNotice?.title ?? "Shopping list notice"),
-                        isPresented: presentationBinding(for: currentPresentationID),
-                        presenting: presentedNotice
-                    ) { snapshot in
-                        Button("Dismiss notice", role: .cancel) {
-                            guard currentPresentationID == presentationID else { return }
-                            acknowledgedNotice = snapshot
-                            dismiss(snapshot)
+                if let snapshot = presentedNotice {
+                    Color.clear
+                        .alert(
+                            Text(snapshot.title),
+                            isPresented: presentationBinding(for: currentPresentationID),
+                            presenting: snapshot
+                        ) { shownNotice in
+                            Button("Dismiss notice", role: .cancel) {
+                                guard currentPresentationID == presentationID else { return }
+                                acknowledgedNotice = shownNotice
+                                dismiss(shownNotice)
+                            }
+                        } message: { shownNotice in
+                            Text(shownNotice.message)
                         }
-                    } message: { snapshot in
-                        Text(snapshot.message)
-                    }
-                    .id(presentationID)
+                        .id(currentPresentationID)
+                }
             }
             .onChange(of: notice, initial: true) { _, _ in
                 acknowledgedNotice = nil
@@ -43,7 +45,7 @@ struct ShoppingNoticeModifier: ViewModifier {
             }
             .onChange(of: isPresented) { _, presented in
                 if !presented {
-                    presentedNotice = nil
+                    // Keep the closing host's content until the next presentation replaces it.
                     presentIfPossible()
                 }
             }
