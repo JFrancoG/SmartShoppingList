@@ -337,6 +337,7 @@ private actor SharedFlowAPI: SharedShoppingAPI {
     private(set) var sentPurchases: [FinalizePurchaseRequest] = []
     private(set) var purchaseItems: [SharedItem] = []
     var purchaseError: SharedAPIError? = .transport
+    private var hideStoresAfterPurchaseConflict = false
     private var failRefreshAfterPurchase = false
     private var pendingItemsGate: SharedFlowGate?
     private var pendingItemsError: SharedAPIError?
@@ -380,7 +381,12 @@ private actor SharedFlowAPI: SharedShoppingAPI {
         return purchaseItems
     }
 
-    func rejectPurchaseWithConflict() {
+    func removeFirstPurchaseItem() {
+        purchaseItems.removeFirst()
+    }
+
+    func rejectPurchaseWithConflict(removingStore: Bool = false) {
+        hideStoresAfterPurchaseConflict = removingStore
         changeFirstPurchaseItem()
         purchaseError = .server(
             status: 409,
@@ -493,7 +499,10 @@ private actor SharedFlowAPI: SharedShoppingAPI {
     }
 
     func stores(groupID: UUID, token: String) async throws -> [SharedStore] {
-        Set(purchaseItems.map(\.storeId)).map { SharedStore(id: $0, groupId: groupID, name: "Tienda") }
+        if hideStoresAfterPurchaseConflict, !sentPurchases.isEmpty {
+            return []
+        }
+        return Set(purchaseItems.map(\.storeId)).map { SharedStore(id: $0, groupId: groupID, name: "Tienda") }
     }
     func createInvitation(groupID: UUID, token: String) async throws -> CreatedInvitation {
         throw SharedAPIError.transport
@@ -693,8 +702,8 @@ extension SharedShoppingViewModelTests {
         #expect(await credentials.loadOperation() == nil)
     }
 
-    @Test
-    func `refresh never silently adopts a newer selected product version`() async throws {
+    @Test("Reloading deselects changed products and preserves other checks", arguments: [false, true])
+    func reloadingReconcilesSelection(changingStore: Bool) async throws {
         let api = SharedFlowAPI()
         let items = try await api.preparePurchaseItems()
         let model = try makeModel(api: api, credentials: MemorySharedCredentialStore(session: api.session))
@@ -702,25 +711,37 @@ extension SharedShoppingViewModelTests {
         model.selectedStoreID = items[0].storeId
         await model.loadSelectedStore()
         model.togglePurchaseItem(items[0])
+        model.togglePurchaseItem(items[1])
         await api.changeFirstPurchaseItem()
-        await model.refresh()
-        #expect(model.purchaseSelection.first?.version == 1)
-        #expect(model.purchaseSelectionNeedsReview)
-        #expect(!model.canFinalizePurchase)
+        if changingStore {
+            model.selectedStoreID = items[5].storeId
+            await model.loadSelectedStore()
+            model.selectedStoreID = items[0].storeId
+            await model.loadSelectedStore()
+        } else {
+            await model.refresh()
+        }
+        #expect(model.purchaseSelection == [items[1]])
+        #expect(!model.purchaseSelectionNeedsReview)
+        #expect(model.canFinalizePurchase)
+        #expect(await api.sentPurchases.isEmpty)
         let notice = try #require(model.presentedNotice)
         model.dismissPresentedNotice(notice)
         await model.refresh()
         #expect(model.presentedNotice == nil)
-        #expect(model.purchaseSelectionNeedsReview)
+        #expect(model.canFinalizePurchase)
+        let changed = try #require(model.items.first { $0.id == items[0].id })
+        model.togglePurchaseItem(changed)
         await model.finalizePurchase()
-        #expect(await api.sentPurchases.isEmpty)
+        let request = try #require(await api.sentPurchases.first)
+        #expect(request.items.first { $0.id == items[0].id }?.expectedVersion == 2)
     }
 }
 
 
 extension SharedShoppingViewModelTests {
-    @Test
-    func `a terminal purchase conflict preserves unchanged checks and requires explicit review`() async throws {
+    @Test("A terminal purchase conflict reconciles selection and always explains the rejection", arguments: [false, true])
+    func purchaseConflictReconcilesSelection(removingStore: Bool) async throws {
         let api = SharedFlowAPI()
         let items = try await api.preparePurchaseItems()
         let credentials = MemorySharedCredentialStore(session: api.session)
@@ -730,19 +751,24 @@ extension SharedShoppingViewModelTests {
         await model.loadSelectedStore()
         model.togglePurchaseItem(items[0])
         model.togglePurchaseItem(items[1])
-        await api.rejectPurchaseWithConflict()
+        await api.rejectPurchaseWithConflict(removingStore: removingStore)
 
         await model.finalizePurchase()
 
         #expect(model.pendingOperation == nil)
         #expect(await credentials.loadOperation() == nil)
-        #expect(model.purchaseSelection.map(\.id) == [items[0].id, items[1].id])
-        #expect(model.purchaseSelectionNeedsReview)
-        #expect(!model.canFinalizePurchase)
-        #expect(model.notice != nil)
-        model.discardChangedPurchaseSelections()
-        #expect(model.purchaseSelection.map(\.id) == [items[1].id])
+        if removingStore {
+            #expect(model.selectedStoreID == nil)
+            #expect(model.notice != nil)
+            #expect(!model.canFinalizePurchase)
+            #expect(await api.sentPurchases.count == 1)
+            return
+        }
+        #expect(model.purchaseSelection == [items[1]])
+        #expect(!model.purchaseSelectionNeedsReview)
         #expect(model.canFinalizePurchase)
+        #expect(model.notice != nil)
+        #expect(await api.sentPurchases.count == 1)
         await model.finalizePurchase()
         let requests = await api.sentPurchases
         try #require(requests.count == 2)
@@ -1024,5 +1050,50 @@ extension SharedShoppingViewModelTests {
             #expect(current?.name == "Pan actualizado")
             #expect(!model.isItemEditorPresented)
         }
+    }
+}
+
+
+extension SharedShoppingViewModelTests {
+    @Test("Reloading removes unavailable products without clearing other checks")
+    func unavailableSelectionIsRemoved() async throws {
+        let api = SharedFlowAPI()
+        let products = try await api.preparePurchaseItems()
+        let model = try makeModel(api: api, credentials: MemorySharedCredentialStore(session: api.session))
+        await model.load()
+        model.selectedStoreID = products[0].storeId
+        await model.loadSelectedStore()
+        model.togglePurchaseItem(products[0])
+        model.togglePurchaseItem(products[1])
+        await api.removeFirstPurchaseItem()
+        await model.refresh()
+        #expect(model.purchaseSelection == [products[1]])
+        #expect(model.canFinalizePurchase)
+        #expect(model.presentedNotice != nil)
+        #expect(await api.sentPurchases.isEmpty)
+    }
+
+    @Test("Refreshing an uncertain purchase cannot rewrite its original selection or retry")
+    func uncertainPurchaseSelectionStaysFrozen() async throws {
+        let api = SharedFlowAPI()
+        let products = try await api.preparePurchaseItems()
+        let credentials = MemorySharedCredentialStore(session: api.session)
+        let model = try makeModel(api: api, credentials: credentials)
+        await model.load()
+        model.selectedStoreID = products[0].storeId
+        await model.loadSelectedStore()
+        model.togglePurchaseItem(products[0])
+        await model.finalizePurchase()
+        let original = try #require(model.pendingOperation)
+        await api.changeFirstPurchaseItem()
+        await model.refresh()
+        #expect(model.purchaseSelection == [products[0]])
+        #expect(model.pendingOperation == original)
+        #expect(await credentials.loadOperation() == original)
+        #expect(!model.canFinalizePurchase)
+        await model.retryPendingOperation()
+        let requests = await api.sentPurchases
+        try #require(requests.count == 2)
+        #expect(requests[0] == requests[1])
     }
 }

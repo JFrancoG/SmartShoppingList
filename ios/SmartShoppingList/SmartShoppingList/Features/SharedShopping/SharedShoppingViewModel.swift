@@ -154,11 +154,7 @@ final class SharedShoppingViewModel {
     func refresh() async {
         guard hasLoaded, !isBusy, !storageFailed else { return }
         await performAction {
-            let selectionNeededReview = purchaseSelectionNeedsReview
-            let refreshed = await refreshSessionAndLists()
-            if refreshed, !selectionNeededReview, purchaseSelectionNeedsReview, notice == nil {
-                notice = "Some selected products have changed or are no longer pending."
-            }
+            await refreshSessionAndLists()
         }
     }
 
@@ -444,14 +440,14 @@ final class SharedShoppingViewModel {
                     notice = "The purchase is confirmed, but the list could not be refreshed. Refresh before continuing."
                 }
             } else if case .changeItem = operation {
-                notice = refreshed
-                    ? nil
-                    : "The product change is confirmed, but the list could not be refreshed. Refresh before continuing."
+                if !refreshed {
+                    notice = "The product change is confirmed, but the list could not be refreshed. Refresh before continuing."
+                }
             } else {
                 notice = "The operation is confirmed in the group."
             }
         } catch let error as SharedAPIError {
-            if case .server(let status, _, _, let retryAfter) = error {
+            if case .server(let status, let code, _, let retryAfter) = error {
                 if let retryAfter {
                     retryNotBefore = Date().addingTimeInterval(Double(max(0, retryAfter)))
                 }
@@ -461,7 +457,11 @@ final class SharedShoppingViewModel {
                         try await credentials.saveOperation(nil)
                         pendingOperation = nil
                         if case .purchase = operation {
-                            await refreshSessionAndLists()
+                            let previousSelection = purchaseSelection
+                            let refreshed = await refreshSessionAndLists()
+                            if code == "item_conflict", refreshed, previousSelection != purchaseSelection, notice != nil {
+                                return
+                            }
                         }
                         if case .changeItem(_, let original, let request) = operation {
                             if request.replacement != nil {
@@ -498,6 +498,7 @@ final class SharedShoppingViewModel {
                 loadedStoreID = storeID
                 storeItemsState = .loaded
                 notice = nil
+                reconcilePurchaseSelection()
             } catch {
                 guard selectedStoreID == storeID else { return }
                 storeItemsState = .failed
@@ -623,6 +624,7 @@ final class SharedShoppingViewModel {
                 selectedStoreID = nil
             }
             await previewPendingInvitation()
+            reconcilePurchaseSelection()
             return true
         } catch {
             if selectedStoreID == requestedStoreID {
@@ -821,10 +823,18 @@ extension SharedShoppingViewModel {
         purchaseSelections[item.storeId] = selection
     }
 
-    func discardChangedPurchaseSelections() {
-        guard canMutate, let selectedStoreID, loadedStoreID == selectedStoreID else { return }
-        purchaseSelections[selectedStoreID] = purchaseSelection.filter { selected in
-            items.contains { $0.id == selected.id && $0.version == selected.version }
+    private func reconcilePurchaseSelection() {
+        guard pendingOperation == nil, storeItemsState == .loaded,
+              let selectedStoreID, loadedStoreID == selectedStoreID else { return }
+        let previousSelection = purchaseSelection
+        purchaseSelections[selectedStoreID] = previousSelection.filter { selected in
+            items.contains {
+                $0.id == selected.id && $0.version == selected.version
+                    && $0.status == "pending" && $0.storeId == selectedStoreID && $0.groupId == group?.id
+            }
+        }
+        if previousSelection != purchaseSelection, notice == nil {
+            notice = "Changed or unavailable products have been deselected. Review the list and select any products you still want to buy."
         }
     }
 

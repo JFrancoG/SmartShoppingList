@@ -103,6 +103,7 @@ Reglas:
 - Los productos confirmados pasan a comprados y salen de pendientes, conservando sus registros. Se guarda quién confirmó la compra y cuándo; puede ser una persona distinta de quien los añadió.
 - Los productos no seleccionados permanecen pendientes para la próxima visita. Para el MVP se adopta la simplificación permitida por el usuario: mantenerlos automáticamente, sin preguntar en cada compra si se eliminan.
 - Sin productos seleccionados no se envía una finalización vacía.
+- Decisión del 25 de septiembre: al refrescar correctamente, se desmarcan automáticamente solo los productos seleccionados que cambiaron de versión o ya no están pendientes en esa tienda. Un aviso invita a revisar y volver a marcar los que se quieran comprar; no hay un paso obligatorio de deselección. Los demás checks se conservan. Esto no modifica la intención de un envío con resultado incierto.
 - La finalización conserva un identificador estable para reintentos del mismo envío. Una doble pulsación o una respuesta perdida no registra dos compras.
 - Un reintento repite exactamente la selección enviada. Modificarla no permite reutilizar el identificador anterior; si su resultado aún se desconoce, debe resolverse antes de iniciar una finalización distinta.
 - Un error de envío conserva la selección y permite reintentar. La pantalla sólo presenta la compra como confirmada cuando el servidor lo acredita.

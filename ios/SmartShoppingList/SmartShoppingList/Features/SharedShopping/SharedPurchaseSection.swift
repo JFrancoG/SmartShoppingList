@@ -74,14 +74,6 @@ struct SharedPurchaseSection: View {
                 }
             }
             Text("Selected: \(viewModel.purchaseSelection.count) of up to 50")
-            if viewModel.purchaseSelectionNeedsReview {
-                Label("Some selected products have changed or are no longer pending.", systemImage: "exclamationmark.triangle")
-                    .fixedSize(horizontal: false, vertical: true)
-                Button("Deselect changed products") {
-                    viewModel.discardChangedPurchaseSelections()
-                }
-                .disabled(!viewModel.canMutate)
-            }
             Button {
                 Task {
                     await viewModel.finalizePurchase()

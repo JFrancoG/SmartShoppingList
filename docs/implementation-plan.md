@@ -65,7 +65,7 @@ El resultado de esta fase es el recorrido completo descrito en la spec:
 
 - Onboarding y sesión conservada, invitaciones válidas e inválidas y guardado atómico del lote confirmado con reintentos seguros.
 - Consulta de tiendas por voz y selector sobre datos reales del grupo; edición de pendientes y distinción entre compra y cancelación.
-- Checks locales reversibles, contador y finalización con IDs explícitos: mantener pendientes los no seleccionados, conservar selección ante errores y resolver conflictos sin duplicar compras.
+- Checks locales reversibles, contador y finalización con IDs explícitos: mantener pendientes los no seleccionados, conservar selección ante errores y resolver conflictos sin duplicar compras. El 25 se acuerda desmarcar automáticamente los afectados tras una carga válida y avisar para que puedan volver a seleccionarse; se elimina la deselección manual obligatoria, manteniendo intactos los envíos inciertos.
 - Historial mínimo por entrada y nueva entrada para una nueva necesidad; estados de carga, vacío y error, refresco y consulta de la última lista recuperada.
 - Preparar las nuevas pantallas para español e inglés y adaptar la selección de idioma de Speech/Foundation Models, evitando el español fijo del recorrido inicial. Comprobar disponibilidad real por idioma con #7; la traducción y revisión completas se consolidan en fase 3.
 

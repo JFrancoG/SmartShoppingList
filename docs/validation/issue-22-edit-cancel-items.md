@@ -71,3 +71,19 @@ La validación del presentador utiliza un fixture DEBUG aislado, sin credenciale
 Fixture final EN en iPhone 17 Simulator/iOS 27.2: 3/3 escenarios correctos, sin alerta vacía. El primer aviso conserva su contenido hasta cerrarlo y entonces aparece el segundo; ocultar/restaurar conserva el aviso sin reconocerlo. Capturas y jerarquías en `ActionArtifacts/default/DeviceInteractionSynthesize/`, prefijo `Verify Notice Dismissal-`: reemplazo `13_34_18_560`, `13_34_38_266`, `13_34_54_490`, `13_35_06_415`; almacenamiento `13_35_29_020`, `13_35_42_390`; ocultación/restauración `13_36_49_166`, `13_37_07_966`, `13_37_21_432`, `13_37_37_482`. La sesión se cerró al terminar. Revisión independiente del diff final sin hallazgos; no acredita lectura ni retorno de foco con VoiceOver.
 
 Cliente corregido instalado y arrancado en iPhone 11 a las 13:38 mediante RunProject, PID 3775. Instalación del iPhone 14 y SHA final se registran en la issue tras completarse. Backend sin cambios: permanece desplegado `db32534`.
+
+
+### Ajuste final del ensayo · deselección automática
+
+El 25 de septiembre, tras confirmar que solo aparece una alerta, el responsable considera confuso tener que pulsar «Deselect changed products» y autoriza desmarcar automáticamente los afectados con un aviso para volver a marcarlos si aún los quiere. Este criterio sustituye la revisión manual obligatoria documentada en los ensayos anteriores.
+
+Después de una carga válida (refresh o regreso a tienda), solo se conservan checks cuyo ID y versión siguen pendientes en esa tienda/grupo. Se informa de las retiradas una vez, sin bloque persistente ni botón adicional. Un conflicto definitivo refresca y concilia sin enviar otra compra; una operación incierta conserva sobre y selección original. Un fallo de carga no concilia. Cambiar un check sigue sin escribir en el servidor.
+
+Regresión: cuatro ejecuciones fallan antes del cambio (refresh, regreso a tienda, conflicto y desaparición); Fast de 15:48:45 pasa 156 ejecuciones, cero fallos. Comprueba reelección con versión actual, conservación de checks ajenos al cambio, ausencia de reenvío automático y reintento exacto tras refresh de una operación incierta. Se mantienen las regresiones de carga fallida. Resultado nativo: `/var/folders/wt/r327qtw12_s5tbbcnx9dzqv80000gn/T/ActionArtifacts/default/RunAllTests/Test-SmartShoppingList-2026.09.25_15-48-45-+0200.xcresult`.
+
+Pendiente de confirmación física de este último ajuste: marcar dos productos; editar uno desde el otro teléfono; refrescar. Debe quedar marcado solo el que no cambió, aparecer un aviso sin bloque persistente, y poder volver a marcar el editado. El presentador de alertas no cambia; se reutiliza su comprobación visual anterior. Instalación y SHA final se registran en #22. Backend sin cambios.
+
+
+Fast final tras revisión: 91 funciones / 157 ejecuciones PASS, cero fallos, a las 15:51:52; incluye pérdida de tienda durante conciliación del conflicto sin silenciar el aviso. Resultado nativo con sufijo `Test-SmartShoppingList-2026.09.25_15-51-52-+0200.xcresult` en el mismo directorio de evidencia. Revisión independiente de contrato/UI/estilo completada, hallazgos corregidos. EXC-002 es el único warning observado.
+
+Instalación corregida completada mediante Xcode MCP RunProject: iPhone 11 a las 15:52:18, PID 3809; iPhone 14 a las 15:52:32, PID 7098. Ambos arranques correctos; destino iPhone 11 restaurado. No se reinstala desde cero ni se borran datos. Esta instalación no acredita el ensayo manual pendiente descrito arriba.

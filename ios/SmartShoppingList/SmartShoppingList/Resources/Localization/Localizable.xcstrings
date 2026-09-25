@@ -344,7 +344,8 @@
             "value": "Desmarcar los productos que han cambiado"
           }
         }
-      }
+      },
+      "extractionState": "stale"
     },
     "Dictate": {
       "localizations": {
@@ -1451,7 +1452,8 @@
             "value": "Hay productos seleccionados que han cambiado o ya no están pendientes."
           }
         }
-      }
+      },
+      "extractionState": "stale"
     },
     "Someone else has already used this invitation. Ask for a new link.": {
       "localizations": {
@@ -2084,6 +2086,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "La sesión ha caducado o se ha revocado. Accede de nuevo con la misma cuenta de Apple."
+          }
+        }
+      }
+    },
+    "Changed or unavailable products have been deselected. Review the list and select any products you still want to buy.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se han desmarcado los productos que cambiaron o ya no están pendientes. Revisa la lista y vuelve a marcar los que quieras comprar."
           }
         }
       }
