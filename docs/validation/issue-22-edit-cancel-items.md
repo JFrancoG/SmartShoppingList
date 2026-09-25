@@ -87,3 +87,17 @@ Pendiente de confirmación física de este último ajuste: marcar dos productos;
 Fast final tras revisión: 91 funciones / 157 ejecuciones PASS, cero fallos, a las 15:51:52; incluye pérdida de tienda durante conciliación del conflicto sin silenciar el aviso. Resultado nativo con sufijo `Test-SmartShoppingList-2026.09.25_15-51-52-+0200.xcresult` en el mismo directorio de evidencia. Revisión independiente de contrato/UI/estilo completada, hallazgos corregidos. EXC-002 es el único warning observado.
 
 Instalación corregida completada mediante Xcode MCP RunProject: iPhone 11 a las 15:52:18, PID 3809; iPhone 14 a las 15:52:32, PID 7098. Ambos arranques correctos; destino iPhone 11 restaurado. No se reinstala desde cero ni se borran datos. Esta instalación no acredita el ensayo manual pendiente descrito arriba.
+
+
+### Editor después de compra concurrente · 25 de septiembre
+
+El responsable confirma el ajuste anterior de deselección automática («correcto»). Al continuar con compra en B antes de guardar la edición abierta en A, reporta un popup y dos avisos inline. La inspección confirma que el editor presentaba simultáneamente revisión de un producto cambiado y ausencia de la tienda. El reporte no se considera aceptación completa del caso.
+
+Corrección: tras un `item_conflict` de edición y una carga válida de la misma tienda que confirma la ausencia, se cierra el editor y se informa una sola vez: «Este producto ya no está pendiente en esta tienda. Tus cambios no se han guardado». Los campos de la propuesta se conservan en memoria. Se elimina la reapertura del editor inválido. Los textos inline de revisión/ausencia son excluyentes para refrescos manuales. Una recarga fallida no cierra el editor; una edición concurrente que sigue pendiente conserva propuesta y revisión explícita. Los envíos inciertos conservan su sobre.
+
+Regresión nueva: variante de ausencia confirmada falla antes del cambio (Fast 19:28:35); variante de recarga fallida ya conserva editor y propuesta. Se comprueba además que la alerta raíz espera a que termine el cierre de la hoja, que solo se envía un intento de edición y que reconocer el aviso lo retira. Backend y presentador de alertas sin cambios; su evidencia anterior se reutiliza. Resultado final e instalación se registrarán en #22. Sigue pendiente confirmar este caso en los iPhone corregidos.
+
+
+Fast final: 92 funciones / 159 ejecuciones PASS, cero fallos, 19:30:01. Resultado nativo: `/var/folders/wt/r327qtw12_s5tbbcnx9dzqv80000gn/T/ActionArtifacts/default/RunAllTests/Test-SmartShoppingList-2026.09.25_19-30-01-+0200.xcresult`. Revisión independiente de contrato/UI/estilo sin hallazgos; EXC-002 aceptado es el único warning observado.
+
+Cliente corregido instalado y arrancado mediante Xcode MCP RunProject en iPhone 11 a las 19:30:20 (PID 3920) y iPhone 14 a las 19:30:36 (PID 7136). Destino iPhone 11 restaurado. Sin borrado de datos ni redespliegue del backend. El ensayo físico sigue pendiente.

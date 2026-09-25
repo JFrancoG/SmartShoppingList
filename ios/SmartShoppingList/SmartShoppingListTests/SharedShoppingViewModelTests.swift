@@ -296,7 +296,9 @@ private actor SharedFlowAPI: SharedShoppingAPI {
     func changeItem(_ request: SharedItemChangeRequest, item: SharedItem, token: String) async throws -> SharedItem {
         sentItemChanges.append(request)
         if case .server = changeError {
-            changeFirstPurchaseItem()
+            if purchaseItems.contains(where: { $0.id == item.id }) {
+                changeFirstPurchaseItem()
+            }
             throw try #require(changeError)
         }
         if let itemChangeResult {
@@ -1095,5 +1097,49 @@ extension SharedShoppingViewModelTests {
         let requests = await api.sentPurchases
         try #require(requests.count == 2)
         #expect(requests[0] == requests[1])
+    }
+}
+
+
+extension SharedShoppingViewModelTests {
+    @Test("An edit conflict closes the unavailable product only after a successful reload", arguments: [false, true])
+    func unavailableEditConflict(refreshFails: Bool) async throws {
+        let api = SharedFlowAPI()
+        let products = try await api.preparePurchaseItems()
+        let credentials = MemorySharedCredentialStore(session: api.session)
+        await api.configureItemChange(
+            error: .server(status: 409, code: "item_conflict", requestID: UUID(), retryAfter: nil),
+            refreshFails: refreshFails
+        )
+        let model = try makeModel(api: api, credentials: credentials)
+        await model.load()
+        model.selectedStoreID = products[0].storeId
+        await model.loadSelectedStore()
+        model.beginEditingItem(products[0])
+        model.editName = "Mi propuesta sin guardar"
+        await api.removeFirstPurchaseItem()
+        await model.saveItemEdit()
+        #expect(model.pendingOperation == nil)
+        #expect(await credentials.loadOperation() == nil)
+        #expect(model.editName == "Mi propuesta sin guardar")
+        #expect(!model.canSaveItemEdit)
+        #expect(model.presentedNotice != nil)
+        #expect(await api.sentItemChanges.count == 1)
+        if refreshFails {
+            #expect(model.isItemEditorPresented)
+            #expect(model.editingItem?.id == products[0].id)
+            #expect(model.storeItemsState == .failed)
+        } else {
+            #expect(!model.isItemEditorPresented)
+            #expect(model.editingItem == nil)
+            #expect(model.latestEditingItem == nil)
+            #expect(!model.items.contains { $0.id == products[0].id })
+            #expect(!model.canPresentRootNotice)
+            model.itemEditorPresentationDidDismiss()
+            #expect(model.canPresentRootNotice)
+            let notice = try #require(model.presentedNotice)
+            model.dismissPresentedNotice(notice)
+            #expect(model.presentedNotice == nil)
+        }
     }
 }

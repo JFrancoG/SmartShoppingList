@@ -468,7 +468,15 @@ final class SharedShoppingViewModel {
                                 restoreItemEditor(original: original, request: request)
                                 editNeedsReview = true
                             }
-                            await refreshSessionAndLists()
+                            let refreshed = await refreshSessionAndLists()
+                            if code == "item_conflict", request.replacement != nil, refreshed,
+                               storeItemsState == .loaded, loadedStoreID == original.storeId, latestEditingItem == nil {
+                                editingItem = nil
+                                editNeedsReview = false
+                                isItemEditorPresented = false
+                                notice = "This product is no longer pending in this store. Your changes were not saved."
+                                return
+                            }
                         }
                     } catch {
                         notice = SharedErrorMessage.message(for: error)

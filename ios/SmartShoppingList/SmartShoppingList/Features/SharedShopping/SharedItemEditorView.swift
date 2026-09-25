@@ -32,8 +32,8 @@ struct SharedItemEditorView: View {
                     } else if viewModel.storeItemsState != .loaded {
                         Text("Refresh the list before reviewing this product.")
                     } else if viewModel.itemEditRequiresReview {
-                        Text("The product has changed. Review its current details before saving your proposal.")
                         if let current = viewModel.latestEditingItem {
+                            Text("The product has changed. Review its current details before saving your proposal.")
                             Text(current.name)
                             if let quantity = current.quantity {
                                 Text(quantity)
