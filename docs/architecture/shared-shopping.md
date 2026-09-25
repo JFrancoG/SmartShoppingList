@@ -68,7 +68,7 @@ La nueva vista delega acciones al ViewModel y aporta contador, selección accesi
 
 ## Edición y cancelación de pendientes (#22)
 
-Las acciones del producto en Comprar abren un editor o una confirmación explícita «Ya no lo necesitamos». Editar sustituye nombre, cantidad opcional y tienda; cancelar cambia a `cancelled`, sin borrar la fila ni registrar una compra. No se incorpora una pantalla de historial.
+Las acciones del producto en Comprar abren un editor o una confirmación explícita «Ya no lo necesitamos». La cancelación usa una alerta nativa centrada con acción destructiva y «Mantener producto» explícito; el snapshot no se vacía durante su cierre. Tras cerrar el editor, la vista solicita devolver el foco VoiceOver a la fila de origen si todavía existe y no hay un aviso pendiente, usando AccessibilityFocusState y el estado de presentación que termina en onDismiss. Editar sustituye nombre, cantidad opcional y tienda; cancelar cambia a `cancelled`, sin borrar la fila ni registrar una compra. No se incorpora una pantalla de historial.
 
 `PATCH /v1/groups/{groupId}/items/{itemId}` y `POST /v1/groups/{groupId}/items/{itemId}/cancellation` comparten una transición transaccional: autorización del usuario actual, reserva del recibo, bloqueo de la fila, comprobación de `pending` y `expectedVersion`, modificación y recibo confirmado. La huella incluye tipo, grupo, ID, versión y representación editable. Se conserva el resultado `409` de un conflicto; los fallos transitorios revierten también tiendas nuevas y recibo. La compra usa el mismo bloqueo de fila, de modo que solo la primera transición válida puede ganar.
 

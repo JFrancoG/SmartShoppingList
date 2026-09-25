@@ -40,6 +40,8 @@
 
 ### Fixed
 
+- 2026-09-25 | 🐛 fix(ios): restore shopping accessibility context
+
 - 2026-09-25 | 🐛 fix(ios): close unavailable product editors
 
 - 2026-09-25 | 🐛 fix(purchase): deselect changed products automatically

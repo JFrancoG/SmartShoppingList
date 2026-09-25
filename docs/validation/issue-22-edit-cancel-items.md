@@ -101,3 +101,19 @@ Regresión nueva: variante de ausencia confirmada falla antes del cambio (Fast 1
 Fast final: 92 funciones / 159 ejecuciones PASS, cero fallos, 19:30:01. Resultado nativo: `/var/folders/wt/r327qtw12_s5tbbcnx9dzqv80000gn/T/ActionArtifacts/default/RunAllTests/Test-SmartShoppingList-2026.09.25_19-30-01-+0200.xcresult`. Revisión independiente de contrato/UI/estilo sin hallazgos; EXC-002 aceptado es el único warning observado.
 
 Cliente corregido instalado y arrancado mediante Xcode MCP RunProject en iPhone 11 a las 19:30:20 (PID 3920) y iPhone 14 a las 19:30:36 (PID 7136). Destino iPhone 11 restaurado. Sin borrado de datos ni redespliegue del backend. El ensayo físico sigue pendiente.
+
+
+### Accesibilidad focalizada · retorno y confirmación
+
+El responsable confirma los pasos de checks, validación de nombre, corrección y conservación al descartar, con dos observaciones en iPhone 14/VoiceOver sobre 1979890: Close devuelve el foco a Refresh arriba; No longer needed muestra un popover que parece ajeno al producto. La captura `IMG_1260.PNG` muestra el foco en el título y el popover apuntando a la zona de Confirm purchase. No se declara cerrada la validación de accesibilidad.
+
+La confirmación se cambia a alerta nativa con No longer needed y Keep product explícitos, manteniendo el snapshot durante el cierre. La vista captura el ID del producto al presentar el editor y solicita devolver el foco VoiceOver después de onDismiss si la fila sigue presente y no hay un aviso pendiente. No se añaden temporizadores, anuncios paralelos ni escrituras de negocio. Este cambio de UI se valida con compilación, regresiones existentes y revisión; no se inventan pruebas unitarias para acreditar foco real.
+
+Referencias primarias: [AccessibilityFocusState](https://developer.apple.com/documentation/swiftui/accessibilityfocusstate) y [HIG Alerts](https://developer.apple.com/design/human-interface-guidelines/alerts). La cancelación sigue requiriendo confirmación explícita porque retira un pendiente compartido sin una acción Deshacer.
+
+Pendiente físico: abrir y cerrar Edit con VoiceOver y comprobar retorno al producto; abrir No longer needed, escuchar título/mensaje y ambos botones, elegir Keep product y comprobar que permanece pendiente. El nuevo formato sustituye el descarte tocando fuera del popover anterior; los ensayos previos conservan su valor histórico.
+
+
+Fast final de 20:00:37: 92 funciones / 159 ejecuciones PASS, cero fallos; regresiones existentes, sin pruebas nuevas que pretendan acreditar VoiceOver. Resultado nativo: `/var/folders/wt/r327qtw12_s5tbbcnx9dzqv80000gn/T/ActionArtifacts/default/RunAllTests/Test-SmartShoppingList-2026.09.25_20-00-37-+0200.xcresult`. Revisión independiente del único Swift modificado sin hallazgos; EXC-002 aceptado continúa como único warning observado.
+
+Instalado y arrancado mediante Xcode MCP en iPhone 11 a las 20:01:08 (PID3934) e iPhone 14 a las 20:01:15 (PID7212), sin borrar datos. Destino iPhone 11 restaurado. Pendientes de aceptación física: retorno de foco también en una fila alejada del inicio y lectura/elección de las dos acciones de la alerta. No se acredita el desplazamiento real con la comprobación estática.
