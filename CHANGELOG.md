@@ -75,6 +75,8 @@
 
 ### Maintenance
 
+- 2026-09-25 | 👷 ci: add server and repository checks
+
 - 2026-09-25 | 🔧 chore(ios): organize app, shared code and resources
 
 - 2026-09-22 | 📦 build(server): refresh HTTP and configuration dependencies

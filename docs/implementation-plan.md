@@ -24,6 +24,10 @@ Cada issue contiene resultado, fuentes, alcance, plan vigente identificado como 
 
 La evidencia se registra en la issue con fecha, entorno, resultados y referencia al commit o PR. Los informes extensos pueden guardarse en archivos enlazados. Una issue se cierra cuando cumple sus criterios, se valida y sus cambios están entregados en `main`; compilar pruebas, abrir una PR o escribir un plan no equivale a completar el trabajo.
 
+## CI mínimo antes de la entrega
+
+El 25 de septiembre se autoriza [#26: CI mínimo de servidor y contrato](https://github.com/JFrancoG/SmartShoppingList/issues/26), con un máximo de una hora de configuración. GitHub Actions ejecutará las pruebas existentes del servidor con PostgreSQL temporal y los validadores de contrato y colores. La [configuración](setup/ci.md) mantiene separados este control automático, las pruebas físicas y el despliegue. CI de iOS queda para después del MVP; el resultado real y la entrega se registran en la issue.
+
 ## Fases y resultados
 
 | Fase | Ventana objetivo | Resultado verificable |
