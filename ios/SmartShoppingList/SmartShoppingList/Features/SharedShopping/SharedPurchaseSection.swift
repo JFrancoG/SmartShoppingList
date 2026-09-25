@@ -63,6 +63,20 @@ struct SharedPurchaseSection: View {
                     }
                     .disabled(!viewModel.canChangeItem(item))
                 }
+                .alert(
+                    "Cancel pending product?",
+                    isPresented: cancellationPresentation(for: item.id),
+                    presenting: cancellationItem
+                ) { item in
+                    Button("No longer needed", role: .destructive) {
+                        Task {
+                            await viewModel.cancelItem(item)
+                        }
+                    }
+                    Button("Keep product", role: .cancel) {}
+                } message: { item in
+                    Text("Remove \(item.name) from the group’s pending list without recording a purchase?")
+                }
             }
         } header: {
             Text("Pending · \(viewModel.selectedStoreName)")
@@ -98,16 +112,6 @@ struct SharedPurchaseSection: View {
         } footer: {
             Text("Switching stores or leaving this screen does not confirm the purchase. Refresh to check for group changes.")
         }
-        .alert("Cancel pending product?", isPresented: $confirmsCancellation, presenting: cancellationItem) { item in
-            Button("No longer needed", role: .destructive) {
-                Task {
-                    await viewModel.cancelItem(item)
-                }
-            }
-            Button("Keep product", role: .cancel) {}
-        } message: { item in
-            Text("Remove \(item.name) from the group’s pending list without recording a purchase?")
-        }
         .onChange(of: viewModel.isItemEditorPresentationActive) { _, isActive in
             if isActive {
                 editorSourceID = viewModel.editingItem?.id
@@ -117,6 +121,15 @@ struct SharedPurchaseSection: View {
                       viewModel.items.contains(where: { $0.id == editorSourceID }) else { return }
                 focusedProductID = editorSourceID
             }
+        }
+    }
+
+    private func cancellationPresentation(for itemID: UUID) -> Binding<Bool> {
+        Binding {
+            confirmsCancellation && cancellationItem?.id == itemID
+        } set: { isPresented in
+            guard cancellationItem?.id == itemID else { return }
+            confirmsCancellation = isPresented
         }
     }
 }

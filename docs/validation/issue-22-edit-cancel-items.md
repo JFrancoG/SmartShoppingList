@@ -117,3 +117,15 @@ Pendiente físico: abrir y cerrar Edit con VoiceOver y comprobar retorno al prod
 Fast final de 20:00:37: 92 funciones / 159 ejecuciones PASS, cero fallos; regresiones existentes, sin pruebas nuevas que pretendan acreditar VoiceOver. Resultado nativo: `/var/folders/wt/r327qtw12_s5tbbcnx9dzqv80000gn/T/ActionArtifacts/default/RunAllTests/Test-SmartShoppingList-2026.09.25_20-00-37-+0200.xcresult`. Revisión independiente del único Swift modificado sin hallazgos; EXC-002 aceptado continúa como único warning observado.
 
 Instalado y arrancado mediante Xcode MCP en iPhone 11 a las 20:01:08 (PID3934) e iPhone 14 a las 20:01:15 (PID7212), sin borrar datos. Destino iPhone 11 restaurado. Pendientes de aceptación física: retorno de foco también en una fila alejada del inicio y lectura/elección de las dos acciones de la alerta. No se acredita el desplazamiento real con la comprobación estática.
+
+
+### Keep product · retorno al origen
+
+El responsable confirma el ajuste c95484e, con una observación restante: tras Keep product, VoiceOver anuncia Store Aldi button. Se consideran confirmados el regreso desde Edit y la alerta con ambas acciones; el retorno desde la alerta queda pendiente.
+
+Se mueve el presentador de la alerta desde Confirm purchase al botón del producto. El binding está limitado a su UUID y rechaza callbacks de otras filas; el snapshot se conserva durante el cierre. Keep product permanece sin mutaciones y no se añade foco forzado durante la animación, timers ni Task.yield. La restauración nativa al origen es una hipótesis de corrección pendiente de ensayo físico, no una garantía demostrada por compilar. Se conserva sin cambios el retorno desde Edit ya aceptado.
+
+Ensayo focalizado: con VoiceOver, No longer needed → Keep product; comprobar que permanece el producto y que el foco vuelve a su fila, también tras repetir sobre otro producto. No repetir el resto del recorrido.
+
+
+Revisión independiente del diff final sin hallazgos. Build e instalación correctos mediante Xcode MCP RunProject: iPhone 11 a las 20:11:08 (PID3961), iPhone 14 a las 20:11:15 (PID7246); destino iPhone 11 restaurado, sin borrar datos. EXC-002 es el único warning observado. Se reutilizan las 159 ejecuciones Fast aprobadas a las 20:00:37: no cambian modelos ni servicios y esas pruebas no acreditan el foco de UI. El retorno desde Keep product queda pendiente de la comprobación física.
