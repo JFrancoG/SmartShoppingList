@@ -307,6 +307,10 @@ private struct PreviewSharedShoppingAPI: SharedShoppingAPI {
         throw SharedAPIError.transport
     }
 
+    func changeItem(_ request: SharedItemChangeRequest, item: SharedItem, token: String) async throws -> SharedItem {
+        throw SharedAPIError.transport
+    }
+
     func pendingItems(groupID: UUID, storeID: UUID, token: String) async throws -> [SharedItem] {
         fixture.items.filter { $0.storeId == storeID }
     }

@@ -89,4 +89,4 @@ Compilar e instalar de nuevo tras configurar los dominios. Comprobar la asociaci
 6. Reiniciar la app iOS y el proceso del servidor; comprobar sesión, pertenencia, pendientes e idempotencia. Las credenciales y el sobre pendiente se mantienen en Keychain del mismo dispositivo.
 7. Registrar los resultados físicos manuales y, por separado, la entrada de voz/IA del entorno compatible según [#7](https://github.com/JFrancoG/SmartShoppingList/issues/7).
 
-La consulta se actualiza expresamente; no hay tiempo real. Edición, cancelación, checks de compra, finalización e historial corresponden a la fase 2 y aún no forman parte de estas pantallas.
+La consulta se actualiza expresamente; no hay tiempo real. Checks y finalización están implementados en #11; edición y cancelación de #22 requieren desplegar su servidor e instalar su cliente compatible antes del ensayo. El historial mínimo conserva registros; no hay una pantalla de historial.

@@ -4,6 +4,8 @@
 
 ### Added
 
+- 2026-09-25 | ✨ feat(shopping): edit and cancel pending items
+
 - 2026-09-25 | ✨ feat(design): add semantic colors in four appearances
 
 - 2026-09-24 | ✨ feat(ios): select app icon by device capability

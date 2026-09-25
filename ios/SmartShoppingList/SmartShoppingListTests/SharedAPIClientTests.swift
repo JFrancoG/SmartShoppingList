@@ -379,3 +379,60 @@ extension SharedAPIClientTests {
         )
     }
 }
+
+extension SharedAPIClientTests {
+    @Test("Item-change responses cannot confirm an unrelated or stale result", arguments: [false, true], [false, true])
+    func validatesItemChange(cancelling: Bool, malformed: Bool) async throws {
+        let original = try SharedJSON.decoder().decode(SharedItem.self, from: Data(Self.item(id: 30, version: 1, name: "Pan").utf8))
+        let transport = FixtureSharedTransport { request in
+            let expectedPath = "/v1/groups/00000000-0000-4000-8000-000000000010/items/00000000-0000-4000-8000-000000000030" + (cancelling ? "/cancellation" : "")
+            guard request.url?.path == expectedPath, request.httpMethod == (cancelling ? "POST" : "PATCH") else {
+                throw FixtureFailure.unexpectedRequest
+            }
+            let payload = try #require(request.httpBody)
+            let fields = try JSONDecoder().decode(ItemChangeWireFixture.self, from: payload)
+            #expect(fields.expectedVersion == 1)
+            if !cancelling {
+                #expect(fields.hasExplicitNullQuantity)
+            }
+            var body = Self.item(id: 30, version: malformed ? 1 : 2, name: cancelling ? "Pan" : "Pan integral")
+            if cancelling {
+                body = body.replacingOccurrences(of: "\"pending\"", with: "\"cancelled\"")
+            }
+            return try Self.response(request, status: 200, body: body)
+        }
+        let api = try client(transport)
+        let request = SharedItemChangeRequest(
+            operationId: UUID(),
+            expectedVersion: 1,
+            replacement: cancelling ? nil : SharedNewItem(name: "Pan integral", quantity: nil, store: .existing(Self.storeID))
+        )
+        if malformed {
+            await #expect(throws: SharedAPIError.invalidResponse) {
+                try await api.changeItem(request, item: original, token: Self.token)
+            }
+        } else {
+            let changed = try await api.changeItem(request, item: original, token: Self.token)
+            #expect(changed.status == (cancelling ? "cancelled" : "pending"))
+            #expect(changed.name == (cancelling ? "Pan" : "Pan integral"))
+        }
+    }
+}
+
+
+private struct ItemChangeWireFixture: Decodable {
+    let expectedVersion: Int
+    let hasExplicitNullQuantity: Bool
+
+    private enum CodingKeys: String, CodingKey {
+        case expectedVersion, quantity
+    }
+}
+
+private extension ItemChangeWireFixture {
+    init(from decoder: any Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        expectedVersion = try values.decode(Int.self, forKey: .expectedVersion)
+        hasExplicitNullQuantity = try values.contains(.quantity) && values.decodeNil(forKey: .quantity)
+    }
+}

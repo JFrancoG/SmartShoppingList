@@ -512,7 +512,7 @@ extension SmartShoppingListServerTests {
     }
 }
 
-private enum PurchaseFixture {
+enum PurchaseFixture {
     static func items(_ user: ShoppingFixture.User, group: String) async throws -> (store: String, ids: [String]) {
         let created = try await ShoppingFixture.request(
             .POST,
@@ -664,5 +664,88 @@ extension SmartShoppingListServerTests {
         )
         #expect(changed.status == .conflict)
         #expect(try ShoppingFixture.object(changed)["code"] == .string("idempotency_key_reused"))
+    }
+}
+
+extension SmartShoppingListServerTests {
+    @Test("Editing and cancelling through HTTP preserve history and reject stale purchases", arguments: [false, true])
+    func itemChangesPreserveHistory(cancelling: Bool) async throws {
+        let owner = try await ShoppingFixture.user()
+        let member = try await ShoppingFixture.user()
+        let group = try await ShoppingFixture.group(owner)
+        try await ShoppingFixture.join(member, group: group)
+        let fixture = try await PurchaseFixture.items(owner, group: group)
+        let id = fixture.ids[0]
+        let sql = try shoppingSQL(database)
+        let before = try #require(try await sql.raw("SELECT * FROM items WHERE id = \(bind: id)::uuid").first())
+        let path = "/v1/groups/\(group)/items/\(id)" + (cancelling ? "/cancellation" : "")
+        let method: HTTPMethod = cancelling ? .POST : .PATCH
+        var fields: [String: APIJSON] = [
+            "operationId": .string(UUID().uuidString.lowercased()), "expectedVersion": .integer(1)
+        ]
+        if !cancelling {
+            fields["name"] = .string("Pan integral")
+            fields["quantity"] = .string("2 barras")
+            fields["store"] = .object(["newName": .string("Lidl")])
+        }
+        let changed = try await ShoppingFixture.request(method, path, member, .object(fields))
+        try #require(changed.status == .ok)
+        let replay = try await ShoppingFixture.request(method, path, member, .object(fields))
+        #expect(replay.body.string == changed.body.string)
+        let after = try #require(try await sql.raw("SELECT * FROM items WHERE id = \(bind: id)::uuid").first())
+        #expect(try after.decode(column: "version", as: Int64.self) == 2)
+        #expect(try after.decode(column: "status", as: String.self) == (cancelling ? "cancelled" : "pending"))
+        #expect(try after.decode(column: "created_by", as: UUID.self) == owner.id)
+        #expect(try after.decode(column: "created_at", as: Date.self) == before.decode(column: "created_at", as: Date.self))
+        #expect(try after.decode(column: "purchased_by", as: UUID?.self) == nil)
+        #expect(try after.decode(column: "purchased_at", as: Date?.self) == nil)
+        if !cancelling {
+            let destination = try after.decode(column: "store_id", as: UUID.self).uuidString.lowercased()
+            #expect(destination != fixture.store)
+            let page = try await ShoppingFixture.request(.GET, "/v1/groups/\(group)/stores/\(destination)/items", owner)
+            guard case .array(let entries) = try ShoppingFixture.object(page)["items"],
+                  case .object(let edited) = entries.first else { throw APIProblem.invalidRequest }
+            #expect(edited["name"] == .string("Pan integral"))
+            #expect(edited["quantity"] == .string("2 barras"))
+        }
+        let purchase = try await ShoppingFixture.request(
+            .POST,
+            "/v1/groups/\(group)/purchases",
+            owner,
+            PurchaseFixture.body(store: fixture.store, ids: Array(fixture.ids.prefix(2)))
+        )
+        #expect(purchase.status == .conflict)
+        #expect(try await sql.raw("SELECT id FROM items WHERE status = 'purchased'").all().isEmpty)
+        fields["expectedVersion"] = .integer(2)
+        let reused = try await ShoppingFixture.request(method, path, member, .object(fields))
+        #expect(reused.status == .conflict)
+        #expect(try ShoppingFixture.object(reused)["code"] == .string("idempotency_key_reused"))
+        try await sql.raw("UPDATE users SET group_id = NULL WHERE id = \(bind: member.id)").run()
+        let denied = try await ShoppingFixture.request(method, path, member, .object(fields))
+        #expect(denied.status == .notFound)
+    }
+
+    @Test("A failed edit rolls back its new store and receipt before retry")
+    func failedEditCanRetry() async throws {
+        let owner = try await ShoppingFixture.user()
+        let group = try await ShoppingFixture.group(owner)
+        let fixture = try await PurchaseFixture.items(owner, group: group)
+        let sql = try shoppingSQL(database)
+        try await sql.raw("ALTER TABLE items ADD CONSTRAINT reject_edit CHECK(name <> 'Rechazado')").run()
+        let operation = UUID().uuidString.lowercased()
+        let body: APIJSON = .object([
+            "operationId": .string(operation), "expectedVersion": .integer(1),
+            "name": .string("Rechazado"), "quantity": .null,
+            "store": .object(["newName": .string("Tienda nueva")])
+        ])
+        let path = "/v1/groups/\(group)/items/\(fixture.ids[0])"
+        let failed = try await ShoppingFixture.request(.PATCH, path, owner, body)
+        #expect(failed.status == .serviceUnavailable)
+        #expect(try await sql.raw("SELECT id FROM stores WHERE name = 'Tienda nueva'").all().isEmpty)
+        #expect(try await sql.raw("SELECT operation_id FROM mutation_receipts WHERE operation_id = \(bind: operation)::uuid").all().isEmpty)
+        try await sql.raw("ALTER TABLE items DROP CONSTRAINT reject_edit").run()
+        let retried = try await ShoppingFixture.request(.PATCH, path, owner, body)
+        #expect(retried.status == .ok)
+        #expect(try ShoppingFixture.object(retried)["version"] == .integer(2))
     }
 }

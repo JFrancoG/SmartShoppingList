@@ -2,6 +2,8 @@ import SwiftUI
 
 struct SharedPurchaseSection: View {
     let viewModel: SharedShoppingViewModel
+    @State private var cancellationItem: SharedItem?
+    @State private var confirmsCancellation = false
 
     var body: some View {
         Section {
@@ -36,6 +38,28 @@ struct SharedPurchaseSection: View {
                 .disabled(!viewModel.canTogglePurchaseItem(item))
                 .accessibilityValue(viewModel.isPurchaseSelected(item) ? Text("Selected") : Text("Not selected"))
                 .accessibilityHint("Changes the local selection. The purchase is saved when you tap Finish shopping.")
+                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                    Button("Edit product", systemImage: "pencil") {
+                        viewModel.beginEditingItem(item)
+                    }
+                    .disabled(!viewModel.canChangeItem(item))
+                    Button("No longer needed", systemImage: "trash", role: .destructive) {
+                        cancellationItem = item
+                        confirmsCancellation = true
+                    }
+                    .disabled(!viewModel.canChangeItem(item))
+                }
+                .contextMenu {
+                    Button("Edit product", systemImage: "pencil") {
+                        viewModel.beginEditingItem(item)
+                    }
+                    .disabled(!viewModel.canChangeItem(item))
+                    Button("No longer needed", systemImage: "trash", role: .destructive) {
+                        cancellationItem = item
+                        confirmsCancellation = true
+                    }
+                    .disabled(!viewModel.canChangeItem(item))
+                }
             }
         } header: {
             Text("Pending · \(viewModel.selectedStoreName)")
@@ -44,6 +68,11 @@ struct SharedPurchaseSection: View {
         }
 
         Section {
+            if viewModel.editingItem != nil {
+                Button("Review product edit") {
+                    viewModel.isItemEditorPresented = true
+                }
+            }
             Text("Selected: \(viewModel.purchaseSelection.count) of up to 50")
             if viewModel.purchaseSelectionNeedsReview {
                 Label("Some selected products have changed or are no longer pending.", systemImage: "exclamationmark.triangle")
@@ -73,6 +102,22 @@ struct SharedPurchaseSection: View {
             Text("Confirm purchase")
         } footer: {
             Text("Switching stores or leaving this screen does not confirm the purchase. Refresh to check for group changes.")
+        }
+        .confirmationDialog("Cancel pending product?", isPresented: $confirmsCancellation, titleVisibility: .visible) {
+            if let item = cancellationItem {
+                Button("No longer needed", role: .destructive) {
+                    Task {
+                        await viewModel.cancelItem(item)
+                    }
+                }
+                Button("Keep product", role: .cancel) {
+                    cancellationItem = nil
+                }
+            }
+        } message: {
+            if let item = cancellationItem {
+                Text("Remove \(item.name) from the group’s pending list without recording a purchase?")
+            }
         }
     }
 }

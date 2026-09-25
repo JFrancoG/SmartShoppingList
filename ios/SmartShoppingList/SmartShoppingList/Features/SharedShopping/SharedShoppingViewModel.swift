@@ -44,6 +44,20 @@ final class SharedShoppingViewModel {
             storeItemsState = .notLoaded
         }
     }
+    private(set) var editingItem: SharedItem?
+    var editName = ""
+    var editQuantity = ""
+    var editStoreID: UUID?
+    var editNewStore = ""
+    private(set) var editNeedsReview = false
+    var isItemEditorPresented = false {
+        didSet {
+            if isItemEditorPresented {
+                isItemEditorPresentationActive = true
+            }
+        }
+    }
+    private(set) var isItemEditorPresentationActive = false
     var groupName = ""
     var isReviewPresented = false {
         didSet {
@@ -383,6 +397,8 @@ final class SharedShoppingViewModel {
         }
         do {
             switch operation {
+            case .changeItem(_, let original, let request):
+                _ = try await api.changeItem(request, item: original, token: session.accessToken)
             case .purchase(_, let groupID, let request, _):
                 let result = try await api.finalizePurchase(request, groupID: groupID, token: session.accessToken)
                 guard result.items.allSatisfy({ $0.purchasedBy == session.user.id }) else {
@@ -405,6 +421,12 @@ final class SharedShoppingViewModel {
                 items.removeAll { purchasedIDs.contains($0.id) }
                 loadedStoreID = nil
             }
+            if case .changeItem(_, let original, _) = operation {
+                items.removeAll { $0.id == original.id }
+                loadedStoreID = nil
+                editingItem = nil
+                isItemEditorPresented = false
+            }
             pendingOperation = nil
             reviewSnapshot = nil
             reviewedItems = []
@@ -417,6 +439,10 @@ final class SharedShoppingViewModel {
                 } else {
                     notice = "The purchase is confirmed, but the list could not be refreshed. Refresh before continuing."
                 }
+            } else if case .changeItem = operation {
+                notice = refreshed
+                    ? "The product change is confirmed in the group."
+                    : "The product change is confirmed, but the list could not be refreshed. Refresh before continuing."
             } else {
                 notice = "The operation is confirmed in the group."
             }
@@ -431,6 +457,13 @@ final class SharedShoppingViewModel {
                         try await credentials.saveOperation(nil)
                         pendingOperation = nil
                         if case .purchase = operation {
+                            await refreshSessionAndLists()
+                        }
+                        if case .changeItem(_, let original, let request) = operation {
+                            if request.replacement != nil {
+                                restoreItemEditor(original: original, request: request)
+                                editNeedsReview = true
+                            }
                             await refreshSessionAndLists()
                         }
                     } catch {
@@ -538,7 +571,8 @@ final class SharedShoppingViewModel {
     }
 
     var canPresentRootNotice: Bool {
-        !isReviewPresentationActive && !isInvitationsPresentationActive && !draft.isEditorPresentationActive
+        !isReviewPresentationActive && !isInvitationsPresentationActive
+            && !isItemEditorPresentationActive && !draft.isEditorPresentationActive
     }
 
     func reviewPresentationDidDismiss() {
@@ -689,6 +723,8 @@ final class SharedShoppingViewModel {
     }
 
     private func clearSessionPresentation() {
+        editingItem = nil
+        isItemEditorPresented = false
         purchaseSelections = [:]
         purchaseSelectionOwner = nil
         loadedStoreID = nil
@@ -827,11 +863,153 @@ extension SharedShoppingViewModel {
             purchaseSelections = [:]
             purchaseSelectionOwner = session.user.id
         }
+        if case .changeItem(let userID, let original, let request) = pendingOperation,
+           userID == session.user.id, original.groupId == session.user.group?.id {
+            if editingItem == nil, request.replacement != nil {
+                restoreItemEditor(original: original, request: request)
+            }
+            selectedStoreID = original.storeId
+        }
         if case .purchase(let userID, let groupID, let request, let selection) = pendingOperation,
            userID == session.user.id, groupID == session.user.group?.id,
            purchaseSelections[request.storeId] == nil {
             purchaseSelections[request.storeId] = selection
             selectedStoreID = request.storeId
+        }
+    }
+}
+
+
+extension SharedShoppingViewModel {
+    func canChangeItem(_ item: SharedItem) -> Bool {
+        canMutate && loadedStoreID == selectedStoreID && item.status == "pending"
+            && item.groupId == group?.id && items.contains(item)
+    }
+
+    func beginEditingItem(_ item: SharedItem) {
+        guard canChangeItem(item) else { return }
+        editingItem = item
+        editName = item.name
+        editQuantity = item.quantity ?? ""
+        editStoreID = item.storeId
+        editNewStore = ""
+        editNeedsReview = false
+        notice = nil
+        isItemEditorPresented = true
+    }
+
+    func itemEditorPresentationDidDismiss() {
+        isItemEditorPresentationActive = false
+    }
+
+    var canSaveItemEdit: Bool {
+        guard let editingItem else { return false }
+        return canChangeItem(editingItem) && !editNeedsReview && preparedItemEdit != nil
+    }
+
+    var latestEditingItem: SharedItem? {
+        guard let editingItem, loadedStoreID == selectedStoreID else { return nil }
+        return items.first { $0.id == editingItem.id }
+    }
+
+    /// Explicitly review the current row before confirming a new intent after a conflict.
+    func reviewLatestItem() {
+        guard canMutate, let current = latestEditingItem else { return }
+        editingItem = current
+        editNeedsReview = false
+    }
+
+    func saveItemEdit() async {
+        guard canSaveItemEdit, let original = editingItem, let replacement = preparedItemEdit else { return }
+        await submitItemChange(original, replacement: replacement)
+    }
+
+    func cancelItem(_ item: SharedItem) async {
+        guard canChangeItem(item) else { return }
+        await submitItemChange(item, replacement: nil)
+    }
+
+    var itemEditRequiresReview: Bool {
+        editNeedsReview || latestEditingItem != editingItem
+    }
+
+    var editValidationMessage: LocalizedStringResource? {
+        if ShoppingDraftRules.normalized(editName)?.isEmpty != false {
+            return "Enter a product name."
+        }
+        if editStoreID == nil && ShoppingDraftRules.normalized(editNewStore)?.isEmpty != false {
+            return "Enter a store name."
+        }
+        let visibleFields = [editName, editQuantity] + (editStoreID == nil ? [editNewStore] : [])
+        if visibleFields.contains(where: { value in
+            value.unicodeScalars.contains { $0.properties.generalCategory == .control && !$0.properties.isWhitespace }
+        }) {
+            return "Remove unsupported control characters from the product details."
+        }
+        let nameCount = ShoppingDraftRules.normalized(editName)?.unicodeScalars.count ?? 161
+        let quantityCount = ShoppingDraftRules.normalized(editQuantity)?.unicodeScalars.count ?? 81
+        let storeCount = ShoppingDraftRules.normalized(editNewStore)?.unicodeScalars.count ?? 81
+        if max(editName.unicodeScalars.count, nameCount) > 160
+            || max(editQuantity.unicodeScalars.count, quantityCount) > 80
+            || (editStoreID == nil && max(editNewStore.unicodeScalars.count, storeCount) > 80) {
+            return "Shorten the name to 160 characters and the quantity or store to 80 characters."
+        }
+        return nil
+    }
+
+    private var preparedItemEdit: SharedNewItem? {
+        guard editValidationMessage == nil else { return nil }
+        guard let name = ShoppingDraftRules.normalized(editName), (1...160).contains(name.unicodeScalars.count),
+              editName.unicodeScalars.count <= 160,
+              let quantity = ShoppingDraftRules.normalized(editQuantity), quantity.unicodeScalars.count <= 80,
+              editQuantity.unicodeScalars.count <= 80 else { return nil }
+        let store: SharedStoreReference
+        if let editStoreID {
+            guard stores.contains(where: { $0.id == editStoreID }) else { return nil }
+            store = .existing(editStoreID)
+        } else {
+            guard let name = ShoppingDraftRules.normalized(editNewStore), (1...80).contains(name.unicodeScalars.count),
+                  editNewStore.unicodeScalars.count <= 80 else { return nil }
+            store = .newName(name)
+        }
+        return SharedNewItem(name: name, quantity: quantity.isEmpty ? nil : quantity, store: store)
+    }
+
+    private func restoreItemEditor(original: SharedItem, request: SharedItemChangeRequest) {
+        guard let replacement = request.replacement else { return }
+        editingItem = original
+        editName = replacement.name
+        editQuantity = replacement.quantity ?? ""
+        switch replacement.store {
+        case .existing(let id):
+            editStoreID = id
+            editNewStore = ""
+        case .newName(let name):
+            editStoreID = nil
+            editNewStore = name
+        }
+    }
+
+    private func submitItemChange(_ original: SharedItem, replacement: SharedNewItem?) async {
+        guard let session else { return }
+        let request = SharedItemChangeRequest(
+            operationId: UUID(),
+            expectedVersion: original.version,
+            replacement: replacement
+        )
+        await performAction {
+            do {
+                let operation = PendingSharedOperation.changeItem(
+                    userID: session.user.id,
+                    original: original,
+                    request: request
+                )
+                try await credentials.saveOperation(operation)
+                pendingOperation = operation
+                await performPendingOperation()
+            } catch {
+                notice = SharedErrorMessage.message(for: error)
+            }
         }
     }
 }

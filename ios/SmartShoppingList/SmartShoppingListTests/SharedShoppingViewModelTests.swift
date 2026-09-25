@@ -283,6 +283,57 @@ private actor SharedFlowAPI: SharedShoppingAPI {
     private(set) var loginRequests = 0
     private(set) var acceptedInvitations = 0
     let currentUserGate: SharedFlowGate?
+    private(set) var sentItemChanges: [SharedItemChangeRequest] = []
+    private var itemChangeResult: SharedItem?
+    private var changeError: SharedAPIError? = .transport
+    private var changeRefreshFails = false
+
+    func configureItemChange(error: SharedAPIError?, refreshFails: Bool = false) {
+        changeError = error
+        changeRefreshFails = refreshFails
+    }
+
+    func changeItem(_ request: SharedItemChangeRequest, item: SharedItem, token: String) async throws -> SharedItem {
+        sentItemChanges.append(request)
+        if case .server = changeError {
+            changeFirstPurchaseItem()
+            throw try #require(changeError)
+        }
+        if let itemChangeResult {
+            return itemChangeResult
+        }
+        let replacement = request.replacement
+        let store: UUID
+        if case .existing(let id) = replacement?.store {
+            store = id
+        } else {
+            store = item.storeId
+        }
+        let result = SharedItem(
+            id: item.id,
+            groupId: item.groupId,
+            storeId: store,
+            name: replacement?.name ?? item.name,
+            quantity: replacement == nil ? item.quantity : replacement?.quantity,
+            status: replacement == nil ? "cancelled" : "pending",
+            version: item.version + 1,
+            createdBy: item.createdBy,
+            createdAt: item.createdAt,
+            purchasedBy: nil,
+            purchasedAt: nil
+        )
+        purchaseItems.removeAll { $0.id == item.id }
+        if result.status == "pending" {
+            purchaseItems.append(result)
+        }
+        itemChangeResult = result
+        // Simulate loss AFTER committing the change. Retry returns the original receipt.
+        if let changeError {
+            throw changeError
+        }
+        return result
+    }
+
     private(set) var sentPurchases: [FinalizePurchaseRequest] = []
     private(set) var purchaseItems: [SharedItem] = []
     var purchaseError: SharedAPIError? = .transport
@@ -429,7 +480,7 @@ private actor SharedFlowAPI: SharedShoppingAPI {
 
     func currentUser(token: String) async throws -> SharedUser {
         await currentUserGate?.pause()
-        if failCurrentUser || (failRefreshAfterPurchase && !sentPurchases.isEmpty) {
+        if failCurrentUser || (changeRefreshFails && !sentItemChanges.isEmpty) || (failRefreshAfterPurchase && !sentPurchases.isEmpty) {
             throw SharedAPIError.transport
         }
         return session.user
@@ -813,5 +864,128 @@ extension SharedShoppingViewModelTests {
         #expect(model.storeItemsState == .loaded)
         model.selectedStoreID = items[0].storeId
         #expect(model.purchaseSelection.map(\.id) == [items[0].id])
+    }
+}
+
+
+extension SharedShoppingViewModelTests {
+    @Test("A lost item-change response survives reopening and retries the same committed intent", arguments: [false, true])
+    func itemChangeLostResponse(cancelling: Bool) async throws {
+        let api = SharedFlowAPI()
+        let products = try await api.preparePurchaseItems()
+        let item = products[0]
+        let credentials = MemorySharedCredentialStore(session: api.session)
+        let model = try makeModel(api: api, credentials: credentials)
+        await model.load()
+        model.selectedStoreID = item.storeId
+        await model.loadSelectedStore()
+        model.togglePurchaseItem(item)
+        if cancelling {
+            await model.cancelItem(item)
+        } else {
+            model.beginEditingItem(item)
+            model.editName = "Pan integral"
+            model.editQuantity = "2 barras"
+            await model.saveItemEdit()
+        }
+        let original = try #require(await credentials.loadOperation())
+        #expect(!model.canFinalizePurchase)
+        #expect(!model.canMutate)
+        let reopened = try makeModel(api: api, credentials: credentials)
+        await reopened.load()
+        #expect(reopened.pendingOperation == original)
+        if !cancelling {
+            #expect(reopened.editName == "Pan integral")
+            #expect(reopened.editQuantity == "2 barras")
+        }
+        await reopened.retryPendingOperation()
+        let requests = await api.sentItemChanges
+        #expect(requests.count == 2)
+        #expect(requests.first == requests.last)
+        #expect(await credentials.loadOperation() == nil)
+        let row = reopened.items.first { $0.id == item.id }
+        if cancelling {
+            #expect(row == nil)
+        } else {
+            #expect(row?.name == "Pan integral")
+            #expect(row?.version == 2)
+        }
+        await model.refresh()
+        #expect(model.purchaseSelectionNeedsReview)
+        #expect(model.purchaseSelection.first?.version == 1)
+    }
+
+    @Test("Editing conflicts retain the proposal and require explicit review before a new intent")
+    func itemEditConflict() async throws {
+        let api = SharedFlowAPI()
+        let products = try await api.preparePurchaseItems()
+        await api.configureItemChange(error: .server(status: 409, code: "item_conflict", requestID: UUID(), retryAfter: nil))
+        let model = try makeModel(api: api, credentials: MemorySharedCredentialStore(session: api.session))
+        await model.load()
+        model.selectedStoreID = products[0].storeId
+        await model.loadSelectedStore()
+        model.beginEditingItem(products[0])
+        model.editName = "Mi propuesta"
+        await model.saveItemEdit()
+        #expect(model.editName == "Mi propuesta")
+        #expect(model.editNeedsReview)
+        #expect(!model.canSaveItemEdit)
+        #expect(model.pendingOperation == nil)
+        let first = try #require(await api.sentItemChanges.first)
+        model.reviewLatestItem()
+        #expect(model.canSaveItemEdit)
+        await api.configureItemChange(error: nil)
+        await model.saveItemEdit()
+        let last = try #require(await api.sentItemChanges.last)
+        #expect(last.operationId != first.operationId)
+        #expect(last.expectedVersion == 2)
+    }
+
+    @Test("A confirmed item change with failed refresh blocks stale purchase selections")
+    func itemChangeRefreshFailure() async throws {
+        let api = SharedFlowAPI()
+        let products = try await api.preparePurchaseItems()
+        await api.configureItemChange(error: nil, refreshFails: true)
+        let model = try makeModel(api: api, credentials: MemorySharedCredentialStore(session: api.session))
+        await model.load()
+        model.selectedStoreID = products[0].storeId
+        await model.loadSelectedStore()
+        model.togglePurchaseItem(products[0])
+        await model.cancelItem(products[0])
+        #expect(model.pendingOperation == nil)
+        #expect(model.storeItemsState == .failed)
+        #expect(!model.canFinalizePurchase)
+        #expect(!model.items.contains(products[0]))
+        #expect(model.purchaseSelection == [products[0]])
+    }
+}
+
+
+extension SharedShoppingViewModelTests {
+    @Test("Invalid visible fields block edits while an abandoned new-store field does not")
+    func editValidationUsesVisibleFields() async throws {
+        let api = SharedFlowAPI()
+        let products = try await api.preparePurchaseItems()
+        let model = try makeModel(api: api, credentials: MemorySharedCredentialStore(session: api.session))
+        await model.load()
+        model.selectedStoreID = products[0].storeId
+        await model.loadSelectedStore()
+        model.beginEditingItem(products[0])
+        model.editName = ""
+        #expect(!model.canSaveItemEdit)
+        #expect(model.editValidationMessage != nil)
+        model.editName = String(repeating: "\u{0344}", count: 81)
+        #expect(!model.canSaveItemEdit)
+        #expect(model.editValidationMessage != nil)
+        model.editName = "Pan"
+        model.editStoreID = nil
+        model.editNewStore = "\u{0001}"
+        #expect(!model.canSaveItemEdit)
+        model.editStoreID = products[0].storeId
+        #expect(model.editValidationMessage == nil)
+        #expect(model.canSaveItemEdit)
+        await api.configureItemChange(error: nil)
+        await model.saveItemEdit()
+        #expect(model.items.first { $0.id == products[0].id }?.name == "Pan")
     }
 }
