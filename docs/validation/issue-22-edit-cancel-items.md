@@ -129,3 +129,17 @@ Ensayo focalizado: con VoiceOver, No longer needed → Keep product; comprobar q
 
 
 Revisión independiente del diff final sin hallazgos. Build e instalación correctos mediante Xcode MCP RunProject: iPhone 11 a las 20:11:08 (PID3961), iPhone 14 a las 20:11:15 (PID7246); destino iPhone 11 restaurado, sin borrar datos. EXC-002 es el único warning observado. Se reutilizan las 159 ejecuciones Fast aprobadas a las 20:00:37: no cambian modelos ni servicios y esas pruebas no acreditan el foco de UI. El retorno desde Keep product queda pendiente de la comprobación física.
+
+
+### Regresión de presentación por fila · retirada
+
+El responsable rechaza 55fdac5: la alerta se cierra sola después de abrirla. El traslado a cada fila no supera el ensayo físico y no se considera una solución del retorno de foco. La causa interna exacta de SwiftUI no está acreditada; la regresión queda acotada al cambio de presentador.
+
+Se restaura SharedPurchaseSection.swift byte a byte desde c95484e, versión confirmada por el responsable para permanencia/lectura de la alerta, Keep product y retorno desde Edit. La alerta vuelve al presentador estable de la sección con snapshot retenido; se retiran los presentadores por fila y su binding derivado. La cancelación sigue exigiendo pulsar la acción destructiva.
+
+El salto a Store Aldi tras Keep product permanece abierto. No se añade otro mecanismo de foco sin evidencia física. Se reutilizan las pruebas de negocio anteriores y la aceptación del archivo restaurado; se verifica build e instalación de la reversión. Pendiente confirmar que la alerta vuelve a permanecer abierta y que Keep product conserva el producto.
+
+
+Precisión posterior del responsable: se cerraba sin tocar ningún botón y el foco volvía a «Pending Aldi». Es un cierre espontáneo, no un descarte mediante Keep product.
+
+Restauración verificada byte a byte frente al archivo de c95484e. Build/instalación y arranque correctos: iPhone 11 a20:18:08 (PID3968), iPhone 14 a20:18:27 (PID7264); destino iPhone 11 restaurado. Solo EXC-002 aceptado en el log. Se reutilizan las 159 ejecuciones Fast, revisión del archivo restaurado y aceptación física previa de su alerta. No se declara resuelto el foco tras Keep product.

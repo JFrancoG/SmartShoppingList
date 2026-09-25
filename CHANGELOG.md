@@ -40,6 +40,8 @@
 
 ### Fixed
 
+- 2026-09-25 | 🐛 fix(ios): restore stable cancellation presentation
+
 - 2026-09-25 | 🐛 fix(ios): anchor cancellation alerts to products
 
 - 2026-09-25 | 🐛 fix(ios): restore shopping accessibility context
