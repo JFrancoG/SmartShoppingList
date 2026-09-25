@@ -53,6 +53,7 @@ final class SharedShoppingViewModel {
     var isItemEditorPresented = false {
         didSet {
             if isItemEditorPresented {
+                closeStoreQuery()
                 isItemEditorPresentationActive = true
             }
         }
@@ -62,6 +63,7 @@ final class SharedShoppingViewModel {
     var isReviewPresented = false {
         didSet {
             if isReviewPresented {
+                closeStoreQuery()
                 isReviewPresentationActive = true
             }
         }
@@ -69,6 +71,7 @@ final class SharedShoppingViewModel {
     var isInvitationsPresented = false {
         didSet {
             if isInvitationsPresented {
+                closeStoreQuery()
                 isInvitationsPresentationActive = true
             }
         }
@@ -76,6 +79,9 @@ final class SharedShoppingViewModel {
     private(set) var isReviewPresentationActive = false
     private(set) var isInvitationsPresentationActive = false
 
+    private(set) var isStoreQueryVisible = false
+    @ObservationIgnored private var storeQueryRevision: UUID?
+    @ObservationIgnored let storeQuery: StoreQueryViewModel
     @ObservationIgnored let draft: ShoppingDraftViewModel
     @ObservationIgnored private let api: (any SharedShoppingAPI)?
     @ObservationIgnored private let configuration: SharedAPIConfiguration?
@@ -89,17 +95,22 @@ final class SharedShoppingViewModel {
         api: (any SharedShoppingAPI)?,
         configuration: SharedAPIConfiguration?,
         credentials: any SharedCredentialStoring,
-        draft: ShoppingDraftViewModel
+        draft: ShoppingDraftViewModel,
+        storeQuery: StoreQueryViewModel
     ) {
         self.api = api
         self.configuration = configuration
         self.credentials = credentials
         self.draft = draft
+        self.storeQuery = storeQuery
     }
 
     var group: SharedGroup? { session?.user.group }
     var isConfigured: Bool { api != nil && configuration != nil }
-    var canMutate: Bool { hasLoaded && sessionIsVerified && !isBusy && !storageFailed && pendingOperation == nil }
+    var canMutate: Bool {
+        hasLoaded && sessionIsVerified && !isBusy && !storageFailed && pendingOperation == nil
+            && storeQuery.activity == .idle
+    }
     var draftIsLocked: Bool { !hasLoaded || pendingOperation != nil || isBusy || isReviewPresented }
     var isCreator: Bool { group?.creatorUserId == session?.user.id && group != nil }
     var canConfirmReview: Bool {
@@ -491,6 +502,62 @@ final class SharedShoppingViewModel {
         }
     }
 
+    var canQueryStore: Bool {
+        hasLoaded && sessionIsVerified && !isBusy && group != nil && !stores.isEmpty
+    }
+
+    func openStoreQuery() {
+        guard canQueryStore, storeQuery.activity == .idle else { return }
+        storeQueryRevision = UUID()
+        storeQuery.prepare(stores: stores)
+        isStoreQueryVisible = true
+    }
+
+    @discardableResult
+    func startStoreDictation() -> Task<Void, Never> {
+        guard canQueryStore, storeQuery.activity == .idle else { return Task {} }
+        openStoreQuery()
+        return storeQuery.startDictation()
+    }
+
+    func finishStoreDictation() async {
+        guard isStoreQueryVisible, storeQuery.activity == .recording, let revision = storeQueryRevision else { return }
+        await storeQuery.finishDictation().value
+        guard storeQueryRevision == revision else { return }
+        await openUniqueStoreMatch()
+    }
+
+    func searchStoreQuery() async {
+        guard isStoreQueryVisible, storeQuery.canSearch else { return }
+        storeQuery.search()
+        await openUniqueStoreMatch()
+    }
+
+    private func openUniqueStoreMatch() async {
+        guard storeQuery.matches.count == 1, let store = storeQuery.matches.first else { return }
+        await chooseQueriedStore(store)
+    }
+
+    func closeStoreQuery() {
+        interruptStoreDictation()
+        isStoreQueryVisible = false
+    }
+
+    @discardableResult
+    func interruptStoreDictation() -> Task<Void, Never> {
+        storeQueryRevision = nil
+        return storeQuery.stopDictation()
+    }
+
+    func chooseQueriedStore(_ store: SharedStore) async {
+        guard isStoreQueryVisible, canQueryStore, storeQuery.activity == .idle,
+              storeQuery.matches.contains(where: { $0.id == store.id }),
+              stores.contains(store), store.groupId == group?.id else { return }
+        selectedStoreID = store.id
+        closeStoreQuery()
+        await loadSelectedStore()
+    }
+
     func loadSelectedStore() async {
         guard !isBusy, sessionIsVerified, let api, let session, let group, let storeID = selectedStoreID else {
             return
@@ -577,7 +644,7 @@ final class SharedShoppingViewModel {
 
     var canPresentRootNotice: Bool {
         !isReviewPresentationActive && !isInvitationsPresentationActive
-            && !isItemEditorPresentationActive && !draft.isEditorPresentationActive
+            && !isItemEditorPresentationActive && !draft.isEditorPresentationActive && storeQuery.activity == .idle
     }
 
     func reviewPresentationDidDismiss() {
@@ -729,6 +796,8 @@ final class SharedShoppingViewModel {
     }
 
     private func clearSessionPresentation() {
+        closeStoreQuery()
+        storeQuery.clear()
         editingItem = nil
         isItemEditorPresented = false
         purchaseSelections = [:]
@@ -754,13 +823,15 @@ extension SharedShoppingViewModel {
         api: (any SharedShoppingAPI)?,
         configuration: SharedAPIConfiguration?,
         credentials: any SharedCredentialStoring,
-        draft: ShoppingDraftViewModel
+        draft: ShoppingDraftViewModel,
+        storeQuery: StoreQueryViewModel
     ) {
         self.init(
             api: api,
             configuration: configuration,
             credentials: credentials,
-            draft: draft
+            draft: draft,
+            storeQuery: storeQuery
         )
         session = preview.session
         pendingInvitation = preview.pendingInvitation

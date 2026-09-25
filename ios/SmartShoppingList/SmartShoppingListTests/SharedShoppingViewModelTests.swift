@@ -1,5 +1,6 @@
 import AuthenticationServices
 import Foundation
+import Observation
 import Testing
 @testable import SmartShoppingList
 
@@ -257,7 +258,8 @@ struct SharedShoppingViewModelTests {
     private func makeModel(
         api: SharedFlowAPI,
         credentials: any SharedCredentialStoring,
-        items: [ShoppingDraftItem] = []
+        items: [ShoppingDraftItem] = [],
+        speech: any SpeechCapturing = UnavailableSpeechCapture()
     ) throws -> SharedShoppingViewModel {
         SharedShoppingViewModel(
             api: api,
@@ -271,7 +273,8 @@ struct SharedShoppingViewModelTests {
                 speech: UnavailableSpeechCapture(),
                 persistence: MemoryDraftPersistence(),
                 initialDraft: ShoppingDraftSnapshot(items: items)
-            )
+            ),
+            storeQuery: StoreQueryViewModel(speech: speech)
         )
     }
 }
@@ -500,11 +503,17 @@ private actor SharedFlowAPI: SharedShoppingAPI {
         return try #require(session.user.group)
     }
 
+    private var storeNames: [UUID: String] = [:]
+
+    func nameStore(_ id: UUID, name: String) {
+        storeNames[id] = name
+    }
+
     func stores(groupID: UUID, token: String) async throws -> [SharedStore] {
         if hideStoresAfterPurchaseConflict, !sentPurchases.isEmpty {
             return []
         }
-        return Set(purchaseItems.map(\.storeId)).map { SharedStore(id: $0, groupId: groupID, name: "Tienda") }
+        return Set(purchaseItems.map(\.storeId)).map { SharedStore(id: $0, groupId: groupID, name: storeNames[$0] ?? "Tienda") }
     }
     func createInvitation(groupID: UUID, token: String) async throws -> CreatedInvitation {
         throw SharedAPIError.transport
@@ -1140,6 +1149,166 @@ extension SharedShoppingViewModelTests {
             let notice = try #require(model.presentedNotice)
             model.dismissPresentedNotice(notice)
             #expect(model.presentedNotice == nil)
+        }
+    }
+}
+
+
+extension SharedShoppingViewModelTests {
+    @Test(arguments: [false, true])
+    func `Choosing a queried store loads real pending rows without changing purchase intent`(uncertain: Bool) async throws {
+        let api = SharedFlowAPI()
+        let items = try await api.preparePurchaseItems()
+        let credentials = MemorySharedCredentialStore(session: api.session)
+        let model = try makeModel(api: api, credentials: credentials)
+        await model.load()
+        model.selectedStoreID = items[0].storeId
+        await model.loadSelectedStore()
+        model.togglePurchaseItem(items[0])
+        if uncertain {
+            await model.finalizePurchase()
+        }
+        let original = model.pendingOperation
+        let requests = await api.sentPurchases
+        model.openStoreQuery()
+        try #require(model.isStoreQueryVisible)
+        model.storeQuery.text = "Tienda"
+        model.storeQuery.search()
+        let destination = try #require(model.storeQuery.matches.first { $0.id == items[5].storeId })
+        await model.chooseQueriedStore(destination)
+        #expect(!model.isStoreQueryVisible)
+        #expect(model.canPresentRootNotice)
+        #expect(model.selectedStoreID == items[5].storeId)
+        #expect(model.items.map(\.id) == [items[5].id])
+        #expect(model.pendingOperation == original)
+        #expect(await credentials.loadOperation() == original)
+        #expect(await api.sentPurchases == requests)
+        model.selectedStoreID = items[0].storeId
+        await model.loadSelectedStore()
+        #expect(model.purchaseSelection.map(\.id) == [items[0].id])
+    }
+
+    @Test
+    func `Editing the transcript prevents selection of a previous match`() async throws {
+        let api = SharedFlowAPI()
+        _ = try await api.preparePurchaseItems()
+        let model = try makeModel(api: api, credentials: MemorySharedCredentialStore(session: api.session))
+        await model.load()
+        model.openStoreQuery()
+        model.storeQuery.text = "Tienda"
+        model.storeQuery.search()
+        let previous = try #require(model.storeQuery.matches.first)
+        model.storeQuery.text = "Another store"
+        await model.chooseQueriedStore(previous)
+        #expect(model.selectedStoreID == nil)
+        #expect(model.isStoreQueryVisible)
+        #expect(await api.sentPurchases.isEmpty)
+    }
+}
+
+
+extension SharedShoppingViewModelTests {
+    @Test(.timeLimit(.minutes(1)), arguments: ["Aldi Norte", "Aldi", "Unknown store"])
+    func `Finishing inline dictation opens only a unique store automatically`(query: String) async throws {
+        let api = SharedFlowAPI()
+        let items = try await api.preparePurchaseItems()
+        await api.nameStore(items[0].storeId, name: "Aldi Norte")
+        await api.nameStore(items[5].storeId, name: "Aldi Sur")
+        let speech = ControlledDraftSpeech()
+        let model = try makeModel(api: api, credentials: MemorySharedCredentialStore(session: api.session), speech: speech)
+        await model.load()
+        let capture = model.startStoreDictation()
+        #expect(model.isStoreQueryVisible)
+        await waitForStoreRecording(model)
+        try await speech.transcribe(query, capture: 1)
+        let finish = Task { await model.finishStoreDictation() }
+        await speech.waitForFinishCalls(1)
+        try await speech.completeFinish(call: 1)
+        await finish.value
+        await capture.value
+        if query == "Aldi Norte" {
+            #expect(model.selectedStoreID == items[0].storeId)
+            #expect(Set(model.items.map(\.id)) == Set(items.prefix(5).map(\.id)))
+            #expect(!model.isStoreQueryVisible)
+        } else {
+            #expect(model.selectedStoreID == nil)
+            #expect(model.isStoreQueryVisible)
+            #expect(model.storeQuery.matches.count == (query == "Aldi" ? 2 : 0))
+            #expect(model.storeQuery.message != nil)
+        }
+        #expect(await api.sentPurchases.isEmpty)
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func `Cancelling while finishing prevents late navigation`() async throws {
+        let api = SharedFlowAPI()
+        let items = try await api.preparePurchaseItems()
+        await api.nameStore(items[0].storeId, name: "Aldi")
+        let speech = ControlledDraftSpeech()
+        let model = try makeModel(api: api, credentials: MemorySharedCredentialStore(session: api.session), speech: speech)
+        await model.load()
+        let capture = model.startStoreDictation()
+        await waitForStoreRecording(model)
+        try await speech.transcribe("Aldi", capture: 1)
+        let finish = Task { await model.finishStoreDictation() }
+        await speech.waitForFinishCalls(1)
+        model.closeStoreQuery()
+        await capture.value
+        try await speech.completeFinish(call: 1)
+        await finish.value
+        #expect(model.selectedStoreID == nil)
+        #expect(!model.isStoreQueryVisible)
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func `Signing out stops inline capture and removes its transcript`() async throws {
+        let api = SharedFlowAPI()
+        let items = try await api.preparePurchaseItems()
+        let speech = ControlledDraftSpeech()
+        let model = try makeModel(api: api, credentials: MemorySharedCredentialStore(session: api.session), speech: speech)
+        await model.load()
+        model.selectedStoreID = items[0].storeId
+        await model.loadSelectedStore()
+        let capture = model.startStoreDictation()
+        await waitForStoreRecording(model)
+        try await speech.transcribe("Aldi", capture: 1)
+        #expect(!model.canChangeItem(items[0]))
+        #expect(!model.canMutate)
+        await model.openInvitations()
+        #expect(!model.isInvitationsPresented)
+        await model.logout()
+        await capture.value
+        #expect(model.session == nil)
+        #expect(!model.isStoreQueryVisible)
+        #expect(model.storeQuery.text.isEmpty)
+        #expect(model.storeQuery.matches.isEmpty)
+    }
+
+    @Test(.timeLimit(.minutes(1)), arguments: [true, false])
+    func `Reopening a sheet interrupts inline capture even through recovery actions`(editing: Bool) async throws {
+        let api = SharedFlowAPI()
+        _ = try await api.preparePurchaseItems()
+        let speech = ControlledDraftSpeech()
+        let model = try makeModel(api: api, credentials: MemorySharedCredentialStore(session: api.session), speech: speech)
+        await model.load()
+        let capture = model.startStoreDictation()
+        await waitForStoreRecording(model)
+        if editing {
+            model.isItemEditorPresented = true
+        } else {
+            model.isInvitationsPresented = true
+        }
+        await capture.value
+        #expect(!model.isStoreQueryVisible)
+        #expect(model.storeQuery.activity != .recording)
+        #expect(model.selectedStoreID == nil)
+    }
+
+    private func waitForStoreRecording(_ model: SharedShoppingViewModel) async {
+        for await activity in Observations({ model.storeQuery.activity }) {
+            if activity == .recording {
+                return
+            }
         }
     }
 }

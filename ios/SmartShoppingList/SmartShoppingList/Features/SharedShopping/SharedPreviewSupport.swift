@@ -233,7 +233,8 @@ enum SharedPreviewSupport {
                 api: api,
                 configuration: configuration,
                 credentials: credentials,
-                draft: draft
+                draft: draft,
+                storeQuery: StoreQueryViewModel(speech: PreviewStoreQuerySpeech())
             )
         }
         #endif
@@ -241,7 +242,8 @@ enum SharedPreviewSupport {
             api: api,
             configuration: configuration,
             credentials: credentials,
-            draft: draft
+            draft: draft,
+            storeQuery: StoreQueryViewModel(speech: PreviewStoreQuerySpeech())
         )
     }
 
@@ -314,4 +316,12 @@ private struct PreviewSharedShoppingAPI: SharedShoppingAPI {
     func pendingItems(groupID: UUID, storeID: UUID, token: String) async throws -> [SharedItem] {
         fixture.items.filter { $0.storeId == storeID }
     }
+}
+
+private struct PreviewStoreQuerySpeech: SpeechCapturing {
+    func start() async throws -> AsyncThrowingStream<SpeechCaptureEvent, any Error> {
+        throw SpeechCaptureError.unavailable
+    }
+    func finish() async throws {}
+    func cancel() async {}
 }

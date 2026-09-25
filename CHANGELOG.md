@@ -4,6 +4,8 @@
 
 ### Added
 
+- 2026-09-25 | ✨ feat(shopping): add inline store voice queries
+
 - 2026-09-25 | ✨ feat(shopping): edit and cancel pending items
 
 - 2026-09-25 | ✨ feat(design): add semantic colors in four appearances
@@ -18,6 +20,8 @@
 - 2026-09-19 | ✨ feat(ios): add editable shopping drafts
 
 ### Documentation
+
+- 2026-09-25 | 📝 docs: record voice query delivery scope
 
 - 2026-09-25 | 📝 docs: record server restart validation
 

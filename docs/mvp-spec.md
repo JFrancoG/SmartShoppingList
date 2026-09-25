@@ -194,6 +194,8 @@ La documentación, los assets y los ratios no acreditan que los colores estén a
 
 No forman parte del MVP: sugerencias, predicción de reposición, estadísticas de compra, recetas, precios, comparación comercial, inventario doméstico, múltiples grupos por persona, roles personalizados, varias plataformas, presencia en tiempo real, sincronización offline completa, envío automático de correos, seleccionar toda la tienda automáticamente, vaciar pendientes al terminar y órdenes de modificación o borrado por voz. La confirmación conjunta de los checks sí forma parte del MVP.
 
+El 25 de septiembre se propone estudiar compra y cancelación de productos por voz con Apple Intelligence. Sigue fuera del MVP; solo se reconsiderará como extra si la entrega obligatoria está resuelta y sobra tiempo. El [plan](implementation-plan.md) conserva el diseño preliminar y sus decisiones pendientes. No equivale a autorizar su implementación ahora.
+
 Tras la entrega podrán estudiarse sugerencias de productos frecuentes por tienda, reutilización de compras anteriores y otras mejoras. Son posibilidades, no compromisos ni tareas activas. Cualquier ampliación anterior al cierre exige acordar explícitamente qué se sustituye o se retira del MVP.
 
 El 22 de septiembre se acuerda aplazar hasta después del MVP la posibilidad de asociar una única necesidad de compra a varias tiendas alternativas (por ejemplo, «fresas en Aldi o Mercadona») y resolverla al comprar en cualquiera de ellas. En el MVP cada entrada pertenece a una sola tienda; repetir un producto en tiendas distintas crea entradas independientes. La ampliación queda como posibilidad por estudiar, sin implementación ni tarea activa en esta entrega.

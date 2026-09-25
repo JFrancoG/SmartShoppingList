@@ -176,7 +176,7 @@ struct ShoppingDraftSpeechTests {
 
 }
 
-private actor ControlledDraftSpeech: SpeechCapturing {
+actor ControlledDraftSpeech: SpeechCapturing {
     private let startError: SpeechCaptureError?
     private var captureCount = 0
     private var finishCount = 0

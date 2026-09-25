@@ -2109,6 +2109,215 @@
           }
         }
       }
+    },
+    "Find store": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Find store"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buscar tienda"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Find store by voice": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Find store by voice"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buscar tienda por voz"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Microphone access is not allowed. Enable it in Settings or use the Store selector.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Microphone access is not allowed. Enable it in Settings or use the Store selector."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se permite acceder al micrófono. Actívalo en Ajustes o usa el selector de tienda."
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "No microphone is available. Type a store name or use the Store selector.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No microphone is available. Type a store name or use the Store selector."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay un micrófono disponible. Escribe una tienda o usa el selector."
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "No speech was recognized. Try again or type a store name.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No speech was recognized. Try again or type a store name."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se ha reconocido ninguna palabra. Vuelve a intentarlo o escribe una tienda."
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Preparing microphone…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparing microphone…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparando micrófono…"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Recording was interrupted. Correct the recognized text, try again or use the Store selector.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recording was interrupted. Correct the recognized text, try again or use the Store selector."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La grabación se ha interrumpido. Corrige el texto reconocido, vuelve a intentarlo o usa el selector de tienda."
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Show list for %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show list for %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ver lista de %@"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Stopping dictation…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stopping dictation…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deteniendo dictado…"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Store query": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Store query"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Consulta de tienda"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Transcription is unavailable on this device or in this language. Type a store name or use the Store selector.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription is unavailable on this device or in this language. Type a store name or use the Store selector."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La transcripción no está disponible en este dispositivo o idioma. Escribe una tienda o usa el selector."
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "I couldn’t find that store in your group. Try again, correct the text or use the Store selector.": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No he encontrado esa tienda en tu grupo. Prueba otra vez, corrige el texto o usa el selector de tienda."
+          }
+        }
+      }
+    },
+    "More than one store matches. Choose the one you want.": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hay varias tiendas coincidentes. Elige la que quieres."
+          }
+        }
+      }
     }
   },
   "version": "1.1"
