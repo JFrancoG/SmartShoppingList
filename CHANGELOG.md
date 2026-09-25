@@ -53,6 +53,8 @@
 
 ### Maintenance
 
+- 2026-09-25 | 🔧 chore(ios): organize app, shared code and resources
+
 - 2026-09-22 | 📦 build(server): refresh HTTP and configuration dependencies
 - 2026-09-21 | 🔧 chore(ios): configure hosted shared shopping
 - 2026-09-19 | 🔧 chore(server): prepare hosted configuration

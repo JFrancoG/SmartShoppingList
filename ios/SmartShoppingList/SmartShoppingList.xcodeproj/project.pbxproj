@@ -33,7 +33,7 @@
 		E06049E4305EB80C0015D66D /* Exceptions for "SmartShoppingList" folder in "SmartShoppingList" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				Info.plist,
+				Resources/Configuration/Info.plist,
 			);
 			target = E060492F305DF55F0015D66D /* SmartShoppingList */;
 		};
@@ -385,7 +385,7 @@
 				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = SmartShoppingListIconCheck;
 				ASSETCATALOG_COMPILER_APPICON_NAME = SmartShoppingListIconBrain;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = SmartShoppingList/SmartShoppingList.entitlements;
+				CODE_SIGN_ENTITLEMENTS = SmartShoppingList/Resources/Configuration/SmartShoppingList.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
@@ -396,7 +396,7 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = SmartShoppingList/Info.plist;
+				INFOPLIST_FILE = SmartShoppingList/Resources/Configuration/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "We use the microphone to transcribe the products and store you dictate.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
@@ -441,7 +441,7 @@
 				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = SmartShoppingListIconCheck;
 				ASSETCATALOG_COMPILER_APPICON_NAME = SmartShoppingListIconBrain;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = SmartShoppingList/SmartShoppingList.entitlements;
+				CODE_SIGN_ENTITLEMENTS = SmartShoppingList/Resources/Configuration/SmartShoppingList.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEAD_CODE_STRIPPING = YES;
@@ -452,7 +452,7 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = SmartShoppingList/Info.plist;
+				INFOPLIST_FILE = SmartShoppingList/Resources/Configuration/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "We use the microphone to transcribe the products and store you dictate.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;

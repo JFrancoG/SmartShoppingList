@@ -33,6 +33,16 @@ Una persona dicta lo que necesita comprar y dónde. Revisa los productos interpr
 
 Los tres directorios se versionan juntos desde esta raíz.
 
+Dentro de `ios/SmartShoppingList/SmartShoppingList/`, las carpetas reflejan responsabilidades:
+
+- `App/`: entrada `SmartShoppingListApp`, pantalla raíz `AppRootView`, composición de dependencias (`SharedAppFactory`) y coordinación del icono durante el ciclo de vida. `App/Debug/` contiene la pantalla de diagnóstico de avisos, compilada solo en Debug.
+- `Features/`: código propio de cada funcionalidad, actualmente `AddItems` y `SharedShopping`; sus modelos, vistas, previews y adaptadores permanecen junto a su recorrido.
+- `Services/`: infraestructura de acceso a la API compartida y Keychain.
+- `Shared/`: código utilizado por varias funcionalidades, como `AppLanguage` y los componentes de `Notices/`. No aloja código específico de una única feature.
+- `Resources/`: `Assets.xcassets`, los paquetes de Icon Composer en `Icons/`, los catálogos de textos en `Localization/` y `Info.plist` y entitlements en `Configuration/`. Estos últimos configuran la compilación y firma; no son recursos para copiar al bundle.
+
+Las carpetas están sincronizadas con Xcode. Al mover configuración hay que actualizar también `INFOPLIST_FILE`, `CODE_SIGN_ENTITLEMENTS` y la exclusión de `Info.plist` del target. Un futuro ViewModel de aplicación pertenecerá a `App/` si coordina estado de ese ámbito; no se crea uno mientras no sea necesario.
+
 ## Base del proyecto
 
 El punto de partida, publicado el 19 de septiembre en el commit [c19d087](https://github.com/JFrancoG/SmartShoppingList/commit/c19d0872de623a712f2d640c3b0e31b7be27c623), contiene la definición funcional aprobada y las plantillas de iOS y Vapor: pantalla inicial en la app y ejemplo `Todo` en el servidor. El progreso posterior y sus evidencias se consultan en GitHub Issues.

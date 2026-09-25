@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct ContentView: View {
+struct AppRootView: View {
     let viewModel: ShoppingDraftViewModel
     var shared: SharedShoppingViewModel? = nil
 
@@ -15,5 +15,5 @@ struct ContentView: View {
 
 #Preview(traits: .shoppingDraft) {
     @Previewable @Environment(ShoppingDraftViewModel.self) var viewModel
-    ContentView(viewModel: viewModel)
+    AppRootView(viewModel: viewModel)
 }

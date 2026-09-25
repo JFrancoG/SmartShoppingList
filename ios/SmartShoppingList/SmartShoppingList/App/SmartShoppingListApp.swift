@@ -17,13 +17,13 @@ struct SmartShoppingListApp: App {
         WindowGroup {
             #if DEBUG
             if let shopping {
-                ContentView(viewModel: shopping.draft, shared: shopping)
+                AppRootView(viewModel: shopping.draft, shared: shopping)
             } else {
                 ShoppingNoticeValidationView()
             }
             #else
             if let shopping {
-                ContentView(viewModel: shopping.draft, shared: shopping)
+                AppRootView(viewModel: shopping.draft, shared: shopping)
             }
             #endif
         }
