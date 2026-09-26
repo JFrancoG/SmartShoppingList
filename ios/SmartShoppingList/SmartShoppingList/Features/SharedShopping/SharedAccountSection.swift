@@ -50,7 +50,9 @@ struct SharedAccountSection: View {
                         viewModel.receiveAppleAuthorization(result)
                     }
                     .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
+                    .frame(maxWidth: 375)
                     .frame(height: appleButtonHeight)
+                    .frame(maxWidth: .infinity)
                     .disabled(viewModel.isBusy)
                 }
             } header: {

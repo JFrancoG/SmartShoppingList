@@ -137,12 +137,12 @@
         }
       }
     },
-    "Add product manually" : {
+    "Add manually" : {
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Añadir producto a mano"
+            "value" : "Añadir a mano"
           }
         }
       }

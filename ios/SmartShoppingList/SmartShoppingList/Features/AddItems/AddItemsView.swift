@@ -35,22 +35,24 @@ struct AddItemsView: View {
 
                     if showsManualEntry {
                         Section {
-                            Button("Add product manually", systemImage: "plus") {
-                                editorOriginID = nil
-                                focusedControl = nil
-                                viewModel.beginAddingItem()
-                            }
-                            .buttonStyle(ShoppingActionButtonStyle())
-                            .disabled(!viewModel.canAddItem)
-                        } header: {
-                            if viewModel.availability != .available {
-                                Text("What would you like to add?")
-                                    .font(.title2.weight(.semibold))
-                                    .foregroundStyle(.textPrimary)
-                                    .textCase(nil)
-                                    .multilineTextAlignment(.center)
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.bottom, 8)
+                            ShoppingControlGroup {
+                                if viewModel.availability != .available {
+                                    Text("What would you like to add?")
+                                        .accessibilityAddTraits(.isHeader)
+                                        .font(.title2.weight(.semibold))
+                                        .foregroundStyle(.textPrimary)
+                                        .textCase(nil)
+                                        .multilineTextAlignment(.center)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.bottom, 8)
+                                }
+                                Button("Add manually", systemImage: "plus") {
+                                    editorOriginID = nil
+                                    focusedControl = nil
+                                    viewModel.beginAddingItem()
+                                }
+                                .buttonStyle(ShoppingActionButtonStyle())
+                                .disabled(!viewModel.canAddItem)
                             }
                         } footer: {
                             if viewModel.availability != .available, viewModel.activity == .idle {
