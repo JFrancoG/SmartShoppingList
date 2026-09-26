@@ -16,7 +16,7 @@ Una persona desarrolla con ayuda de Codex, con jornadas disponibles de 4–8 hor
 | Este plan | Fases, ventanas objetivo, dependencias y resultados esperados |
 | [GitHub Issues](https://github.com/JFrancoG/SmartShoppingList/issues) | Plan de cada bloque, situación, bloqueos, decisiones de ejecución y evidencia de cierre |
 
-GitHub Issues es el único seguimiento operativo. El [hito «MVP · 27 septiembre»](https://github.com/JFrancoG/SmartShoppingList/milestone/1) agrupa el trabajo de la entrega. Su fecha es un objetivo de planificación; el canal y la hora oficial de entrega deben confirmarse. El porcentaje del hito sólo representa las issues creadas, no todo el alcance del MVP.
+GitHub Issues es el único seguimiento operativo. El [hito «MVP · September 27»](https://github.com/JFrancoG/SmartShoppingList/milestone/1) agrupa el trabajo de la entrega. Su fecha es un objetivo de planificación; el canal y la hora oficial de entrega deben confirmarse. El porcentaje del hito sólo representa las issues creadas, no todo el alcance del MVP.
 
 Se detallan las unidades del bloque inmediato. Las fases posteriores permanecen aquí hasta que corresponda concretarlas en issues. No se crean tareas por conversación, archivo o commit, ni issues retrospectivas para trabajos ya entregados. Tampoco se mantiene una segunda lista de estados en un archivo de progreso.
 
@@ -108,6 +108,22 @@ Orden de ejecución previsto:
 3. Corregir los hallazgos de avisos/foco/recorte ya registrados y consolidar ES/EN. Preparar previews de estados y tamaños, con layouts adaptables a iOS 27.
 4. Ejecutar la [matriz de accesibilidad](accessibility.md#ejecución-de-la-validación): cuatro apariencias, texto grande, controles alternativos, material y preferencias. Registrar evidencia por entorno/idioma en las issues e informes existentes; la página de invitación tiene evaluación web separada.
 5. Revisar todos los criterios aplicables antes del congelado. Exigir ≥4,5:1 para texto normal propio, ≥7:1 en HC y ≥3:1 para gráficos esenciales, más los resultados del recorrido real. No afirmar AAA global ni publicar etiquetas de accesibilidad por pasar el cálculo.
+
+### Interfaz y flujos abreviados: decisión del 25 de septiembre (#28)
+
+Refinamiento acordado el 26: las filas pendientes muestran Editar/Quitar mediante swipe nativo desde trailing, con ayuda localizada y acciones accesibles del sistema. Se retiran los iconos permanentes, se desactiva full swipe y se conserva la confirmación estable de retirada. La comprobación se centra en gesto, editor, conservar producto y texto grande; la lógica y las pruebas de dominio no cambian.
+
+El usuario autoriza [#28](https://github.com/JFrancoG/SmartShoppingList/issues/28): aplicar el sistema de diseño a Añadir, Comprar y Ajustes; mostrar el nombre real del grupo arriba; mover cuenta, invitaciones y cierre de sesión a Ajustes; usar iconos accesibles para micro/editar/quitar y cápsulas primary para acciones explícitas.
+
+Refinamiento de Añadir acordado el 26: con Apple Intelligence disponible, el inicio muestra la pregunta y el micro centrados. Terminar el dictado interpreta automáticamente y presenta una propuesta con productos, cantidades y tiendas mediante Confirmar/Editar. Confirmar envía sólo ese lote; Editar, ausencia de productos, rechazo o error muestran texto, filas y entrada manual para recuperar el flujo. Reinterpretar sólo sustituye sugerencias intactas identificadas durante la sesión y conserva correcciones y otros borradores. La interpretación nunca envía por sí sola. Las tiendas exactas se resuelven sin otra revisión y la ambigüedad usa la elección existente. Persistencia, reintentos y confirmación del servidor siguen vigentes; el éxito conserva Ver lista/Cerrar aviso. El formulario manual envía sólo su producto, los dispositivos sin modelo priorizan esa entrada y Comprar conserva su consulta de tiendas por voz.
+
+El 26 el usuario acepta el acabado visual observado y confirma el alta manual de una tienda nueva (Lidl) con su producto. Autoriza el atajo opcional «Ver lista» desde la confirmación de una sola tienda al comprobar que reutiliza la selección y carga de Comprar. Se usa el ID confirmado por el servidor y se conserva la posibilidad de cerrar y seguir añadiendo; no requiere otro endpoint ni una pantalla nueva. La prueba física del atajo se registra por separado.
+
+Después confirma el funcionamiento de «Ver lista» y pide una jerarquía visual distinta para acción y cierre, los iconos de Cerrar a la izquierda y Refrescar a la derecha en Ajustes, contador centrado y «Confirmar compra · N» como acción única sin encabezado redundante. La ayuda inferior lleva un icono informativo. El límite de nombres pasa a 60 para productos y 40 para tiendas nuevas, con ayuda sólo ante exceso; este ajuste exige sincronizar validación iOS/servidor y preservar recibos históricos. Su activación alojada se documentará separadamente de la instalación visual.
+
+La entrada universal por voz, el borrado/compra por órdenes y App Intents quedan fuera de esta unidad. El backend sólo cambia para sincronizar los nuevos límites de nombres, conservando los recibos anteriores; su despliegue queda identificado en la validación. La [validación de #28](validation/issue-28-shopping-ui.md) registra compilación, regresiones, previews e interacción física por separado. El siguiente paso tras integrar la UI es comprobar los recorridos cambiados y resolver defectos que bloqueen la entrega, reservando el resto del tiempo para documentación, demostración y congelado; no se amplía la funcionalidad por terminar antes el acabado visual.
+
+El 26 queda aceptada la ronda focalizada de UI: recorridos físicos en iPhone 11 y 14, visibilidad de cambios al refrescar el otro dispositivo, errores por nombres demasiado largos y texto máximo en las pantallas probadas. Se suma la evidencia del iPad y la interpretación real con Apple Intelligence registrada en #28. Quedan pendientes el despliegue de los límites del servidor y la entrega Git de la rama; esta aceptación no cierra por sí sola la issue ni acredita el MVP completo. El intento opcional de App Intents #10 se valorará después de entregar esta unidad, según el margen restante.
 
 ### Alcance de comprobación de Comprar: decisión del 25 de septiembre
 

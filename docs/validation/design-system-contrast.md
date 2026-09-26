@@ -2,9 +2,9 @@
 
 Informe generado desde las tablas de [tokens y pares](../design-system.md). No editar a mano.
 
-Resultado: **PASA** · 236/236 comprobaciones con umbral; 12 mediciones decorativas sin umbral.
+Resultado: **PASA** · 244/244 comprobaciones con umbral; 12 mediciones decorativas sin umbral.
 
-Huella SHA-256 de las tablas: `7f19843e3e7c56b8de5abcf2d1923d374f5575e14a67cd331af6e6b7133395f6`.
+Huella SHA-256 de las tablas: `37dd6bd4b1ebe4be724e8352a9f0ec80b72f5a45162f78ca76e90d8fb5b83e55`.
 
 ## Método y alcance
 
@@ -23,7 +23,7 @@ Sólo se acreditan estos pares nominales y su correspondencia con los archivos d
 | Light | 5.43:1 | text-tertiary / surface-muted | 3.73:1 |
 | Dark | 6.23:1 | text-tertiary / surface-muted | 4.58:1 |
 | HC Light | 8.22:1 | text-tertiary / surface-muted | 7.78:1 |
-| HC Dark | 11.33:1 | danger / surface-muted | 10.65:1 |
+| HC Dark | 10.66:1 | danger / primary-soft | 10.65:1 |
 
 ## Todos los pares
 
@@ -61,6 +61,8 @@ Cada celda sin marca de fallo supera su umbral; en filas decorativas el resultad
 | text-primary | danger-soft | text | 12.96:1 | 12.40:1 | 18.16:1 | 16.35:1 |
 | text-primary | info-soft | text | 13.12:1 | 11.35:1 | 18.64:1 | 15.63:1 |
 | primary | primary-soft | text | 5.60:1 | 7.17:1 | 8.77:1 | 11.61:1 |
+| text-secondary | primary-soft | text | 6.65:1 | 7.56:1 | 11.62:1 | 12.74:1 |
+| danger | primary-soft | text | 5.53:1 | 6.94:1 | 8.87:1 | 10.66:1 |
 | success | success-soft | text | 6.24:1 | 7.43:1 | 9.01:1 | 11.78:1 |
 | warning | warning-soft | text | 6.39:1 | 8.21:1 | 9.80:1 | 11.83:1 |
 | danger | danger-soft | text | 5.50:1 | 7.87:1 | 8.77:1 | 11.34:1 |

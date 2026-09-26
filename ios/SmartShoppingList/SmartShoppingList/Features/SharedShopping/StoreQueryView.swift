@@ -5,13 +5,16 @@ struct StoreQueryView: View {
     @AccessibilityFocusState private var messageIsFocused: Bool
     @Bindable var viewModel: StoreQueryViewModel
     let shared: SharedShoppingViewModel
+    var showsMicrophone = true
 
     var body: some View {
         Group {
-            if viewModel.activity == .idle {
+            if showsMicrophone && viewModel.activity == .idle {
                 Button("Find store by voice", systemImage: "mic") {
                     shared.startStoreDictation()
                 }
+                .labelStyle(.iconOnly)
+                .buttonStyle(ShoppingIconButtonStyle())
                 .disabled(!shared.canQueryStore)
             }
             if shared.isStoreQueryVisible {
@@ -30,6 +33,7 @@ struct StoreQueryView: View {
                             await shared.finishStoreDictation()
                         }
                     }
+                    .buttonStyle(ShoppingActionButtonStyle())
                 } else if viewModel.activity != .idle {
                     ProgressView(viewModel.activity == .preparing ? "Preparing microphone…" : "Stopping dictation…")
                 } else {
@@ -38,13 +42,17 @@ struct StoreQueryView: View {
                             await shared.searchStoreQuery()
                         }
                     }
+                    .buttonStyle(ShoppingActionButtonStyle())
                     .disabled(!shared.canQueryStore || !viewModel.canSearch)
                 }
                 Button("Cancel", role: .cancel) {
                     shared.closeStoreQuery()
                 }
+                .buttonStyle(ShoppingActionButtonStyle())
                 if let message = viewModel.message {
                     Text(message)
+                        .foregroundStyle(.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
                         .accessibilityFocused($messageIsFocused)
                 }
                 ForEach(viewModel.matches) { store in

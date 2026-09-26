@@ -194,6 +194,21 @@ struct SharedPreviewFixture {
 
 @MainActor
 enum SharedPreviewSupport {
+    #if DEBUG
+    static func aiValidationViewModel(emptyInterpretation: Bool) throws -> SharedShoppingViewModel {
+        let fixture = try SharedPreviewFixture.sample()
+        let api = PreviewSharedShoppingAPI(fixture: fixture, user: fixture.session.user)
+        api.permitsAdditions = true
+        return SharedShoppingViewModel(
+            api: api,
+            configuration: fixture.configuration,
+            credentials: MemorySharedCredentialStore(session: fixture.session),
+            draft: DraftPreviewSupport.aiValidationViewModel(emptyInterpretation: emptyInterpretation),
+            storeQuery: StoreQueryViewModel(speech: PreviewStoreQuerySpeech())
+        )
+    }
+    #endif
+
     static func viewModel(
         fixture: SharedPreviewFixture,
         state: SharedPreviewState,
@@ -272,9 +287,22 @@ enum SharedPreviewSupport {
 }
 
 @MainActor
-private struct PreviewSharedShoppingAPI: SharedShoppingAPI {
+private final class PreviewSharedShoppingAPI: SharedShoppingAPI {
     let fixture: SharedPreviewFixture
     let user: SharedUser
+    private var storedStores: [SharedStore]
+    private var storedItems: [SharedItem]
+    #if DEBUG
+    var permitsAdditions = false
+    private var additions: [UUID: [SharedItem]] = [:]
+    #endif
+
+    init(fixture: SharedPreviewFixture, user: SharedUser) {
+        self.fixture = fixture
+        self.user = user
+        storedStores = fixture.stores
+        storedItems = fixture.items
+    }
 
     // Preview actions never initiate native Apple authorization or perform remote mutations.
     func createChallenge() async throws -> SharedChallenge { throw SharedAPIError.configuration }
@@ -284,7 +312,9 @@ private struct PreviewSharedShoppingAPI: SharedShoppingAPI {
     func createGroup(_ request: CreateGroupRequest, token: String) async throws -> SharedGroup {
         throw SharedAPIError.configuration
     }
-    func stores(groupID: UUID, token: String) async throws -> [SharedStore] { fixture.stores }
+    func stores(groupID: UUID, token: String) async throws -> [SharedStore] {
+        await MainActor.run { storedStores }
+    }
     func createInvitation(groupID: UUID, token: String) async throws -> CreatedInvitation {
         fixture.createdInvitation
     }
@@ -299,7 +329,45 @@ private struct PreviewSharedShoppingAPI: SharedShoppingAPI {
         throw SharedAPIError.configuration
     }
     func addItems(_ request: AddItemsRequest, groupID: UUID, token: String) async throws -> [SharedItem] {
+        #if DEBUG
+        return try await MainActor.run {
+            guard permitsAdditions, groupID == fixture.group.id else { throw SharedAPIError.transport }
+            if let result = additions[request.operationId] { return result }
+            let result = try request.items.map { entry in
+                let storeID: UUID
+                switch entry.store {
+                case .existing(let id):
+                    guard storedStores.contains(where: { $0.id == id }) else { throw SharedAPIError.invalidResponse }
+                    storeID = id
+                case .newName(let name):
+                    if let store = storedStores.first(where: { $0.name.caseInsensitiveCompare(name) == .orderedSame }) {
+                        storeID = store.id
+                    } else {
+                        storeID = UUID()
+                        storedStores.append(SharedStore(id: storeID, groupId: groupID, name: name))
+                    }
+                }
+                return SharedItem(
+                    id: UUID(),
+                    groupId: groupID,
+                    storeId: storeID,
+                    name: entry.name,
+                    quantity: entry.quantity,
+                    status: "pending",
+                    version: 1,
+                    createdBy: user.id,
+                    createdAt: fixture.group.createdAt,
+                    purchasedBy: nil,
+                    purchasedAt: nil
+                )
+            }
+            storedItems.append(contentsOf: result)
+            additions[request.operationId] = result
+            return result
+        }
+        #else
         throw SharedAPIError.transport
+        #endif
     }
     func finalizePurchase(
         _ request: FinalizePurchaseRequest,
@@ -314,7 +382,7 @@ private struct PreviewSharedShoppingAPI: SharedShoppingAPI {
     }
 
     func pendingItems(groupID: UUID, storeID: UUID, token: String) async throws -> [SharedItem] {
-        fixture.items.filter { $0.storeId == storeID }
+        await MainActor.run { storedItems.filter { $0.storeId == storeID } }
     }
 }
 

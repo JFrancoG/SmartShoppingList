@@ -3,7 +3,7 @@
   "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
   "info": {
     "title": "SmartShoppingList · contrato MVP",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "description": "Contrato de desarrollo de la issue #2. No describe endpoints desplegados. Las reglas transaccionales, identidad y ejemplos están en docs/contracts/mvp-api.md. Origen .example deliberadamente ficticio."
   },
   "servers": [
@@ -1187,7 +1187,8 @@
           "name": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 80
+            "maxLength": 80,
+            "description": "Responses preserve existing names up to the historical 80-scalar limit without truncation. New store names are limited to 40."
           }
         },
         "required": [
@@ -1217,7 +1218,8 @@
               "newName": {
                 "type": "string",
                 "minLength": 1,
-                "maxLength": 80
+                "maxLength": 40,
+                "description": "Maximum for new writes. Use an existing store ID for legacy names longer than 40 Unicode scalars."
               }
             },
             "required": [
@@ -1243,7 +1245,8 @@
           "name": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 160
+            "maxLength": 160,
+            "description": "Responses preserve existing names up to the historical 160-scalar limit without truncation. New and edited names are limited to 60."
           },
           "quantity": {
             "anyOf": [
@@ -1350,7 +1353,8 @@
           "name": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 160
+            "maxLength": 60,
+            "description": "Maximum for new writes. Confirmed legacy operations retain their original idempotent response; see mvp-api.md."
           },
           "quantity": {
             "anyOf": [
@@ -1485,7 +1489,8 @@
           "name": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 160
+            "maxLength": 60,
+            "description": "Maximum for new writes. Confirmed legacy operations retain their original idempotent response; see mvp-api.md."
           },
           "quantity": {
             "anyOf": [

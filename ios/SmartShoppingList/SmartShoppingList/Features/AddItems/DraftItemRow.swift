@@ -16,69 +16,101 @@ struct DraftItemRow: View {
     let onEdit: () -> Void
     let onRemove: () -> Void
 
-    private var actionsLayout: AnyLayout {
+    private var layout: AnyLayout {
         if dynamicTypeSize.isAccessibilitySize {
             AnyLayout(VStackLayout(alignment: .leading, spacing: sectionSpacing))
         } else {
-            AnyLayout(HStackLayout())
+            AnyLayout(HStackLayout(alignment: .center, spacing: sectionSpacing))
         }
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: sectionSpacing) {
+        layout {
             VStack(alignment: .leading, spacing: detailSpacing) {
                 if item.name.isEmpty {
                     Text("Unnamed product")
                         .font(.headline)
+                        .foregroundStyle(.textPrimary)
                 } else {
                     Text(item.name)
                         .font(.headline)
+                        .foregroundStyle(.textPrimary)
                 }
 
-                if item.quantity.isEmpty {
-                    Text("Quantity not specified")
-                        .foregroundStyle(.secondary)
-                } else {
-                    Text("Quantity: \(item.quantity)")
-                        .foregroundStyle(.secondary)
+                if !item.quantity.isEmpty {
+                    Text(item.quantity)
+                        .font(.subheadline)
+                        .monospacedDigit()
+                        .foregroundStyle(.textSecondary)
+                        .accessibilityLabel("Quantity: \(item.quantity)")
                 }
 
                 if item.store.isEmpty {
                     Label("Specify a store", systemImage: "exclamationmark.circle")
+                        .font(.subheadline)
+                        .foregroundStyle(.warning)
                 } else {
-                    Label(item.store, systemImage: "storefront")
+                    Label {
+                        Text(item.store)
+                    } icon: {
+                        Image(systemName: "storefront")
+                            .accessibilityHidden(true)
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(.textSecondary)
                 }
             }
             .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityElement(children: .combine)
+            .accessibilityValue(item.quantity.isEmpty ? Text("Quantity not specified") : Text(""))
 
-            actionsLayout {
+            HStack(spacing: 8) {
                 Button("Edit", systemImage: "pencil") {
                     onEdit()
                 }
-                .fixedSize(horizontal: false, vertical: true)
+                .labelStyle(.iconOnly)
+                .buttonStyle(ShoppingIconButtonStyle())
                 .accessibilityLabel("Edit \(item.name)")
                 .accessibilityFocused(accessibilityFocus, equals: .edit(item.id))
                 .id(DraftItemAccessibilityTarget.edit(item.id))
-                if !dynamicTypeSize.isAccessibilitySize {
-                    Spacer()
-                }
                 Button("Remove", systemImage: "trash", role: .destructive) {
                     onRemove()
                 }
-                .fixedSize(horizontal: false, vertical: true)
+                .labelStyle(.iconOnly)
+                .buttonStyle(ShoppingIconButtonStyle())
                 .accessibilityLabel("Remove \(item.name)")
             }
-            .buttonStyle(.borderless)
+            .fixedSize(horizontal: true, vertical: false)
         }
         .lineLimit(nil)
         .padding(.vertical, verticalPadding)
     }
 }
 
-#Preview(traits: .shoppingDraft) {
+#Preview("Draft products", traits: .shoppingDraft) {
     @Previewable @AccessibilityFocusState var focusedControl: DraftItemAccessibilityTarget?
     Form {
-        DraftItemRow(item: DraftPreviewSupport.items[0], accessibilityFocus: $focusedControl) {} onRemove: {}
+        Section {
+            ForEach(DraftPreviewSupport.items) { item in
+                DraftItemRow(item: item, accessibilityFocus: $focusedControl) {} onRemove: {}
+            }
+        }
+        .listRowBackground(Color.surface)
     }
+    .modifier(ShoppingFormStyle())
+}
+
+#Preview("Draft products AX5", traits: .shoppingDraft) {
+    @Previewable @AccessibilityFocusState var focusedControl: DraftItemAccessibilityTarget?
+    Form {
+        Section {
+            ForEach(DraftPreviewSupport.items) { item in
+                DraftItemRow(item: item, accessibilityFocus: $focusedControl) {} onRemove: {}
+            }
+        }
+        .listRowBackground(Color.surface)
+    }
+    .modifier(ShoppingFormStyle())
+    .environment(\.dynamicTypeSize, .accessibility5)
 }

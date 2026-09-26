@@ -6,6 +6,7 @@ import Security
 struct DraftStoreChoice: Identifiable {
     let id: String
     var selection = ""
+    var needsClarification = false
 }
 
 enum StoreItemsState {
@@ -17,6 +18,11 @@ enum StoreItemsState {
 
 @Observable @MainActor
 final class SharedShoppingViewModel {
+    private struct ReviewOwner: Equatable {
+        let userID: UUID
+        let groupID: UUID
+    }
+
     private(set) var storeItemsState = StoreItemsState.notLoaded
     private(set) var session: SharedSession?
     private(set) var pendingInvitation: PendingInvitation?
@@ -32,9 +38,15 @@ final class SharedShoppingViewModel {
     private(set) var hasLoaded = false
     private(set) var isBusy = false
     private(set) var sessionIsVerified = false
-    private(set) var notice: LocalizedStringResource?
+    private(set) var notice: LocalizedStringResource? {
+        didSet {
+            noticeStoreDestination = nil
+        }
+    }
+    private var noticeStoreDestination: ShoppingNotice.StoreDestination?
     private(set) var challenge: SharedChallenge?
     private(set) var reviewedItems: [PreparedDraftItem] = []
+    private var reviewOwner: ReviewOwner?
     var storeChoices: [DraftStoreChoice] = []
     var selectedStoreID: UUID? {
         didSet {
@@ -114,7 +126,9 @@ final class SharedShoppingViewModel {
     var draftIsLocked: Bool { !hasLoaded || pendingOperation != nil || isBusy || isReviewPresented }
     var isCreator: Bool { group?.creatorUserId == session?.user.id && group != nil }
     var canConfirmReview: Bool {
-        canMutate && !reviewedItems.isEmpty && storeChoices.allSatisfy { !$0.selection.isEmpty }
+        canMutate && reviewOwner != nil && reviewOwner?.userID == session?.user.id
+            && reviewOwner?.groupID == group?.id && !reviewedItems.isEmpty
+            && storeChoices.allSatisfy { !$0.selection.isEmpty }
     }
     var canRetryOperation: Bool {
         !isBusy && sessionIsVerified && pendingOperation?.userID == session?.user.id && !storageFailed
@@ -337,6 +351,121 @@ final class SharedShoppingViewModel {
         }
     }
 
+    /// The visible editable summary is the confirmation surface for this explicit Add action.
+    func addDraftItems() async {
+        guard canMutate, group != nil else { return }
+        draft.reviewDraft()
+        guard draft.preparedItems != nil else { return }
+        let snapshot = ShoppingDraftSnapshot(text: draft.text, items: draft.items)
+        await prepareInlineSubmission(snapshot)
+        if canConfirmReview {
+            await confirmReviewedBatch()
+        }
+    }
+
+    /// Only the manually entered row joins this operation; unrelated draft rows keep their own intent.
+    func addManualItem() async {
+        guard canMutate, group != nil, let item = draft.saveEditor(closeEditor: false) else { return }
+        await prepareInlineSubmission(ShoppingDraftSnapshot(items: [item]))
+        if canConfirmReview {
+            await confirmReviewedBatch()
+        }
+    }
+
+    var draftConfirmationNotice: ShoppingNotice? {
+        guard let proposal = draft.interpretationProposal, let session, let group, sessionIsVerified else { return nil }
+        return ShoppingNotice(
+            source: .draftConfirmation,
+            message: SharedAdditionMessage.proposed(items: proposal.snapshot.items),
+            draftConfirmation: .init(proposalID: proposal.id, userID: session.user.id, groupID: group.id)
+        )
+    }
+
+    /// Confirmation consumes only the displayed interpretation, never unrelated draft rows.
+    func confirmInterpretationProposal(_ snapshot: ShoppingNotice) async {
+        guard canMutate, draftConfirmationNotice == snapshot, let reference = snapshot.draftConfirmation,
+              let source = draft.takeInterpretationProposal(id: reference.proposalID) else { return }
+        await prepareInlineSubmission(source)
+        guard session?.user.id == reference.userID, group?.id == reference.groupID else {
+            draft.revealRecoveryControls()
+            return
+        }
+        if canConfirmReview {
+            await confirmReviewedBatch()
+        } else if reviewSnapshot == source, hasStoreClarifications() {
+            draft.revealRecoveryControls()
+            isReviewPresented = true
+        } else {
+            draft.revealRecoveryControls()
+        }
+        if source.items.contains(where: { draft.items.contains($0) }) {
+            draft.revealRecoveryControls()
+        }
+    }
+
+    func editInterpretationProposal(_ snapshot: ShoppingNotice) {
+        guard canMutate, draftConfirmationNotice == snapshot, let reference = snapshot.draftConfirmation else { return }
+        draft.editInterpretationProposal(id: reference.proposalID)
+    }
+
+    private func prepareInlineSubmission(_ snapshot: ShoppingDraftSnapshot) async {
+        guard canMutate, let api, let session, let group else { return }
+        // Clear stale preparation before a fetch so failure cannot submit a previous summary.
+        let previousChoices = storeChoices
+        reviewedItems = []
+        reviewOwner = nil
+        reviewSnapshot = nil
+        storeChoices = []
+        await performAction {
+            do {
+                let prepared = try ShoppingDraftRules.prepare(snapshot.items)
+                let fetchedStores = try await api.stores(groupID: group.id, token: session.accessToken)
+                guard self.session?.user.id == session.user.id, self.group?.id == group.id,
+                      sessionIsVerified else { return }
+                stores = fetchedStores
+                reviewedItems = prepared
+                reviewSnapshot = snapshot
+                reviewOwner = ReviewOwner(userID: session.user.id, groupID: group.id)
+                var seen = Set<String>()
+                storeChoices = prepared.compactMap { item in
+                    guard seen.insert(item.store).inserted else { return nil }
+                    let key = Self.storeNameKey(item.store)
+                    let matches = stores.filter { Self.storeNameKey($0.name) == key }
+                    let selection: String
+                    if matches.count == 1, let match = matches.first {
+                        selection = match.id.uuidString
+                    } else if matches.isEmpty {
+                        selection = "new"
+                    } else {
+                        let previous = previousChoices.first { $0.id == item.store }?.selection
+                        selection = matches.contains { $0.id.uuidString == previous } ? previous ?? "" : ""
+                    }
+                    return DraftStoreChoice(id: item.store, selection: selection, needsClarification: matches.count > 1)
+                }
+            } catch {
+                await handle(error)
+            }
+        }
+    }
+
+    func needsStoreClarification(_ choice: DraftStoreChoice, storeName: String? = nil) -> Bool {
+        choice.needsClarification && (storeName == nil || choice.id == storeName.flatMap(ShoppingDraftRules.normalized))
+    }
+
+    func hasStoreClarifications(for storeName: String? = nil) -> Bool {
+        storeChoices.contains { needsStoreClarification($0, storeName: storeName) }
+    }
+
+    func storeCandidates(for name: String) -> [SharedStore] {
+        let key = Self.storeNameKey(name)
+        return stores.filter { Self.storeNameKey($0.name) == key }
+    }
+
+    /// Match the backend's case-folded exact names, preserving accents and punctuation.
+    private static func storeNameKey(_ name: String) -> String? {
+        ShoppingDraftRules.normalized(name)?.folding(options: [.caseInsensitive], locale: Locale(identifier: "und"))
+    }
+
     func prepareReview() async {
         guard canMutate, group != nil, let api, let session, let group else { return }
         draft.reviewDraft()
@@ -346,6 +475,7 @@ final class SharedShoppingViewModel {
                 stores = try await api.stores(groupID: group.id, token: session.accessToken)
                 reviewedItems = prepared
                 reviewSnapshot = ShoppingDraftSnapshot(text: draft.text, items: draft.items)
+                reviewOwner = ReviewOwner(userID: session.user.id, groupID: group.id)
                 var seen = Set<String>()
                 storeChoices = prepared.compactMap { item in
                     seen.insert(item.store).inserted ? DraftStoreChoice(id: item.store) : nil
@@ -384,6 +514,7 @@ final class SharedShoppingViewModel {
                 try await credentials.saveOperation(operation)
                 pendingOperation = operation
                 isReviewPresented = false
+                draft.cancelEditor()
                 await performPendingOperation()
             } catch {
                 notice = SharedErrorMessage.message(for: error)
@@ -406,6 +537,9 @@ final class SharedShoppingViewModel {
         guard let api, let session, let operation = pendingOperation, operation.userID == session.user.id else {
             return
         }
+        let submissionStores = stores
+        var additionNotice: LocalizedStringResource?
+        var additionDestination: ShoppingNotice.StoreDestination?
         do {
             switch operation {
             case .changeItem(_, let original, let request):
@@ -419,7 +553,19 @@ final class SharedShoppingViewModel {
                 let group = try await api.createGroup(request, token: session.accessToken)
                 try await updateGroup(group)
             case .addItems(_, let groupID, let request, let sourceDraft):
-                _ = try await api.addItems(request, groupID: groupID, token: session.accessToken)
+                let addedItems = try await api.addItems(request, groupID: groupID, token: session.accessToken)
+                let storeIDs = Set(addedItems.map(\.storeId))
+                if storeIDs.count == 1, let storeID = storeIDs.first {
+                    additionDestination = ShoppingNotice.StoreDestination(
+                        operationID: request.operationId,
+                        userID: session.user.id,
+                        groupID: groupID,
+                        storeID: storeID
+                    )
+                }
+                additionNotice = SharedAdditionMessage.confirmed(
+                    request: request, sourceDraft: sourceDraft, stores: submissionStores
+                )
                 guard await draft.consumeConfirmedItems(sourceDraft.items) else {
                     notice = "The server confirmed the batch, but the result still needs to be saved on this device. Retry to complete the same submission."
                     return
@@ -453,6 +599,13 @@ final class SharedShoppingViewModel {
             } else if case .changeItem = operation {
                 if !refreshed {
                     notice = "The product change is confirmed, but the list could not be refreshed. Refresh before continuing."
+                }
+            } else if let additionNotice {
+                notice = additionNotice
+                if refreshed, let destination = additionDestination,
+                   destination.userID == self.session?.user.id, destination.groupID == group?.id,
+                   stores.contains(where: { $0.id == destination.storeID && $0.groupId == destination.groupID }) {
+                    noticeStoreDestination = destination
                 }
             } else {
                 notice = "The operation is confirmed in the group."
@@ -639,12 +792,13 @@ final class SharedShoppingViewModel {
     }
 
     var presentedNotice: ShoppingNotice? {
-        notice.map { ShoppingNotice(source: .group, message: $0) }
+        notice.map { ShoppingNotice(source: .group, message: $0, storeDestination: noticeStoreDestination) }
     }
 
     var canPresentRootNotice: Bool {
         !isReviewPresentationActive && !isInvitationsPresentationActive
             && !isItemEditorPresentationActive && !draft.isEditorPresentationActive && storeQuery.activity == .idle
+            && (noticeStoreDestination == nil || !isBusy)
     }
 
     func reviewPresentationDidDismiss() {
@@ -656,8 +810,19 @@ final class SharedShoppingViewModel {
     }
 
     func dismissPresentedNotice(_ snapshot: ShoppingNotice) {
-        guard snapshot.source == .group, notice == snapshot.message else { return }
+        guard presentedNotice == snapshot else { return }
         notice = nil
+    }
+
+    func openNoticeStore(_ snapshot: ShoppingNotice) -> Bool {
+        guard canMutate, presentedNotice == snapshot, let destination = snapshot.storeDestination,
+              destination.userID == session?.user.id, destination.groupID == group?.id,
+              stores.contains(where: { $0.id == destination.storeID && $0.groupId == destination.groupID }) else {
+            return false
+        }
+        closeStoreQuery()
+        selectedStoreID = destination.storeID
+        return true
     }
 
     func dismissNotice() {
@@ -796,6 +961,11 @@ final class SharedShoppingViewModel {
     }
 
     private func clearSessionPresentation() {
+        reviewedItems = []
+        reviewSnapshot = nil
+        reviewOwner = nil
+        storeChoices = []
+        noticeStoreDestination = nil
         closeStoreQuery()
         storeQuery.clear()
         editingItem = nil
@@ -817,6 +987,17 @@ final class SharedShoppingViewModel {
 
 #if DEBUG
 extension SharedShoppingViewModel {
+    func seedStoreClarificationPreview() {
+        guard let store = stores.first else { return }
+        let second = SharedStore(
+            id: UUID(uuid: (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 34)),
+            groupId: store.groupId,
+            name: store.name.uppercased()
+        )
+        stores = [store, second]
+        storeChoices = [DraftStoreChoice(id: store.name, needsClarification: true)]
+    }
+
     /// Preview context caches values; every rendered preview owns a separately seeded model and dependencies.
     convenience init(
         preview: SharedPreviewPresentation,
@@ -879,7 +1060,7 @@ extension SharedShoppingViewModel {
             && (1...50).contains(purchaseSelection.count) && !purchaseSelectionNeedsReview
     }
 
-    var purchaseActionTitle: LocalizedStringResource { "Finish shopping · \(purchaseSelection.count)" }
+    var purchaseActionTitle: LocalizedStringResource { "Confirm purchase · \(purchaseSelection.count)" }
 
     func isPurchaseSelected(_ item: SharedItem) -> Bool {
         purchaseSelection.contains { $0.id == item.id }
@@ -1018,6 +1199,20 @@ extension SharedShoppingViewModel {
         editNeedsReview || latestEditingItem != editingItem
     }
 
+    var editHasLengthIssue: Bool {
+        editLengthMessage(for: .name) != nil || editLengthMessage(for: .quantity) != nil
+            || editLengthMessage(for: .store) != nil
+    }
+
+    func editLengthMessage(for field: DraftField) -> LocalizedStringResource? {
+        let value = switch field {
+        case .name: editName
+        case .quantity: editQuantity
+        case .store: editStoreID == nil ? editNewStore : ""
+        }
+        return ShoppingDraftRules.exceedsLength(value, field: field) ? ShoppingDraftRules.lengthMessage(for: field) : nil
+    }
+
     var editValidationMessage: LocalizedStringResource? {
         if ShoppingDraftRules.normalized(editName)?.isEmpty != false {
             return "Enter a product name."
@@ -1031,30 +1226,22 @@ extension SharedShoppingViewModel {
         }) {
             return "Remove unsupported control characters from the product details."
         }
-        let nameCount = ShoppingDraftRules.normalized(editName)?.unicodeScalars.count ?? 161
-        let quantityCount = ShoppingDraftRules.normalized(editQuantity)?.unicodeScalars.count ?? 81
-        let storeCount = ShoppingDraftRules.normalized(editNewStore)?.unicodeScalars.count ?? 81
-        if max(editName.unicodeScalars.count, nameCount) > 160
-            || max(editQuantity.unicodeScalars.count, quantityCount) > 80
-            || (editStoreID == nil && max(editNewStore.unicodeScalars.count, storeCount) > 80) {
-            return "Shorten the name to 160 characters and the quantity or store to 80 characters."
+        if let message = editLengthMessage(for: .name) ?? editLengthMessage(for: .quantity) ?? editLengthMessage(for: .store) {
+            return message
         }
         return nil
     }
 
     private var preparedItemEdit: SharedNewItem? {
         guard editValidationMessage == nil else { return nil }
-        guard let name = ShoppingDraftRules.normalized(editName), (1...160).contains(name.unicodeScalars.count),
-              editName.unicodeScalars.count <= 160,
-              let quantity = ShoppingDraftRules.normalized(editQuantity), quantity.unicodeScalars.count <= 80,
-              editQuantity.unicodeScalars.count <= 80 else { return nil }
+        guard let name = ShoppingDraftRules.normalized(editName), !name.isEmpty,
+              let quantity = ShoppingDraftRules.normalized(editQuantity) else { return nil }
         let store: SharedStoreReference
         if let editStoreID {
             guard stores.contains(where: { $0.id == editStoreID }) else { return nil }
             store = .existing(editStoreID)
         } else {
-            guard let name = ShoppingDraftRules.normalized(editNewStore), (1...80).contains(name.unicodeScalars.count),
-                  editNewStore.unicodeScalars.count <= 80 else { return nil }
+            guard let name = ShoppingDraftRules.normalized(editNewStore), !name.isEmpty else { return nil }
             store = .newName(name)
         }
         return SharedNewItem(name: name, quantity: quantity.isEmpty ? nil : quantity, store: store)

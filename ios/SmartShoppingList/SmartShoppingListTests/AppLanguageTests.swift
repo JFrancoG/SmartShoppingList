@@ -23,9 +23,9 @@ struct AppLanguageTests {
 
     @MainActor
     @Test(arguments: [
-        ("en-GB", "Interpretation is unavailable in the selected language. You can continue manually."),
-        ("en-US", "Interpretation is unavailable in the selected language. You can continue manually."),
-        ("es", "La interpretación en el idioma seleccionado no está disponible. Puedes continuar a mano.")
+        ("en-GB", "Apple Intelligence does not support the app’s current language."),
+        ("en-US", "Apple Intelligence does not support the app’s current language."),
+        ("es", "Apple Intelligence no admite el idioma actual de la app.")
     ])
     func `Unavailable language offers localized manual recovery without translating draft data`(
         localeIdentifier: String, expectedMessage: String

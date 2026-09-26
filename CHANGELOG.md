@@ -4,6 +4,8 @@
 
 ### Added
 
+- 2026-09-26 | ✨ feat(ui): streamline shopping flows and styling
+
 - 2026-09-25 | ✨ feat(shopping): add inline store voice queries
 
 - 2026-09-25 | ✨ feat(shopping): edit and cancel pending items

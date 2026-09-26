@@ -72,6 +72,8 @@ struct ShoppingNewItem: Sendable {
     private let normalizedName: String
     private let normalizedQuantity: String?
     private let confirmedStore: Store
+    private let receivedNameLength: Int
+    private let receivedStoreNameLength: Int?
 
     var name: String { normalizedName }
     var quantity: String? { normalizedQuantity }
@@ -79,6 +81,16 @@ struct ShoppingNewItem: Sendable {
 
     var json: APIJSON {
         .object(["name": .string(name), "quantity": .optional(quantity), "store": store.json])
+    }
+
+    /// Validate new writes after receipt lookup so confirmed legacy submissions can still replay.
+    func validateNewWriteLimits() throws {
+        guard receivedNameLength <= 60, name.unicodeScalars.count <= 60 else { throw APIProblem.invalidRequest }
+        if case .named(let name, _) = store {
+            guard let receivedStoreNameLength, receivedStoreNameLength <= 40, name.unicodeScalars.count <= 40 else {
+                throw APIProblem.invalidRequest
+            }
+        }
     }
 }
 
@@ -89,15 +101,21 @@ extension ShoppingNewItem {
             allowed: ["name", "quantity", "store"],
             required: ["name", "quantity", "store"]
         )
-        normalizedName = try ShoppingText.normalize(object.string("name"), maximum: 160)
+        let receivedName = try object.string("name")
+        receivedNameLength = receivedName.unicodeScalars.count
+        // Preserve the historical envelope for idempotent receipts; validateNewWriteLimits enforces 60/40.
+        normalizedName = try ShoppingText.normalize(receivedName, maximum: 160)
         normalizedQuantity = try object.optionalString("quantity").map { try ShoppingText.normalize($0, maximum: 80) }
         guard let value = object.values["store"] else { throw APIProblem.invalidRequest }
         let reference = try APIObject(value, allowed: ["id", "newName"], required: [])
         guard reference.values.count == 1 else { throw APIProblem.invalidRequest }
         if reference.values["id"] != nil {
             confirmedStore = .existing(try reference.uuid("id"))
+            receivedStoreNameLength = nil
         } else {
-            let name = try ShoppingText.normalize(reference.string("newName"), maximum: 80)
+            let receivedName = try reference.string("newName")
+            receivedStoreNameLength = receivedName.unicodeScalars.count
+            let name = try ShoppingText.normalize(receivedName, maximum: 80)
             confirmedStore = .named(name, key: try ShoppingText.storeKey(name))
         }
     }

@@ -85,17 +85,17 @@ struct ShoppingDraftTests {
     @Test
     func `Name limit counts Unicode scalars instead of grapheme clusters`() throws {
         let prepared = try #require(
-            ShoppingDraftRules.prepare([item(1, name: String(repeating: "👍🏽", count: 80))]).first
+            ShoppingDraftRules.prepare([item(1, name: String(repeating: "👍🏽", count: 30))]).first
         )
 
-        #expect(prepared.name.unicodeScalars.count == 160)
+        #expect(prepared.name.unicodeScalars.count == 60)
 
         #expect(throws: DraftValidationError.invalidField(itemID: identifier(1), field: .name, reason: .tooLong)) {
-            try ShoppingDraftRules.prepare([item(1, name: String(repeating: "👍🏽", count: 81))])
+            try ShoppingDraftRules.prepare([item(1, name: String(repeating: "👍🏽", count: 30) + "a")])
         }
     }
 
-    @Test(arguments: [String(repeating: " ", count: 160) + "a", String(repeating: "e\u{0301}", count: 81)])
+    @Test(arguments: [String(repeating: " ", count: 60) + "a", String(repeating: "e\u{0301}", count: 31)])
     func `Raw limits apply before whitespace removal or NFC composition`(rawName: String) {
         #expect(throws: DraftValidationError.invalidField(itemID: identifier(1), field: .name, reason: .tooLong)) {
             try ShoppingDraftRules.prepare([item(1, name: rawName)])
@@ -105,31 +105,31 @@ struct ShoppingDraftTests {
     @Test
     func `Normalized output must still fit when NFC expands scalars`() {
         #expect(throws: DraftValidationError.invalidField(itemID: identifier(1), field: .name, reason: .tooLong)) {
-            try ShoppingDraftRules.prepare([item(1, name: String(repeating: "\u{0344}", count: 81))])
+            try ShoppingDraftRules.prepare([item(1, name: String(repeating: "\u{0344}", count: 30) + "a")])
         }
     }
 
-    @Test(arguments: [33, 80])
+    @Test(arguments: [33, 40])
     func `Long combining sequences retain every scalar when prepared`(count: Int) throws {
         let prepared = try #require(
-            ShoppingDraftRules.prepare([item(1, name: String(repeating: "\u{0344}", count: count))]).first
+            ShoppingDraftRules.prepare([item(1, quantity: String(repeating: "\u{0344}", count: count))]).first
         )
         // U+0344 has the canonical decomposition U+0308 U+0301 and is excluded from composition.
         let expectedScalars: [UInt32] = (0..<count).flatMap { _ in [0x0308, 0x0301] }
 
-        #expect(prepared.name.unicodeScalars.map(\.value) == expectedScalars)
+        #expect(prepared.quantity?.unicodeScalars.map(\.value) == expectedScalars)
     }
 
     @Test
-    func `Store and literal quantity accept eighty scalars`() throws {
+    func `Store accepts forty scalars while literal quantity still accepts eighty`() throws {
         let prepared = try #require(
             ShoppingDraftRules.prepare([
-                item(1, quantity: String(repeating: "q", count: 80), store: String(repeating: "s", count: 80))
+                item(1, quantity: String(repeating: "q", count: 80), store: String(repeating: "s", count: 40))
             ]).first
         )
 
         #expect(prepared.quantity?.unicodeScalars.count == 80)
-        #expect(prepared.store.unicodeScalars.count == 80)
+        #expect(prepared.store.unicodeScalars.count == 40)
     }
 
     @Test(arguments: [DraftField.name, .quantity, .store])
@@ -143,13 +143,22 @@ struct ShoppingDraftTests {
         }
     }
 
-    @Test(arguments: [DraftField.quantity, .store])
-    func `Eighty one scalars exceed store and quantity limits`(field: DraftField) {
+    @Test(arguments: [(DraftField.name, 61), (.quantity, 81), (.store, 41)])
+    func `One scalar beyond a field limit rejects the whole batch`(field: DraftField, count: Int) {
         var draft = item(1)
-        set(String(repeating: "a", count: 81), for: field, in: &draft)
+        set(String(repeating: "a", count: count), for: field, in: &draft)
 
         #expect(throws: DraftValidationError.invalidField(itemID: identifier(1), field: field, reason: .tooLong)) {
             try ShoppingDraftRules.prepare([draft])
+        }
+    }
+
+    @Test(arguments: [String(repeating: "👍🏽", count: 20), String(repeating: "\u{0344}", count: 20)])
+    func `Unicode store names respect forty scalars before and after normalization`(store: String) throws {
+        let prepared = try #require(ShoppingDraftRules.prepare([item(1, store: store)]).first)
+        #expect(prepared.store.unicodeScalars.count == 40)
+        #expect(throws: DraftValidationError.invalidField(itemID: identifier(1), field: .store, reason: .tooLong)) {
+            try ShoppingDraftRules.prepare([item(1, store: store + "a")])
         }
     }
 

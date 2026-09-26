@@ -9,6 +9,16 @@ struct SmartShoppingListApp: App {
         if ProcessInfo.processInfo.arguments.contains("-shopping-notice-validation") {
             return nil
         }
+        if ProcessInfo.processInfo.arguments.contains("-shopping-ai-validation")
+            || ProcessInfo.processInfo.arguments.contains("-shopping-ai-empty-validation") {
+            return try? SharedPreviewSupport.aiValidationViewModel(
+                emptyInterpretation: ProcessInfo.processInfo.arguments.contains("-shopping-ai-empty-validation")
+            )
+        }
+        if ProcessInfo.processInfo.arguments.contains("-shopping-ui-validation") {
+            guard let fixture = try? SharedPreviewFixture.sample() else { return nil }
+            return SharedPreviewSupport.viewModel(fixture: fixture, state: .group)
+        }
         #endif
         return SharedAppFactory.make()
     }()

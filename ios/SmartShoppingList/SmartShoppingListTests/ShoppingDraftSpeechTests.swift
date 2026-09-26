@@ -39,8 +39,11 @@ struct ShoppingDraftSpeechTests {
         await secondCapture.value
     }
 
-    @Test(.timeLimit(.minutes(1)), arguments: ["", "  café molido\n", "pan en Aldi"])
-    func `Cancelling dictation restores and persists the exact previous text`(original: String) async throws {
+    @Test(.timeLimit(.minutes(1)), arguments: ["", "  café molido\n", "pan en Aldi"], [false, true])
+    func `Cancelling dictation restores and persists the exact previous text`(
+        original: String,
+        replacingText: Bool
+    ) async throws {
         let speech = ControlledDraftSpeech()
         let persistence = MemoryDraftPersistence()
         let item = ShoppingDraftItem(name: "arroz", quantity: "1 paquete", store: "Mercadona")
@@ -51,10 +54,14 @@ struct ShoppingDraftSpeechTests {
             persistence: persistence,
             initialDraft: draft
         )
-        let capture = model.startDictation()
+        let capture = model.startDictation(replacingText: replacingText)
+        #expect(model.shoppingText == (replacingText ? "" : original))
+        #expect(model.text == original)
         await waitForActivity(.recording, in: model)
+        #expect(model.shoppingText == (replacingText ? "" : original))
         try await speech.transcribe("leche en Lidl", capture: 1)
         await waitForText("leche en Lidl", in: model)
+        #expect(model.shoppingText == "leche en Lidl")
         await model.flushPersistence()
 
         await model.cancelDictation().value
@@ -62,6 +69,7 @@ struct ShoppingDraftSpeechTests {
         await model.flushPersistence()
 
         #expect(model.text == original)
+        #expect(model.shoppingText == original)
         #expect(model.activity == .idle)
         #expect(model.items == [item])
         let saved = try #require(try await persistence.load())
@@ -143,6 +151,169 @@ struct ShoppingDraftSpeechTests {
         #expect(prepared.map(\.name) == ["leche sin lactosa"])
         #expect(prepared.map(\.quantity) == ["3 briks"])
         #expect(prepared.map(\.store) == ["Día Norte"])
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func `Finishing recognized speech automatically appends an editable summary exactly once`() async throws {
+        let speech = ControlledDraftSpeech()
+        let interpreter = RecordingDraftInterpreter()
+        let original = ShoppingDraftItem(name: "Coffee", store: "Aldi")
+        let model = ShoppingDraftViewModel(
+            interpreter: interpreter,
+            speech: speech,
+            persistence: MemoryDraftPersistence(),
+            initialDraft: ShoppingDraftSnapshot(items: [original])
+        )
+        let capture = model.startDictation()
+        await waitForActivity(.recording, in: model)
+        try await speech.transcribe("bread and beer at Mercadona", capture: 1)
+        let finishing = model.finishDictation()
+        await speech.waitForFinishCalls(1)
+        try await speech.completeFinish(call: 1)
+        await finishing.value
+        await capture.value
+
+        #expect(interpreter.inputs == ["bread and beer at Mercadona"])
+        #expect(model.items.map(\.name) == ["Coffee", "Bread", "Beer"])
+        #expect(model.items.first == original)
+        #expect(model.activity == .idle)
+        let proposal = try #require(model.interpretationProposal)
+        #expect(proposal.snapshot.items.map(\.name) == ["Bread", "Beer"])
+        await model.finishDictation().value
+        #expect(interpreter.inputs.count == 1)
+        #expect(model.items.count == 3)
+        #expect(model.interpretationProposal == proposal)
+        let nextCapture = model.startDictation()
+        await waitForActivity(.recording, in: model)
+        #expect(model.takeInterpretationProposal(id: proposal.id) == nil)
+        await model.cancelDictation().value
+        await nextCapture.value
+        #expect(model.items.map(\.name) == ["Coffee", "Bread", "Beer"])
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func `Replacing a failed dictation interprets only the new phrase and permits a new confirmed intent`() async throws {
+        let speech = ControlledDraftSpeech()
+        let interpreter = RecordingDraftInterpreter(firstError: .noProducts)
+        let persistence = MemoryDraftPersistence()
+        let model = ShoppingDraftViewModel(
+            interpreter: interpreter,
+            speech: speech,
+            persistence: persistence,
+            initialDraft: ShoppingDraftSnapshot()
+        )
+        let phrases = ["what is the weather", "bread and beer at Mercadona", "bread and beer at Mercadona"]
+        for (index, phrase) in phrases.enumerated() {
+            let capture = model.startDictation(replacingText: true)
+            await waitForActivity(.recording, in: model)
+            try await speech.transcribe(phrase, capture: index + 1)
+            await waitForText(phrase, in: model)
+            let finish = model.finishDictation()
+            await speech.waitForFinishCalls(index + 1)
+            try await speech.completeFinish(call: index + 1)
+            await finish.value
+            await capture.value
+            if index == 0 {
+                #expect(model.notice != nil)
+                #expect(model.showsShoppingText)
+                #expect(model.showsManualEntry)
+                #expect(model.items.isEmpty)
+                #expect(model.interpretationProposal == nil)
+                model.dismissNotice()
+            } else {
+                let proposal = try #require(model.interpretationProposal)
+                #expect(proposal.snapshot.text == "bread and beer at Mercadona")
+                #expect(model.items.map(\.name) == ["Bread", "Beer"])
+                if index == 1 {
+                    let submitted = try #require(model.takeInterpretationProposal(id: proposal.id))
+                    #expect(await model.consumeConfirmedItems(submitted.items))
+                    #expect(!model.showsRecoveryControls)
+                }
+            }
+        }
+        await model.flushPersistence()
+        #expect(interpreter.inputs == phrases)
+        #expect(model.items.count == 2)
+        #expect(model.notice == nil)
+        let saved = try #require(try await persistence.load())
+        #expect(saved.text == "bread and beer at Mercadona")
+        #expect(saved.items.map(\.name) == ["Bread", "Beer"])
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func `A microphone failure from clean entry exposes text and manual recovery`() async throws {
+        let model = ShoppingDraftViewModel(
+            interpreter: RecordingDraftInterpreter(),
+            speech: ControlledDraftSpeech(startError: .permissionDenied),
+            persistence: MemoryDraftPersistence(),
+            initialDraft: ShoppingDraftSnapshot()
+        )
+        #expect(!model.showsManualEntry)
+
+        await model.startDictation(replacingText: true).value
+
+        #expect(model.notice != nil)
+        #expect(model.showsShoppingText)
+        #expect(model.showsManualEntry)
+        model.dismissNotice()
+        model.text = "bread and beer at Mercadona"
+        await model.interpretText().value
+        #expect(model.interpretationProposal?.snapshot.items.map(\.name) == ["Bread", "Beer"])
+    }
+
+    @Test(.timeLimit(.minutes(1)), arguments: ["", "   "])
+    func `Silent capture never interprets earlier typed text`(transcript: String) async throws {
+        let speech = ControlledDraftSpeech()
+        let interpreter = RecordingDraftInterpreter()
+        let model = ShoppingDraftViewModel(
+            interpreter: interpreter,
+            speech: speech,
+            persistence: MemoryDraftPersistence(),
+            initialDraft: ShoppingDraftSnapshot(text: "old unsent shopping text")
+        )
+        let capture = model.startDictation()
+        await waitForActivity(.recording, in: model)
+        try await speech.transcribe(transcript, capture: 1)
+        let finishing = model.finishDictation()
+        await speech.waitForFinishCalls(1)
+        try await speech.completeFinish(call: 1)
+        await finishing.value
+        await capture.value
+
+        #expect(interpreter.inputs.isEmpty)
+        #expect(model.items.isEmpty)
+        #expect(model.text.hasPrefix("old unsent shopping text"))
+        #expect(model.notice != nil)
+    }
+
+    @Test(.timeLimit(.minutes(1)), arguments: [true, false])
+    func `A finish completing after cancellation or leaving Add never starts interpretation`(background: Bool) async throws {
+        let speech = ControlledDraftSpeech()
+        let interpreter = RecordingDraftInterpreter()
+        let model = ShoppingDraftViewModel(
+            interpreter: interpreter,
+            speech: speech,
+            persistence: MemoryDraftPersistence(),
+            initialDraft: ShoppingDraftSnapshot()
+        )
+        let capture = model.startDictation()
+        await waitForActivity(.recording, in: model)
+        try await speech.transcribe("bread and beer at Mercadona", capture: 1)
+        await waitForText("bread and beer at Mercadona", in: model)
+        let finishing = model.finishDictation()
+        await speech.waitForFinishCalls(1)
+        if background {
+            model.setActive(false)
+        } else {
+            await model.cancelDictation().value
+        }
+        await capture.value
+        try await speech.completeFinish(call: 1)
+        await finishing.value
+
+        #expect(interpreter.inputs.isEmpty)
+        #expect(model.items.isEmpty)
+        #expect(model.text == (background ? "bread and beer at Mercadona" : ""))
     }
 
     private func makeModel(
@@ -245,5 +416,27 @@ private struct SpeechTestUnavailableInterpreter: DraftInterpreting {
 
     func interpret(_ text: String) async throws -> [SuggestedProduct] {
         throw DraftInterpretationError.unavailable
+    }
+}
+
+@MainActor
+private final class RecordingDraftInterpreter: DraftInterpreting {
+    let availability = DraftInterpretationAvailability.available
+    private(set) var inputs: [String] = []
+    private let firstError: DraftInterpretationError?
+
+    init(firstError: DraftInterpretationError? = nil) {
+        self.firstError = firstError
+    }
+
+    func interpret(_ text: String) async throws -> [SuggestedProduct] {
+        inputs.append(text)
+        if inputs.count == 1, let firstError {
+            throw firstError
+        }
+        return [
+            SuggestedProduct(name: "Bread", quantity: nil, store: "Mercadona"),
+            SuggestedProduct(name: "Beer", quantity: "2", store: "Mercadona")
+        ]
     }
 }

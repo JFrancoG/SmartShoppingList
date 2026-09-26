@@ -68,5 +68,7 @@ final class AppIconController {
             && process.environment["XCTestBundlePath"] == nil
             && NSClassFromString("XCTestCase") == nil
             && !process.arguments.contains("-shopping-notice-validation")
+            && !process.arguments.contains("-shopping-ai-validation")
+            && !process.arguments.contains("-shopping-ai-empty-validation")
     }
 }

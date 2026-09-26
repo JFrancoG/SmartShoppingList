@@ -15,18 +15,24 @@ final class ShoppingDraftViewModel {
         didSet {
             guard hasLoaded, text != oldValue else { return }
             cancelInterpretation()
+            if captureID == nil && finishingID == nil {
+                showsRecoveryControls = true
+            }
             preparedItems = nil
             queuePersistence()
         }
     }
     private(set) var items: [ShoppingDraftItem]
     private(set) var preparedItems: [PreparedDraftItem]?
+    private(set) var interpretationProposal: DraftInterpretationProposal?
+    private(set) var showsRecoveryControls: Bool
     private(set) var activity = DraftActivity.idle
     private(set) var availability: DraftInterpretationAvailability
     private(set) var notice: LocalizedStringResource?
     private(set) var persistenceNotice: LocalizedStringResource?
     private(set) var hasLoaded: Bool
     var editorItem = ShoppingDraftItem()
+    private(set) var isAddingItem = false
     var isEditorPresented = false {
         didSet {
             if isEditorPresented {
@@ -41,10 +47,13 @@ final class ShoppingDraftViewModel {
     @ObservationIgnored private let speech: any SpeechCapturing
     @ObservationIgnored private let persistence: any DraftPersisting
     @ObservationIgnored private var interpretedText: String?
+    @ObservationIgnored private var revisableInterpretedItems: [ShoppingDraftItem] = []
     @ObservationIgnored private var interpretationID: UUID?
     @ObservationIgnored private var interpretationTask: Task<Void, Never>?
     @ObservationIgnored private var captureID: UUID?
     @ObservationIgnored private var textBeforeDictation: String?
+    private var currentTranscript: String?
+    @ObservationIgnored private var replacesDictatedText = false
     @ObservationIgnored private var finishingID: UUID?
     @ObservationIgnored private var captureTask: Task<Void, Never>?
     @ObservationIgnored private var pendingSnapshot: ShoppingDraftSnapshot?
@@ -64,6 +73,9 @@ final class ShoppingDraftViewModel {
         text = initialDraft?.text ?? ""
         items = initialDraft?.items ?? []
         interpretedText = initialDraft?.interpretedText
+        showsRecoveryControls = !(initialDraft?.items.isEmpty ?? true)
+            || (initialDraft?.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+                && initialDraft?.text != initialDraft?.interpretedText)
         hasLoaded = initialDraft != nil
         availability = interpreter.availability
     }
@@ -74,32 +86,89 @@ final class ShoppingDraftViewModel {
     }
     var canAddItem: Bool { hasLoaded && items.count < 50 }
 
+    var showsShoppingText: Bool {
+        showsRecoveryControls || activity == .preparingSpeech || activity == .recording || activity == .finishingSpeech
+    }
+
+    var shoppingText: String {
+        get {
+            if replacesDictatedText,
+               activity == .preparingSpeech || activity == .recording || activity == .finishingSpeech {
+                return currentTranscript ?? ""
+            }
+            return text
+        }
+        set { text = newValue }
+    }
+
+    var showsManualEntry: Bool { availability != .available || showsRecoveryControls }
+    var showsDraftReview: Bool { !items.isEmpty && interpretationProposal == nil }
+
+    func revealRecoveryControls() {
+        showsRecoveryControls = true
+    }
+
+    func takeInterpretationProposal(id: UUID) -> ShoppingDraftSnapshot? {
+        guard let proposal = interpretationProposal, proposal.id == id else { return nil }
+        interpretationProposal = nil
+        revisableInterpretedItems = []
+        showsRecoveryControls = true
+        return proposal.snapshot
+    }
+
+    func editInterpretationProposal(id: UUID) {
+        guard interpretationProposal?.id == id else { return }
+        interpretationProposal = nil
+        showsRecoveryControls = true
+    }
+
+    var editorHasLengthIssue: Bool {
+        editorLengthMessage(for: .name) != nil || editorLengthMessage(for: .quantity) != nil
+            || editorLengthMessage(for: .store) != nil
+    }
+
+    func editorLengthMessage(for field: DraftField) -> LocalizedStringResource? {
+        let value = switch field {
+        case .name: editorItem.name
+        case .quantity: editorItem.quantity
+        case .store: editorItem.store
+        }
+        return ShoppingDraftRules.exceedsLength(value, field: field) ? ShoppingDraftRules.lengthMessage(for: field) : nil
+    }
+
     var availabilityMessage: LocalizedStringResource {
         switch availability {
         case .available: "You can interpret the text and review the products before adding them to the group."
-        case .deviceNotEligible: "This device does not support Apple Intelligence. You can add products manually."
-        case .intelligenceDisabled: "Turn on Apple Intelligence in Settings to interpret text. You can still add products manually."
-        case .modelNotReady: "The model is not ready yet. You can continue manually and check again later."
-        case .unsupportedLanguage: "Interpretation is unavailable in the selected language. You can continue manually."
-        case .unavailable: "Interpretation is currently unavailable. You can continue manually."
+        case .deviceNotEligible: "This device does not support Apple Intelligence."
+        case .intelligenceDisabled: "Apple Intelligence is turned off. You can turn it on in device Settings."
+        case .modelNotReady: "The Apple Intelligence model is not ready yet."
+        case .unsupportedLanguage: "Apple Intelligence does not support the app’s current language."
+        case .unavailable: "Apple Intelligence is currently unavailable on this device."
         }
     }
 
     func load() async {
         guard !hasLoaded, !isLoading else { return }
         isLoading = true
+        var clearedCompletedText = false
         defer {
             isLoading = false
             hasLoaded = true
+            if clearedCompletedText {
+                queuePersistence()
+            }
         }
         do {
             if let snapshot = try await persistence.load() {
                 text = snapshot.text
                 items = snapshot.items
                 interpretedText = snapshot.interpretedText
+                clearedCompletedText = clearCompletedText()
+                showsRecoveryControls = !items.isEmpty || hasUninterpretedText
             }
         } catch {
             storageBlocked = true
+            showsRecoveryControls = true
             persistenceNotice = "The saved draft could not be restored. It is kept unchanged. Changes in this session will not be saved when you close the app."
         }
     }
@@ -112,6 +181,7 @@ final class ShoppingDraftViewModel {
         guard canAddItem else { return }
         stopForEditing()
         editorItem = ShoppingDraftItem()
+        isAddingItem = true
         editorError = nil
         isEditorPresented = true
     }
@@ -120,11 +190,17 @@ final class ShoppingDraftViewModel {
         guard hasLoaded, items.contains(where: { $0.id == item.id }) else { return }
         stopForEditing()
         editorItem = item
+        isAddingItem = false
         editorError = nil
         isEditorPresented = true
     }
 
-    func saveEditor() {
+    @discardableResult
+    func saveEditor(closeEditor: Bool = true) -> ShoppingDraftItem? {
+        guard !editorHasLengthIssue else {
+            editorError = nil
+            return nil
+        }
         do {
             let validated = try PreparedDraftItem(validating: editorItem)
             let saved = ShoppingDraftItem(
@@ -139,16 +215,20 @@ final class ShoppingDraftViewModel {
             } else {
                 guard items.count < 50 else {
                     editorError = "The draft can contain up to 50 products."
-                    return
+                    return nil
                 }
                 items.append(saved)
             }
             preparedItems = nil
             editorError = nil
-            isEditorPresented = false
+            if closeEditor {
+                isEditorPresented = false
+            }
             queuePersistence()
+            return saved
         } catch {
             editorError = Self.validationMessage(error)
+            return nil
         }
     }
 
@@ -220,6 +300,10 @@ final class ShoppingDraftViewModel {
     }
 
     func cancelInterpretation() {
+        if activity == .interpreting || interpretationProposal != nil {
+            showsRecoveryControls = true
+        }
+        interpretationProposal = nil
         interpretationID = nil
         interpretationTask?.cancel()
         interpretationTask = nil
@@ -232,6 +316,7 @@ final class ShoppingDraftViewModel {
     func interpretText() -> Task<Void, Never> {
         refreshAvailability()
         guard canInterpret else { return Task {} }
+        interpretationProposal = nil
         let id = UUID()
         let input = text
         interpretationID = id
@@ -242,15 +327,32 @@ final class ShoppingDraftViewModel {
                 let suggestions = try await interpreter.interpret(input)
                 guard interpretationID == id, !Task.isCancelled else { return }
                 guard !suggestions.isEmpty else { throw DraftInterpretationError.noProducts }
-                guard items.count + suggestions.count <= 50 else { throw DraftInterpretationError.tooManyProducts }
-                items.append(contentsOf: suggestions.map {
+                let originals = Dictionary(
+                    revisableInterpretedItems.map { ($0.id, $0) },
+                    uniquingKeysWith: { first, _ in first }
+                )
+                let retained = items.filter { originals[$0.id] != $0 }
+                guard retained.count + suggestions.count <= 50 else { throw DraftInterpretationError.tooManyProducts }
+                let additions = suggestions.map {
                     ShoppingDraftItem(name: $0.name, quantity: $0.quantity ?? "", store: $0.store ?? "")
-                })
+                }
+                items = retained + additions
+                revisableInterpretedItems = additions
                 interpretedText = input
                 preparedItems = nil
                 queuePersistence()
+                do {
+                    _ = try ShoppingDraftRules.prepare(additions)
+                    interpretationProposal = DraftInterpretationProposal(
+                        snapshot: ShoppingDraftSnapshot(text: input, items: additions, interpretedText: input)
+                    )
+                } catch let error as DraftValidationError {
+                    showsRecoveryControls = true
+                    notice = Self.validationMessage(error)
+                }
             } catch {
                 guard interpretationID == id, !Task.isCancelled else { return }
+                showsRecoveryControls = true
                 notice = Self.interpretationMessage(error)
                 refreshAvailability()
             }
@@ -264,12 +366,18 @@ final class ShoppingDraftViewModel {
     }
 
     @discardableResult
-    func startDictation() -> Task<Void, Never> {
+    func startDictation(replacingText: Bool = false) -> Task<Void, Never> {
         guard hasLoaded, activity == .idle else { return Task {} }
+        cancelInterpretation()
+        if !replacingText {
+            revisableInterpretedItems = []
+        }
         let id = UUID()
-        let prefix = text == interpretedText ? "" : text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let prefix = replacingText || text == interpretedText ? "" : text.trimmingCharacters(in: .whitespacesAndNewlines)
         captureID = id
         textBeforeDictation = text
+        currentTranscript = nil
+        replacesDictatedText = replacingText
         activity = .preparingSpeech
         notice = nil
         let task = Task {
@@ -282,18 +390,22 @@ final class ShoppingDraftViewModel {
                     case .recording:
                         activity = .recording
                     case .transcript(let transcript):
+                        currentTranscript = transcript
                         text = prefix.isEmpty ? transcript : prefix + "\n" + transcript
                     }
                 }
             } catch {
                 guard captureID == id, !Task.isCancelled else { return }
+                showsRecoveryControls = true
                 notice = Self.speechMessage(error)
             }
             guard captureID == id else { return }
             captureID = nil
             captureTask = nil
             if activity != .finishingSpeech {
+                showsRecoveryControls = true
                 textBeforeDictation = nil
+                replacesDictatedText = false
                 activity = .idle
             }
         }
@@ -312,13 +424,32 @@ final class ShoppingDraftViewModel {
                 try await speech.finish()
             } catch {
                 guard finishingID == id else { return }
+                showsRecoveryControls = true
                 notice = Self.speechMessage(error)
             }
             await task?.value
             guard finishingID == id else { return }
             finishingID = nil
             textBeforeDictation = nil
+            let hasTranscript = currentTranscript?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+            let replacingText = replacesDictatedText
+            currentTranscript = nil
+            replacesDictatedText = false
             activity = .idle
+            guard notice == nil else { return }
+            guard hasTranscript else {
+                showsRecoveryControls = true
+                notice = "No speech was recognized. Try again or add products manually."
+                return
+            }
+            if replacingText {
+                interpretedText = nil
+                queuePersistence()
+            }
+            await interpretText().value
+            if interpretationProposal == nil && hasUninterpretedText {
+                showsRecoveryControls = true
+            }
         }
     }
 
@@ -330,12 +461,15 @@ final class ShoppingDraftViewModel {
     @discardableResult
     private func stopDictation(discardTranscript: Bool) -> Task<Void, Never> {
         guard captureID != nil || finishingID != nil else { return Task {} }
+        showsRecoveryControls = true
         captureID = nil
         finishingID = nil
         if discardTranscript, let textBeforeDictation {
             text = textBeforeDictation
         }
         textBeforeDictation = nil
+        currentTranscript = nil
+        replacesDictatedText = false
         let task = captureTask
         captureTask = nil
         task?.cancel()
@@ -358,17 +492,36 @@ final class ShoppingDraftViewModel {
         guard !storageBlocked else { return false }
         let originals = Dictionary(confirmed.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         cancelInterpretation()
+        revisableInterpretedItems = []
         items.removeAll { originals[$0.id] == $0 }
         preparedItems = nil
+        clearCompletedText()
         queuePersistence()
         await flushPersistence()
-        return persistenceNotice == nil
+        let saved = persistenceNotice == nil
+        if saved && items.isEmpty && !hasUninterpretedText {
+            showsRecoveryControls = false
+        }
+        return saved
+    }
+
+    @discardableResult
+    private func clearCompletedText() -> Bool {
+        guard items.isEmpty, text == interpretedText else { return false }
+        interpretedText = nil
+        text = ""
+        return true
     }
 
     private func stopForEditing() {
         cancelInterpretation()
+        showsRecoveryControls = true
         stopDictation(discardTranscript: false)
         notice = nil
+    }
+
+    private var hasUninterpretedText: Bool {
+        !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && text != interpretedText
     }
 
     private func queuePersistence() {
@@ -397,9 +550,7 @@ final class ShoppingDraftViewModel {
             switch (field, reason) {
             case (.name, .required): return "Enter the product name."
             case (.store, .required): return "Specify a store for each product before reviewing the draft."
-            case (.name, .tooLong): return "Shorten the product name: up to 160 Unicode characters."
-            case (.quantity, .tooLong): return "Shorten the quantity: up to 80 Unicode characters."
-            case (.store, .tooLong): return "Shorten the store name: up to 80 Unicode characters."
+            case (_, .tooLong): return ShoppingDraftRules.lengthMessage(for: field)
             case (_, .invalidCharacters): return "This field contains unsupported control characters."
             case (.quantity, .required): return "Review the product quantity."
             }
@@ -410,8 +561,8 @@ final class ShoppingDraftViewModel {
         switch error as? DraftInterpretationError {
         case .inputTooLong: "The text is too long. Interpret a shorter list; your text is kept."
         case .tooManyProducts: "The result would exceed 50 products. None were added; split the text and review the draft."
-        case .noProducts: "No products were found. You can rephrase the text or add them manually."
-        case .refused: "This text could not be interpreted. You can add products manually."
+        case .noProducts: "No products were found. Edit the text, dictate again, or add products manually."
+        case .refused: "This text could not be interpreted. Edit the text, dictate again, or add products manually."
         case .unavailable: "The Apple Intelligence model is currently unavailable. Your draft is kept; you can retry later or continue manually."
         case .failed, .none: "The text could not be interpreted. Your draft is kept; you can retry or continue manually."
         }

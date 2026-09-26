@@ -5,6 +5,9 @@ struct ShoppingNoticeModifier: ViewModifier {
     let notice: ShoppingNotice?
     var isEnabled = true
     let dismiss: @MainActor @Sendable (ShoppingNotice) -> Void
+    var openStore: (@MainActor @Sendable (ShoppingNotice) -> Void)?
+    var confirmDraft: (@MainActor @Sendable (ShoppingNotice) -> Void)?
+    var editDraft: (@MainActor @Sendable (ShoppingNotice) -> Void)?
     @State private var presentedNotice: ShoppingNotice?
     @State private var isPresented = false
     @State private var presentationID = UUID()
@@ -21,10 +24,35 @@ struct ShoppingNoticeModifier: ViewModifier {
                             isPresented: presentationBinding(for: currentPresentationID),
                             presenting: snapshot
                         ) { shownNotice in
-                            Button("Dismiss notice", role: .cancel) {
-                                guard currentPresentationID == presentationID else { return }
-                                acknowledgedNotice = shownNotice
-                                dismiss(shownNotice)
+                            if shownNotice.draftConfirmation != nil, let confirmDraft, let editDraft {
+                                Button("Confirm") {
+                                    guard currentPresentationID == presentationID else { return }
+                                    acknowledgedNotice = shownNotice
+                                    confirmDraft(shownNotice)
+                                }
+                                .keyboardShortcut(.defaultAction)
+                                Button("Edit", role: .cancel) {
+                                    guard currentPresentationID == presentationID else { return }
+                                    acknowledgedNotice = shownNotice
+                                    editDraft(shownNotice)
+                                }
+                            } else {
+                                let hasStoreAction = shownNotice.storeDestination != nil && openStore != nil
+                                if hasStoreAction, let openStore {
+                                    Button("Open list") {
+                                        guard currentPresentationID == presentationID else { return }
+                                        acknowledgedNotice = shownNotice
+                                        openStore(shownNotice)
+                                        dismiss(shownNotice)
+                                    }
+                                    .keyboardShortcut(.defaultAction)
+                                }
+                                Button("Dismiss notice", role: hasStoreAction ? .cancel : nil) {
+                                    guard currentPresentationID == presentationID else { return }
+                                    acknowledgedNotice = shownNotice
+                                    dismiss(shownNotice)
+                                }
+                                .keyboardShortcut(hasStoreAction ? nil : .defaultAction)
                             }
                         } message: { shownNotice in
                             Text(shownNotice.message)

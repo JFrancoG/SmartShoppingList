@@ -31,9 +31,13 @@ struct SharedShoppingViewModelTests {
         #expect(model.canPresentRootNotice)
     }
 
-    @Test("A reopened uncertain batch retries its original intent and consumes only confirmed draft rows")
-    func persistedRetry() async throws {
-        let first = ShoppingDraftItem(name: "Leche sin lactosa", quantity: "2 litros", store: "Día")
+    @Test("A reopened uncertain batch retries its original intent and consumes only confirmed draft rows", arguments: [false, true])
+    func persistedRetry(usesLegacyLimits: Bool) async throws {
+        let first = ShoppingDraftItem(
+            name: usesLegacyLimits ? String(repeating: "n", count: 160) : "Leche sin lactosa",
+            quantity: "2 litros",
+            store: usesLegacyLimits ? String(repeating: "s", count: 80) : "Día"
+        )
         let later = ShoppingDraftItem(name: "Pan", quantity: "", store: "Día")
         let api = SharedFlowAPI()
         let session = api.session
@@ -65,6 +69,11 @@ struct SharedShoppingViewModelTests {
         #expect(model.pendingOperation == nil)
         #expect(await credentials.loadOperation() == nil)
         #expect(model.draft.items == [later])
+        var confirmation = try #require(model.notice)
+        confirmation.locale = Locale(identifier: "en")
+        #expect(String(localized: confirmation) == "Added 2 litros \(first.name) to the list for \(first.store).")
+        confirmation.locale = Locale(identifier: "es")
+        #expect(String(localized: confirmation) == "Se ha añadido 2 litros \(first.name) a la lista de \(first.store).")
     }
 
     @Test("An uncertain operation from a different account cannot be replayed")
@@ -255,11 +264,300 @@ struct SharedShoppingViewModelTests {
         URL(string: "https://links.test/invite/\(invitation.id.uuidString.lowercased())#token=\(invitation.token)")!
     }
 
+    @Test
+    func `A single Add submits the visible draft with exact existing stores without presenting review`() async throws {
+        let api = SharedFlowAPI(firstBatchError: nil)
+        let pending = try await api.preparePurchaseItems()
+        let storeID = try #require(pending.first).storeId
+        await api.nameStore(storeID, name: "Día Norte")
+        let items = [
+            ShoppingDraftItem(name: "Bread", store: "  DÍA   NORTE  "),
+            ShoppingDraftItem(name: "Beer", quantity: "2", store: "Día Norte")
+        ]
+        let model = try makeModel(api: api, credentials: MemorySharedCredentialStore(session: api.session), items: items)
+        await model.load()
+
+        await model.addDraftItems()
+
+        let batches = await api.sentBatches
+        let request = try #require(batches.first)
+        #expect(batches.count == 1)
+        #expect(request.items.map(\.name) == ["Bread", "Beer"])
+        #expect(request.items.map(\.store) == [.existing(storeID), .existing(storeID)])
+        #expect(model.draft.items.isEmpty)
+        #expect(model.pendingOperation == nil)
+        #expect(!model.isReviewPresented)
+        var confirmation = try #require(model.notice)
+        confirmation.locale = Locale(identifier: "en")
+        #expect(String(localized: confirmation) == "Added 2 products to the list for Día Norte.")
+        confirmation.locale = Locale(identifier: "es")
+        #expect(String(localized: confirmation) == "Se han añadido 2 productos a la lista de Día Norte.")
+    }
+
+    @Test
+    func `Manual Add sends only its entered row and retries the same uncertain intent`() async throws {
+        let api = SharedFlowAPI()
+        let unrelated = ShoppingDraftItem(name: "Coffee", quantity: "1 bag", store: "Aldi")
+        let credentials = MemorySharedCredentialStore(session: api.session)
+        let model = try makeModel(api: api, credentials: credentials, items: [unrelated])
+        await model.load()
+        model.draft.beginAddingItem()
+        model.draft.editorItem.name = "Bread"
+        model.draft.editorItem.quantity = "2"
+        model.draft.editorItem.store = "Mercadona"
+
+        await model.addManualItem()
+
+        let original = try #require(model.pendingOperation)
+        let first = try #require(await api.sentBatches.first)
+        #expect(first.items.map(\.name) == ["Bread"])
+        #expect(first.items.map(\.store) == [.newName("Mercadona")])
+        #expect(model.draft.items.map(\.name) == ["Coffee", "Bread"])
+        #expect(!model.draft.isEditorPresented)
+        #expect(await credentials.loadOperation() == original)
+        let uncertainNotice = try #require(model.presentedNotice)
+        #expect(uncertainNotice.storeDestination == nil)
+        #expect(!model.openNoticeStore(uncertainNotice))
+        await model.addManualItem()
+        #expect(await api.sentBatches.count == 1)
+        #expect(model.pendingOperation == original)
+
+        await model.retryPendingOperation()
+
+        #expect(await api.sentBatches == [first, first])
+        #expect(model.draft.items == [unrelated])
+        #expect(model.pendingOperation == nil)
+        var confirmation = try #require(model.notice)
+        confirmation.locale = Locale(identifier: "en")
+        #expect(String(localized: confirmation) == "Added 2 Bread to the list for Mercadona.")
+        confirmation.locale = Locale(identifier: "es")
+        #expect(String(localized: confirmation) == "Se ha añadido 2 Bread a la lista de Mercadona.")
+    }
+
+    @Test(arguments: [false, true])
+    func `Adding without quantity offers the confirmed new list without opening it automatically`(openList: Bool) async throws {
+        let api = SharedFlowAPI(firstBatchError: nil)
+        let model = try makeModel(api: api, credentials: MemorySharedCredentialStore(session: api.session))
+        await model.load()
+        model.draft.beginAddingItem()
+        model.draft.editorItem.name = "Hamburguesa"
+        model.draft.editorItem.store = "Aldi"
+
+        await model.addManualItem()
+
+        let request = try #require(await api.sentBatches.first)
+        #expect(request.items.map(\.quantity) == [nil])
+        #expect(model.draft.items.isEmpty)
+        #expect(model.pendingOperation == nil)
+        var confirmation = try #require(model.notice)
+        confirmation.locale = Locale(identifier: "en")
+        #expect(String(localized: confirmation) == "Added Hamburguesa to the list for Aldi.")
+        confirmation.locale = Locale(identifier: "es")
+        #expect(String(localized: confirmation) == "Se ha añadido Hamburguesa a la lista de Aldi.")
+        model.draft.editorPresentationDidDismiss()
+        let notice = try #require(model.presentedNotice)
+        let store = try #require(model.stores.first { $0.name == "Aldi" })
+        #expect(model.selectedStoreID == nil)
+        if openList {
+            #expect(model.openNoticeStore(notice))
+            #expect(model.selectedStoreID == store.id)
+            await model.loadSelectedStore()
+            #expect(model.items.map(\.name) == ["Hamburguesa"])
+            #expect(model.items.map(\.storeId) == [store.id])
+            #expect(model.storeItemsState == .loaded)
+        } else {
+            model.dismissPresentedNotice(notice)
+            #expect(model.presentedNotice == nil)
+            #expect(!model.openNoticeStore(notice))
+            #expect(model.selectedStoreID == nil)
+        }
+        #expect(await api.sentBatches.count == 1)
+        #expect(await api.sentPurchases.isEmpty)
+    }
+
+    @Test(arguments: [false, true])
+    func `Adding a batch names each destination once using the notice language`(storeExists: Bool) async throws {
+        let api = SharedFlowAPI(firstBatchError: nil)
+        let pending = try await api.preparePurchaseItems()
+        let storeID = try #require(pending.first).storeId
+        if storeExists {
+            await api.nameStore(storeID, name: "Aldi")
+        }
+        let items = [
+            ShoppingDraftItem(name: "Pan", store: "Aldi"),
+            ShoppingDraftItem(name: "Leche", quantity: "2 litros", store: "Mercadona"),
+            ShoppingDraftItem(name: "Hamburguesa", quantity: "1", store: "ALDI")
+        ]
+        let model = try makeModel(api: api, credentials: MemorySharedCredentialStore(session: api.session), items: items)
+        await model.load()
+
+        await model.addDraftItems()
+
+        let request = try #require(await api.sentBatches.first)
+        if storeExists {
+            #expect(request.items.map(\.store) == [.existing(storeID), .newName("Mercadona"), .existing(storeID)])
+        } else {
+            #expect(request.items.map(\.store) == [.newName("Aldi"), .newName("Mercadona"), .newName("ALDI")])
+        }
+        #expect(model.draft.items.isEmpty)
+        #expect(model.pendingOperation == nil)
+        var confirmation = try #require(model.notice)
+        confirmation.locale = Locale(identifier: "en")
+        #expect(String(localized: confirmation) == "Added 3 products to the lists for Aldi and Mercadona.")
+        confirmation.locale = Locale(identifier: "es")
+        #expect(String(localized: confirmation) == "Se han añadido 3 productos a las listas de Aldi y Mercadona.")
+        let notice = try #require(model.presentedNotice)
+        #expect(notice.storeDestination == nil)
+        #expect(!model.openNoticeStore(notice))
+        #expect(model.selectedStoreID == nil)
+    }
+
+    @Test
+    func `An older identical confirmation and a signed-out confirmation cannot open a store`() async throws {
+        let api = SharedFlowAPI(firstBatchError: nil)
+        let model = try makeModel(api: api, credentials: MemorySharedCredentialStore(session: api.session))
+        await model.load()
+        model.draft.beginAddingItem()
+        model.draft.editorItem.name = "Hamburguesa"
+        model.draft.editorItem.store = "Aldi"
+        await model.addManualItem()
+        model.draft.editorPresentationDidDismiss()
+        let first = try #require(model.presentedNotice)
+        try #require(first.storeDestination != nil)
+        model.dismissPresentedNotice(first)
+
+        model.draft.beginAddingItem()
+        model.draft.editorItem.name = "Hamburguesa"
+        model.draft.editorItem.store = "Aldi"
+        await model.addManualItem()
+        model.draft.editorPresentationDidDismiss()
+        let current = try #require(model.presentedNotice)
+        try #require(current.message == first.message)
+        try #require(current.storeDestination != nil)
+        #expect(!model.openNoticeStore(first))
+        #expect(model.selectedStoreID == nil)
+        #expect(model.presentedNotice == current)
+
+        await model.logout()
+
+        #expect(!model.openNoticeStore(current))
+        #expect(model.selectedStoreID == nil)
+        #expect(model.session == nil)
+        #expect(await api.sentBatches.count == 2)
+        #expect(await api.sentPurchases.isEmpty)
+    }
+
+    @Test
+    func `A confirmed addition does not offer a cached store when the refresh fails`() async throws {
+        let api = SharedFlowAPI(firstBatchError: nil)
+        let pending = try await api.preparePurchaseItems()
+        let storeID = try #require(pending.first).storeId
+        await api.nameStore(storeID, name: "Aldi")
+        let model = try makeModel(api: api, credentials: MemorySharedCredentialStore(session: api.session))
+        await model.load()
+        try #require(model.stores.contains { $0.id == storeID })
+        await api.setCurrentUserFailure(true)
+        model.draft.beginAddingItem()
+        model.draft.editorItem.name = "Hamburguesa"
+        model.draft.editorItem.store = "Aldi"
+
+        await model.addManualItem()
+
+        #expect(await api.sentBatches.count == 1)
+        #expect(model.pendingOperation == nil)
+        #expect(model.draft.items.isEmpty)
+        let notice = try #require(model.presentedNotice)
+        #expect(notice.storeDestination == nil)
+        #expect(!model.openNoticeStore(notice))
+        #expect(model.selectedStoreID == nil)
+    }
+
+    @Test
+    func `A restored batch identifies a destination by ID when only draft spellings remain`() async throws {
+        let api = SharedFlowAPI(firstBatchError: nil)
+        let groupID = try #require(api.session.user.group).id
+        let storeID = UUID()
+        let items = [
+            ShoppingDraftItem(name: "Pan", store: "Aldi"),
+            ShoppingDraftItem(name: "Leche", store: "ALDI")
+        ]
+        let request = AddItemsRequest(
+            operationId: UUID(),
+            items: items.map { SharedNewItem(name: $0.name, quantity: nil, store: .existing(storeID)) }
+        )
+        let operation = PendingSharedOperation.addItems(
+            userID: api.session.user.id,
+            groupID: groupID,
+            request: request,
+            sourceDraft: ShoppingDraftSnapshot(items: items)
+        )
+        let credentials = MemorySharedCredentialStore(session: api.session, operation: operation)
+        let model = try makeModel(api: api, credentials: credentials, items: items)
+        await model.load()
+        try #require(model.stores.isEmpty)
+
+        await model.retryPendingOperation()
+
+        #expect(await api.sentBatches == [request])
+        #expect(model.draft.items.isEmpty)
+        #expect(await credentials.loadOperation() == nil)
+        var confirmation = try #require(model.notice)
+        confirmation.locale = Locale(identifier: "en")
+        #expect(String(localized: confirmation) == "Added 2 products to the list for Aldi.")
+        confirmation.locale = Locale(identifier: "es")
+        #expect(String(localized: confirmation) == "Se han añadido 2 productos a la lista de Aldi.")
+    }
+
+    @Test
+    func `An invalid manual Add retains editable fields without submitting another draft row`() async throws {
+        let api = SharedFlowAPI(firstBatchError: nil)
+        let other = ShoppingDraftItem(name: "Coffee", store: "Aldi")
+        let model = try makeModel(api: api, credentials: MemorySharedCredentialStore(session: api.session), items: [other])
+        await model.load()
+        model.draft.beginAddingItem()
+        model.draft.editorItem.name = "Bread"
+
+        await model.addManualItem()
+
+        #expect(await api.sentBatches.isEmpty)
+        #expect(model.draft.items == [other])
+        #expect(model.draft.isEditorPresented)
+        #expect(model.draft.editorItem.name == "Bread")
+        #expect(model.draft.editorError != nil)
+    }
+
+    @Test
+    func `Ambiguous exact store names require one explicit choice before Add`() async throws {
+        let api = SharedFlowAPI(firstBatchError: nil)
+        let pending = try await api.preparePurchaseItems()
+        let firstID = try #require(pending.first).storeId
+        let secondID = try #require(pending.last).storeId
+        await api.nameStore(firstID, name: "Aldi")
+        await api.nameStore(secondID, name: "ALDI")
+        let item = ShoppingDraftItem(name: "Bread", store: "aldi")
+        let model = try makeModel(api: api, credentials: MemorySharedCredentialStore(session: api.session), items: [item])
+        await model.load()
+
+        await model.addDraftItems()
+
+        #expect(await api.sentBatches.isEmpty)
+        #expect(model.draft.items == [item])
+        #expect(!model.isReviewPresented)
+        try #require(model.storeChoices.count == 1)
+        model.storeChoices[0].selection = secondID.uuidString
+        await model.addDraftItems()
+
+        let request = try #require(await api.sentBatches.first)
+        #expect(request.items.map(\.store) == [.existing(secondID)])
+        #expect(model.draft.items.isEmpty)
+    }
+
     private func makeModel(
         api: SharedFlowAPI,
         credentials: any SharedCredentialStoring,
         items: [ShoppingDraftItem] = [],
-        speech: any SpeechCapturing = UnavailableSpeechCapture()
+        speech: any SpeechCapturing = UnavailableSpeechCapture(),
+        interpreter: any DraftInterpreting = UnavailableDraftInterpreter()
     ) throws -> SharedShoppingViewModel {
         SharedShoppingViewModel(
             api: api,
@@ -269,7 +567,7 @@ struct SharedShoppingViewModelTests {
             ),
             credentials: credentials,
             draft: ShoppingDraftViewModel(
-                interpreter: UnavailableDraftInterpreter(),
+                interpreter: interpreter,
                 speech: UnavailableSpeechCapture(),
                 persistence: MemoryDraftPersistence(),
                 initialDraft: ShoppingDraftSnapshot(items: items)
@@ -282,6 +580,7 @@ struct SharedShoppingViewModelTests {
 private actor SharedFlowAPI: SharedShoppingAPI {
     let session: SharedSession
     private(set) var sentBatches: [AddItemsRequest] = []
+    private var batchResults: [UUID: [SharedItem]] = [:]
     private(set) var createdGroups = 0
     private(set) var loginRequests = 0
     private(set) var acceptedInvitations = 0
@@ -450,14 +749,14 @@ private actor SharedFlowAPI: SharedShoppingAPI {
 
     let acceptanceGate: SharedFlowGate?
     let acceptanceError: SharedAPIError?
-    let firstBatchError: SharedAPIError
+    let firstBatchError: SharedAPIError?
     let previewError: SharedAPIError
 
     init(
         currentUserGate: SharedFlowGate? = nil,
         acceptanceGate: SharedFlowGate? = nil,
         acceptanceError: SharedAPIError? = nil,
-        firstBatchError: SharedAPIError = .transport,
+        firstBatchError: SharedAPIError? = .transport,
         previewError: SharedAPIError = .transport
     ) {
         self.currentUserGate = currentUserGate
@@ -504,12 +803,23 @@ private actor SharedFlowAPI: SharedShoppingAPI {
     }
 
     private var storeNames: [UUID: String] = [:]
+    private var storesGate: SharedFlowGate?
+    private var storesError: SharedAPIError?
+
+    func configureStores(gate: SharedFlowGate? = nil, error: SharedAPIError? = nil) {
+        storesGate = gate
+        storesError = error
+    }
 
     func nameStore(_ id: UUID, name: String) {
         storeNames[id] = name
     }
 
     func stores(groupID: UUID, token: String) async throws -> [SharedStore] {
+        await storesGate?.pause()
+        if let storesError {
+            throw storesError
+        }
         if hideStoresAfterPurchaseConflict, !sentPurchases.isEmpty {
             return []
         }
@@ -534,16 +844,34 @@ private actor SharedFlowAPI: SharedShoppingAPI {
 
     func addItems(_ request: AddItemsRequest, groupID: UUID, token: String) async throws -> [SharedItem] {
         sentBatches.append(request)
-        if sentBatches.count == 1 {
+        if sentBatches.count == 1, let firstBatchError {
             throw firstBatchError
         }
-        return request.items.map {
-            SharedItem(
-                id: UUID(), groupId: groupID, storeId: UUID(), name: $0.name, quantity: $0.quantity,
+        if let result = batchResults[request.operationId] {
+            return result
+        }
+        let result = request.items.map { item in
+            let storeID: UUID
+            switch item.store {
+            case .existing(let id):
+                storeID = id
+            case .newName(let name):
+                if let existing = storeNames.first(where: { $0.value.caseInsensitiveCompare(name) == .orderedSame }) {
+                    storeID = existing.key
+                } else {
+                    storeID = UUID()
+                    storeNames[storeID] = name
+                }
+            }
+            return SharedItem(
+                id: UUID(), groupId: groupID, storeId: storeID, name: item.name, quantity: item.quantity,
                 status: "pending", version: 1, createdBy: session.user.id, createdAt: .distantPast,
                 purchasedBy: nil, purchasedAt: nil
             )
         }
+        batchResults[request.operationId] = result
+        purchaseItems.append(contentsOf: result)
+        return result
     }
 
     func pendingItems(groupID: UUID, storeID: UUID, token: String) async throws -> [SharedItem] {
@@ -1017,9 +1345,10 @@ extension SharedShoppingViewModelTests {
         model.editName = ""
         #expect(!model.canSaveItemEdit)
         #expect(model.editValidationMessage != nil)
-        model.editName = String(repeating: "\u{0344}", count: 81)
+        model.editName = String(repeating: "\u{0344}", count: 30) + "a"
         #expect(!model.canSaveItemEdit)
         #expect(model.editValidationMessage != nil)
+        #expect(model.editLengthMessage(for: .name) != nil)
         model.editName = "Pan"
         model.editStoreID = nil
         model.editNewStore = "\u{0001}"
@@ -1030,6 +1359,54 @@ extension SharedShoppingViewModelTests {
         await api.configureItemChange(error: nil)
         await model.saveItemEdit()
         #expect(model.items.first { $0.id == products[0].id }?.name == "Pan")
+    }
+
+    @Test(arguments: [(DraftField.name, 60), (.quantity, 80), (.store, 40)])
+    func `Shared product edits block excess length and send the complete corrected field`(
+        field: DraftField,
+        limit: Int
+    ) async throws {
+        let api = SharedFlowAPI()
+        let products = try await api.preparePurchaseItems()
+        let model = try makeModel(api: api, credentials: MemorySharedCredentialStore(session: api.session))
+        await model.load()
+        model.selectedStoreID = products[0].storeId
+        await model.loadSelectedStore()
+        model.beginEditingItem(products[0])
+        let accepted = String(repeating: "a", count: limit)
+        switch field {
+        case .name: model.editName = accepted + "a"
+        case .quantity: model.editQuantity = accepted + "a"
+        case .store:
+            model.editStoreID = nil
+            model.editNewStore = accepted + "a"
+        }
+        #expect(!model.canSaveItemEdit)
+        #expect(model.editLengthMessage(for: field) != nil)
+
+        await model.saveItemEdit()
+
+        #expect(await api.sentItemChanges.isEmpty)
+        #expect(model.presentedNotice == nil)
+        switch field {
+        case .name: model.editName = accepted
+        case .quantity: model.editQuantity = accepted
+        case .store: model.editNewStore = accepted
+        }
+        #expect(model.editLengthMessage(for: field) == nil)
+        #expect(model.canSaveItemEdit)
+        await api.configureItemChange(error: nil)
+
+        await model.saveItemEdit()
+
+        let request = try #require(await api.sentItemChanges.first)
+        let replacement = try #require(request.replacement)
+        switch field {
+        case .name: #expect(replacement.name == accepted)
+        case .quantity: #expect(replacement.quantity == accepted)
+        case .store: #expect(replacement.store == .newName(accepted))
+        }
+        #expect(model.pendingOperation == nil)
     }
 }
 
@@ -1310,5 +1687,243 @@ extension SharedShoppingViewModelTests {
                 return
             }
         }
+    }
+}
+
+
+extension SharedShoppingViewModelTests {
+    @Test(arguments: [false, true])
+    func `Confirming an interpretation adds only its new products and offers the resulting list`(storeExists: Bool) async throws {
+        let api = SharedFlowAPI(firstBatchError: nil)
+        var existingStoreID: UUID?
+        if storeExists {
+            let pending = try await api.preparePurchaseItems()
+            let storeID = try #require(pending.first).storeId
+            await api.nameStore(storeID, name: "Aldi")
+            existingStoreID = storeID
+        }
+        let unrelated = ShoppingDraftItem(name: "Coffee", quantity: "1 bag", store: "Lidl")
+        let credentials = MemorySharedCredentialStore(session: api.session)
+        let model = try makeModel(
+            api: api,
+            credentials: credentials,
+            items: [unrelated],
+            interpreter: ProposalDraftInterpreter()
+        )
+        await model.load()
+        model.draft.text = "Add bread and milk to Aldi"
+        await model.draft.interpretText().value
+        let proposal = try #require(model.draftConfirmationNotice)
+        #expect(await api.sentBatches.isEmpty)
+        #expect(await credentials.loadOperation() == nil)
+
+        await model.confirmInterpretationProposal(proposal)
+
+        let requests = await api.sentBatches
+        let request = try #require(requests.first)
+        #expect(requests.count == 1)
+        #expect(request.items.map(\.name) == ["Bread", "Milk"])
+        #expect(request.items.map(\.quantity) == [nil, "2 litres"])
+        let expectedStore: SharedStoreReference = existingStoreID.map { .existing($0) } ?? .newName("Aldi")
+        #expect(request.items.map(\.store) == [expectedStore, expectedStore])
+        #expect(model.draft.items == [unrelated])
+        #expect(model.draftConfirmationNotice == nil)
+        #expect(model.pendingOperation == nil)
+        #expect(await credentials.loadOperation() == nil)
+        #expect(!model.isReviewPresented)
+        let success = try #require(model.presentedNotice)
+        let destination = try #require(success.storeDestination)
+        #expect(model.openNoticeStore(success))
+        #expect(model.selectedStoreID == destination.storeID)
+        await model.loadSelectedStore()
+        #expect(model.items.contains { $0.name == "Bread" })
+        #expect(model.items.contains { $0.name == "Milk" && $0.quantity == "2 litres" })
+        #expect(!model.items.contains { $0.name == "Coffee" })
+    }
+
+    @Test
+    func `Editing an interpretation keeps its products local without sending them`() async throws {
+        let api = SharedFlowAPI(firstBatchError: nil)
+        let model = try makeModel(
+            api: api,
+            credentials: MemorySharedCredentialStore(session: api.session),
+            interpreter: ProposalDraftInterpreter()
+        )
+        await model.load()
+        model.draft.text = "Add bread and milk to Aldi"
+        await model.draft.interpretText().value
+        let proposal = try #require(model.draftConfirmationNotice)
+        let originalRows = model.draft.items
+
+        model.editInterpretationProposal(proposal)
+
+        #expect(model.draftConfirmationNotice == nil)
+        #expect(model.draft.items == originalRows)
+        #expect(await api.sentBatches.isEmpty)
+        #expect(model.pendingOperation == nil)
+        let bread = try #require(model.draft.items.first)
+        model.draft.beginEditingItem(bread)
+        model.draft.editorItem.name = "Wholemeal bread"
+        let saved = try #require(model.draft.saveEditor())
+        #expect(saved.name == "Wholemeal bread")
+        #expect(model.draft.items.first?.name == "Wholemeal bread")
+        #expect(await api.sentBatches.isEmpty)
+    }
+
+    @Test(arguments: ["text change", "new proposal", "sign out"])
+    func `Stale interpretation callbacks cannot send or dismiss a newer proposal`(change: String) async throws {
+        let api = SharedFlowAPI(firstBatchError: nil)
+        let model = try makeModel(
+            api: api,
+            credentials: MemorySharedCredentialStore(session: api.session),
+            interpreter: ProposalDraftInterpreter()
+        )
+        await model.load()
+        model.draft.text = "Add bread and milk to Aldi"
+        await model.draft.interpretText().value
+        let oldProposal = try #require(model.draftConfirmationNotice)
+        if change == "sign out" {
+            await model.logout()
+        } else {
+            model.draft.text = "Add another bread and milk to Aldi"
+            if change == "new proposal" {
+                await model.draft.interpretText().value
+            }
+        }
+        let currentProposal = model.draftConfirmationNotice
+        if change == "new proposal" {
+            try #require(currentProposal != nil && currentProposal != oldProposal)
+        }
+        let remainingRows = model.draft.items
+
+        await model.confirmInterpretationProposal(oldProposal)
+        model.editInterpretationProposal(oldProposal)
+
+        #expect(await api.sentBatches.isEmpty)
+        #expect(model.pendingOperation == nil)
+        #expect(model.draft.items == remainingRows)
+        #expect(model.draftConfirmationNotice == currentProposal)
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func `Two confirmation callbacks during store loading create one operation`() async throws {
+        let api = SharedFlowAPI(firstBatchError: nil)
+        let model = try makeModel(
+            api: api,
+            credentials: MemorySharedCredentialStore(session: api.session),
+            interpreter: ProposalDraftInterpreter()
+        )
+        await model.load()
+        model.draft.text = "Add bread and milk to Aldi"
+        await model.draft.interpretText().value
+        let proposal = try #require(model.draftConfirmationNotice)
+        let gate = SharedFlowGate()
+        await api.configureStores(gate: gate)
+        let first = Task { await model.confirmInterpretationProposal(proposal) }
+        await gate.waitUntilReached()
+
+        await model.confirmInterpretationProposal(proposal)
+
+        await gate.open()
+        await first.value
+        #expect(await api.sentBatches.count == 1)
+        #expect(model.pendingOperation == nil)
+        #expect(model.draft.items.isEmpty)
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func `An unrelated refresh does not consume an interpretation confirmation`() async throws {
+        let api = SharedFlowAPI(firstBatchError: nil)
+        let model = try makeModel(
+            api: api,
+            credentials: MemorySharedCredentialStore(session: api.session),
+            interpreter: ProposalDraftInterpreter()
+        )
+        await model.load()
+        model.draft.text = "Add bread and milk to Aldi"
+        await model.draft.interpretText().value
+        let proposal = try #require(model.draftConfirmationNotice)
+        let rows = model.draft.items
+        let gate = SharedFlowGate()
+        await api.configureStores(gate: gate)
+        let refresh = Task { await model.refresh() }
+        await gate.waitUntilReached()
+
+        await model.confirmInterpretationProposal(proposal)
+
+        await gate.open()
+        await refresh.value
+        #expect(await api.sentBatches.isEmpty)
+        #expect(model.draft.items == rows)
+        #expect(model.draftConfirmationNotice == proposal)
+    }
+
+    @Test
+    func `An ambiguous interpretation reviews only its proposed products before sharing`() async throws {
+        let api = SharedFlowAPI(firstBatchError: nil)
+        let pending = try await api.preparePurchaseItems()
+        let firstID = try #require(pending.first).storeId
+        let secondID = try #require(pending.last).storeId
+        await api.nameStore(firstID, name: "Aldi")
+        await api.nameStore(secondID, name: "ALDI")
+        let unrelated = ShoppingDraftItem(name: "Coffee", store: "Lidl")
+        let model = try makeModel(
+            api: api,
+            credentials: MemorySharedCredentialStore(session: api.session),
+            items: [unrelated],
+            interpreter: ProposalDraftInterpreter()
+        )
+        await model.load()
+        model.draft.text = "Add bread and milk to Aldi"
+        await model.draft.interpretText().value
+        let proposal = try #require(model.draftConfirmationNotice)
+
+        await model.confirmInterpretationProposal(proposal)
+
+        #expect(await api.sentBatches.isEmpty)
+        #expect(model.isReviewPresented)
+        #expect(model.reviewedItems.map(\.name) == ["Bread", "Milk"])
+        try #require(model.storeChoices.count == 1)
+        model.storeChoices[0].selection = secondID.uuidString
+        await model.confirmReviewedBatch()
+        let requests = await api.sentBatches
+        let request = try #require(requests.first)
+        #expect(requests.count == 1)
+        #expect(request.items.map(\.name) == ["Bread", "Milk"])
+        #expect(request.items.map(\.store) == [.existing(secondID), .existing(secondID)])
+        #expect(model.draft.items == [unrelated])
+    }
+
+    @Test
+    func `A failed store lookup keeps interpreted products without preparing a write`() async throws {
+        let api = SharedFlowAPI(firstBatchError: nil)
+        let credentials = MemorySharedCredentialStore(session: api.session)
+        let model = try makeModel(api: api, credentials: credentials, interpreter: ProposalDraftInterpreter())
+        await model.load()
+        model.draft.text = "Add bread and milk to Aldi"
+        await model.draft.interpretText().value
+        let proposal = try #require(model.draftConfirmationNotice)
+        let rows = model.draft.items
+        await api.configureStores(error: .transport)
+
+        await model.confirmInterpretationProposal(proposal)
+
+        #expect(await api.sentBatches.isEmpty)
+        #expect(await credentials.loadOperation() == nil)
+        #expect(model.pendingOperation == nil)
+        #expect(model.draft.items == rows)
+        #expect(model.notice != nil)
+        #expect(!model.isReviewPresented)
+    }
+}
+
+private struct ProposalDraftInterpreter: DraftInterpreting {
+    var availability: DraftInterpretationAvailability { .available }
+
+    func interpret(_ text: String) async throws -> [SuggestedProduct] {
+        [
+            SuggestedProduct(name: "Bread", quantity: nil, store: "Aldi"),
+            SuggestedProduct(name: "Milk", quantity: "2 litres", store: "Aldi")
+        ]
     }
 }
