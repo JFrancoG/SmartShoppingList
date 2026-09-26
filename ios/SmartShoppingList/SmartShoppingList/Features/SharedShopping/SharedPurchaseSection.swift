@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct SharedPurchaseSection: View {
+    @Environment(\.accessibilityVoiceOverEnabled) private var isVoiceOverEnabled
     let viewModel: SharedShoppingViewModel
     @State private var cancellationItem: SharedItem?
     @State private var confirmsCancellation = false
@@ -13,62 +14,46 @@ struct SharedPurchaseSection: View {
                 ProgressView("Loading pending products…")
             } else if let message = viewModel.storeItemsMessage {
                 Text(message)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             ForEach(viewModel.items) { item in
-                Button {
+                SharedPurchaseItemRow(
+                    item: item,
+                    isSelected: viewModel.isPurchaseSelected(item),
+                    canSelect: viewModel.canTogglePurchaseItem(item),
+                    canChange: viewModel.canChangeItem(item),
+                    focusedProductID: $focusedProductID
+                ) {
                     viewModel.togglePurchaseItem(item)
-                } label: {
-                    HStack(alignment: .firstTextBaseline) {
-                        Image(systemName: viewModel.isPurchaseSelected(item) ? "checkmark.circle.fill" : "circle")
-                            .accessibilityHidden(true)
-                        VStack(alignment: .leading) {
-                            Text(item.name)
-                                .font(.headline)
-                            if let quantity = item.quantity {
-                                Text(quantity)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .fixedSize(horizontal: false, vertical: true)
-                        Spacer(minLength: 0)
-                    }
-                    .contentShape(Rectangle())
+                } onEdit: {
+                    viewModel.beginEditingItem(item)
+                } onRemove: {
+                    cancellationItem = item
+                    confirmsCancellation = true
                 }
-                .buttonStyle(.plain)
-                .disabled(!viewModel.canTogglePurchaseItem(item))
-                .accessibilityValue(viewModel.isPurchaseSelected(item) ? Text("Selected") : Text("Not selected"))
-                .accessibilityHint("Changes the local selection. The purchase is saved when you tap Finish shopping.")
-                .accessibilityFocused($focusedProductID, equals: item.id)
-                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                    Button("Edit product", systemImage: "pencil") {
-                        viewModel.beginEditingItem(item)
-                    }
-                    .disabled(!viewModel.canChangeItem(item))
-                    Button("No longer needed", systemImage: "trash", role: .destructive) {
-                        cancellationItem = item
-                        confirmsCancellation = true
-                    }
-                    .disabled(!viewModel.canChangeItem(item))
-                }
-                .contextMenu {
-                    Button("Edit product", systemImage: "pencil") {
-                        viewModel.beginEditingItem(item)
-                    }
-                    .disabled(!viewModel.canChangeItem(item))
-                    Button("No longer needed", systemImage: "trash", role: .destructive) {
-                        cancellationItem = item
-                        confirmsCancellation = true
-                    }
-                    .disabled(!viewModel.canChangeItem(item))
-                }
+                .listRowBackground(viewModel.isPurchaseSelected(item) ? Color.primarySoft : .surface)
             }
         } header: {
-            Text("Pending · \(viewModel.selectedStoreName)")
+            Text("Pending products")
         } footer: {
-            Text("Select the products you are buying. The others will remain pending.")
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Select the products you are buying. The others will remain pending.")
+                if !viewModel.items.isEmpty {
+                    Label {
+                        if isVoiceOverEnabled {
+                            Text("Use the product’s actions to edit or remove it.")
+                        } else {
+                            Text("Swipe left on a product to edit or remove it.")
+                        }
+                    } icon: {
+                        Image(systemName: "info.circle")
+                    }
+                }
+            }
+            .fixedSize(horizontal: false, vertical: true)
         }
+        .listRowBackground(Color.surface)
 
         Section {
             if viewModel.editingItem != nil {
@@ -77,27 +62,30 @@ struct SharedPurchaseSection: View {
                 }
             }
             Text("Selected: \(viewModel.purchaseSelection.count) of up to 50")
+                .frame(maxWidth: .infinity)
+                .multilineTextAlignment(.center)
             Button {
                 Task {
                     await viewModel.finalizePurchase()
                 }
             } label: {
-                HStack(alignment: .firstTextBaseline) {
-                    Image(systemName: "cart.badge.checkmark")
-                        .accessibilityHidden(true)
-                    Text(viewModel.purchaseActionTitle)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .multilineTextAlignment(.leading)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
+                Text(viewModel.purchaseActionTitle)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .multilineTextAlignment(.center)
             }
+            .buttonStyle(ShoppingActionButtonStyle())
             .disabled(!viewModel.canFinalizePurchase)
             .accessibilityHint("Confirms only the selected products from this store for the whole group.")
-        } header: {
-            Text("Confirm purchase")
         } footer: {
-            Text("Switching stores or leaving this screen does not confirm the purchase. Refresh to check for group changes.")
+            Label(
+                "Switching stores or leaving this screen does not confirm the purchase. Refresh to check for group changes.",
+                systemImage: "info.circle"
+            )
+            .foregroundStyle(.textSecondary)
+            .fixedSize(horizontal: false, vertical: true)
         }
+        .listRowBackground(Color.clear)
+        .listRowSeparator(.hidden)
         .alert("Cancel pending product?", isPresented: $confirmsCancellation, presenting: cancellationItem) { item in
             Button("No longer needed", role: .destructive) {
                 Task {
@@ -121,9 +109,10 @@ struct SharedPurchaseSection: View {
     }
 }
 
-#Preview("Selección de compra", traits: .sharedShopping) {
+#Preview("Purchase selection", traits: .sharedShopping) {
     @Previewable @Environment(SharedShoppingViewModel.self) var viewModel
     Form {
         SharedPurchaseSection(viewModel: viewModel)
     }
+    .modifier(ShoppingFormStyle())
 }

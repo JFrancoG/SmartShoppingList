@@ -14,6 +14,11 @@ struct ShoppingDraftSnapshot: Codable, Equatable {
     var interpretedText: String? = nil
 }
 
+struct DraftInterpretationProposal: Identifiable, Equatable {
+    let id = UUID()
+    let snapshot: ShoppingDraftSnapshot
+}
+
 struct PreparedDraftItem: Identifiable, Equatable {
     private let itemID: UUID
     private let productName: String
@@ -33,14 +38,12 @@ extension PreparedDraftItem {
             item.name,
             itemID: item.id,
             field: .name,
-            limit: 160,
             required: true
         )
         let quantity = try ShoppingDraftRules.validated(
             item.quantity,
             itemID: item.id,
             field: .quantity,
-            limit: 80,
             required: false
         )
         // Deleting an optional quantity in the form becomes null in the API contract.
@@ -49,7 +52,6 @@ extension PreparedDraftItem {
             item.store,
             itemID: item.id,
             field: .store,
-            limit: 80,
             required: true
         )
     }
@@ -74,6 +76,28 @@ enum DraftValidationError: Error, Equatable {
 }
 
 enum ShoppingDraftRules {
+    static func maximumLength(for field: DraftField) -> Int {
+        switch field {
+        case .name: 60
+        case .quantity: 80
+        case .store: 40
+        }
+    }
+
+    static func exceedsLength(_ text: String, field: DraftField) -> Bool {
+        let limit = maximumLength(for: field)
+        return text.unicodeScalars.count > limit || (normalized(text)?.unicodeScalars.count ?? 0) > limit
+    }
+
+    static func lengthMessage(for field: DraftField) -> LocalizedStringResource {
+        let limit = maximumLength(for: field)
+        switch field {
+        case .name: return "Product name: up to \(limit) characters."
+        case .quantity: return "Quantity: up to \(limit) characters."
+        case .store: return "Store name: up to \(limit) characters."
+        }
+    }
+
     static func prepare(_ items: [ShoppingDraftItem]) throws(DraftValidationError) -> [PreparedDraftItem] {
         guard !items.isEmpty else { throw .emptyBatch }
         guard items.count <= 50 else { throw .tooManyItems }
@@ -113,9 +137,9 @@ enum ShoppingDraftRules {
         _ raw: String,
         itemID: UUID,
         field: DraftField,
-        limit: Int,
         required: Bool
     ) throws(DraftValidationError) -> String {
+        let limit = maximumLength(for: field)
         guard raw.unicodeScalars.count <= limit else {
             throw .invalidField(itemID: itemID, field: field, reason: .tooLong)
         }

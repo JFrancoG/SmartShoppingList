@@ -7,8 +7,24 @@ struct SharedItemEditorView: View {
         NavigationStack {
             Form {
                 Section("Product details") {
-                    TextField("Product name", text: $viewModel.editName, axis: .vertical)
-                    TextField("Quantity (optional)", text: $viewModel.editQuantity, axis: .vertical)
+                    VStack(alignment: .leading, spacing: 6) {
+                        TextField("Product name", text: $viewModel.editName, axis: .vertical)
+                        if let message = viewModel.editLengthMessage(for: .name) {
+                            Text(message)
+                                .font(.footnote)
+                                .foregroundStyle(.danger)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    VStack(alignment: .leading, spacing: 6) {
+                        TextField("Quantity (optional)", text: $viewModel.editQuantity, axis: .vertical)
+                        if let message = viewModel.editLengthMessage(for: .quantity) {
+                            Text(message)
+                                .font(.footnote)
+                                .foregroundStyle(.danger)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
                     Picker("Store", selection: $viewModel.editStoreID) {
                         ForEach(viewModel.stores) { store in
                             Text(store.name).tag(Optional(store.id))
@@ -16,14 +32,21 @@ struct SharedItemEditorView: View {
                         Text("New store").tag(nil as UUID?)
                     }
                     if viewModel.editStoreID == nil {
-                        TextField("New store name", text: $viewModel.editNewStore, axis: .vertical)
+                        VStack(alignment: .leading, spacing: 6) {
+                            TextField("New store name", text: $viewModel.editNewStore, axis: .vertical)
+                            if let message = viewModel.editLengthMessage(for: .store) {
+                                Text(message)
+                                    .font(.footnote)
+                                    .foregroundStyle(.danger)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
                     }
                 }
+                .listRowBackground(Color.surface)
                 .disabled(!viewModel.canMutate)
                 Section {
-                    Text("Name: up to 160 characters. Quantity and store: up to 80 characters.")
-                        .foregroundStyle(.secondary)
-                    if let message = viewModel.editValidationMessage {
+                    if let message = viewModel.editValidationMessage, !viewModel.editHasLengthIssue {
                         Text(message)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -51,10 +74,14 @@ struct SharedItemEditorView: View {
                             await viewModel.saveItemEdit()
                         }
                     }
+                    .buttonStyle(ShoppingActionButtonStyle())
                     .disabled(!viewModel.canSaveItemEdit)
                 }
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
                 SharedOperationSection(viewModel: viewModel)
             }
+            .modifier(ShoppingFormStyle())
             .navigationTitle("Edit product")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -70,6 +97,7 @@ struct SharedItemEditorView: View {
                             await viewModel.refresh()
                         }
                     }
+                    .labelStyle(.iconOnly)
                     .disabled(viewModel.isBusy)
                 }
             }
@@ -83,12 +111,25 @@ struct SharedItemEditorView: View {
     }
 }
 
-#Preview("Editar pendiente", traits: .sharedShopping) {
+#Preview("Edit pending product", traits: .sharedShopping) {
     @Previewable @Environment(SharedShoppingViewModel.self) var viewModel
     SharedItemEditorView(viewModel: viewModel)
         .task {
             if let item = viewModel.items.first {
                 viewModel.beginEditingItem(item)
+            }
+        }
+}
+
+#Preview("Length limits", traits: .sharedShopping) {
+    @Previewable @Environment(SharedShoppingViewModel.self) var viewModel
+    SharedItemEditorView(viewModel: viewModel)
+        .task {
+            if let item = viewModel.items.first {
+                viewModel.beginEditingItem(item)
+                viewModel.editName = "Wholemeal hamburger buns with sesame seeds for the weekend barbecue"
+                viewModel.editStoreID = nil
+                viewModel.editNewStore = "The supermarket near the station in the city centre"
             }
         }
 }

@@ -1,5 +1,5 @@
 {
-  "contractVersion": "0.1.0",
+  "contractVersion": "0.1.1",
   "cases": [
     {
       "id": "challenge-fresh",
@@ -1268,6 +1268,48 @@
           ]
         }
       }
+    },
+    {
+      "id": "item-batch-name-boundaries",
+      "operationId": "addItems",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000101",
+          "items": [
+            {
+              "name": "👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽",
+              "quantity": null,
+              "store": {
+                "newName": "👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽"
+              }
+            }
+          ]
+        }
+      },
+      "response": {
+        "status": 201,
+        "body": {
+          "items": [
+            {
+              "id": "00000000-0000-4000-8000-000000000030",
+              "groupId": "00000000-0000-4000-8000-000000000010",
+              "storeId": "00000000-0000-4000-8000-000000000020",
+              "name": "👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽👩🏽",
+              "quantity": null,
+              "status": "pending",
+              "version": 1,
+              "createdBy": "00000000-0000-4000-8000-000000000002",
+              "createdAt": "2026-09-19T10:10:00Z",
+              "purchasedBy": null,
+              "purchasedAt": null
+            }
+          ]
+        }
+      }
     }
   ],
   "invalidRequests": [
@@ -1691,7 +1733,7 @@
           "operationId": "00000000-0000-4000-8000-000000000201",
           "items": [
             {
-              "name": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "name": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
               "quantity": null,
               "store": {
                 "id": "00000000-0000-4000-8000-000000000020"
@@ -1968,6 +2010,28 @@
           "groupId": "foreign-group"
         },
         "query": {}
+      }
+    },
+    {
+      "id": "store-name-too-long",
+      "operationId": "addItems",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000201",
+          "items": [
+            {
+              "name": "Detergent",
+              "quantity": null,
+              "store": {
+                "newName": "sssssssssssssssssssssssssssssssssssssssss"
+              }
+            }
+          ]
+        }
       }
     }
   ]

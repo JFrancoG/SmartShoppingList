@@ -80,6 +80,7 @@ struct ShoppingService: Sendable {
             ) {
                 return replay
             }
+            try items.forEach { try $0.validateNewWriteLimits() }
             // Resolve stores in one stable order to avoid inverted unique-index locks across members.
             let stores = try await resolveStores(items, group: group, on: sql)
             var result: [APIJSON] = []
@@ -472,6 +473,7 @@ extension ShoppingService {
             ) {
                 return replay
             }
+            try replacement?.validateNewWriteLimits()
             guard let row = try await sql.raw("""
                 SELECT * FROM items WHERE id = \(bind: item.id) AND group_id = \(bind: group) FOR UPDATE
                 """).first() else { throw APIProblem.notFound }

@@ -28,6 +28,7 @@ enum DraftPreviewState {
     case content
     case empty
     case missingStore
+    case availableModel
 }
 
 @MainActor
@@ -57,10 +58,21 @@ enum DraftPreviewSupport {
         ShoppingDraftSnapshot(text: "Comprar jabón, cerveza y yogures en Mercadona", items: items)
     }
 
+    #if DEBUG
+    static func aiValidationViewModel(emptyInterpretation: Bool) -> ShoppingDraftViewModel {
+        ShoppingDraftViewModel(
+            interpreter: ValidationDraftInterpreter(emptyInterpretation: emptyInterpretation),
+            speech: ValidationSpeechCapture(),
+            persistence: MemoryDraftPersistence(),
+            initialDraft: ShoppingDraftSnapshot()
+        )
+    }
+    #endif
+
     static func viewModel(snapshot: ShoppingDraftSnapshot, state: DraftPreviewState) -> ShoppingDraftViewModel {
         var draft = snapshot
         switch state {
-        case .content:
+        case .content, .availableModel:
             break
         case .empty:
             draft = ShoppingDraftSnapshot()
@@ -72,7 +84,7 @@ enum DraftPreviewSupport {
             }
         }
         let viewModel = ShoppingDraftViewModel(
-            interpreter: PreviewDraftInterpreter(),
+            interpreter: PreviewDraftInterpreter(availability: state == .availableModel ? .available : .deviceNotEligible),
             speech: PreviewSpeechCapture(),
             persistence: MemoryDraftPersistence(),
             initialDraft: draft
@@ -90,10 +102,14 @@ enum DraftPreviewSupport {
 
 @MainActor
 private struct PreviewDraftInterpreter: DraftInterpreting {
-    var availability: DraftInterpretationAvailability { .deviceNotEligible }
+    let availability: DraftInterpretationAvailability
 
     func interpret(_ text: String) async throws -> [SuggestedProduct] {
-        throw DraftInterpretationError.unavailable
+        guard availability == .available else { throw DraftInterpretationError.unavailable }
+        return [
+            SuggestedProduct(name: "Bread", quantity: nil, store: "Mercadona"),
+            SuggestedProduct(name: "Beer", quantity: "2", store: "Mercadona")
+        ]
     }
 }
 
@@ -105,3 +121,39 @@ private struct PreviewSpeechCapture: SpeechCapturing {
     func finish() async throws {}
     func cancel() async {}
 }
+
+#if DEBUG
+@MainActor
+private struct ValidationDraftInterpreter: DraftInterpreting {
+    let emptyInterpretation: Bool
+    var availability: DraftInterpretationAvailability { .available }
+
+    func interpret(_ text: String) async throws -> [SuggestedProduct] {
+        if emptyInterpretation { throw DraftInterpretationError.noProducts }
+        return [SuggestedProduct(name: "Yogurts", quantity: "6", store: "Aldi")]
+    }
+}
+
+private actor ValidationSpeechCapture: SpeechCapturing {
+    private var continuation: AsyncThrowingStream<SpeechCaptureEvent, any Error>.Continuation?
+
+    func start() async throws -> AsyncThrowingStream<SpeechCaptureEvent, any Error> {
+        continuation?.finish()
+        let stream = AsyncThrowingStream<SpeechCaptureEvent, any Error>.makeStream()
+        continuation = stream.continuation
+        stream.continuation.yield(.recording(localeIdentifier: "en-US"))
+        stream.continuation.yield(.transcript("Add 6 Yogurts to Aldi"))
+        return stream.stream
+    }
+
+    func finish() async throws {
+        continuation?.finish()
+        continuation = nil
+    }
+
+    func cancel() async {
+        continuation?.finish()
+        continuation = nil
+    }
+}
+#endif

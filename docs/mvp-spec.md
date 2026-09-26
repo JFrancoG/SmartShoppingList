@@ -18,7 +18,7 @@ Recorrido principal:
 
 1. La persona inicia sesión con Apple y crea un grupo o acepta una invitación.
 2. Dicta productos y tienda, o utiliza la entrada manual.
-3. Revisa y corrige el borrador interpretado.
+3. Revisa la propuesta interpretada y la corrige si es necesario.
 4. Confirma su incorporación a los pendientes del grupo.
 5. Cualquier miembro consulta una tienda, marca provisionalmente lo que va comprando y confirma los productos seleccionados al finalizar.
 
@@ -59,30 +59,42 @@ La duración de las invitaciones y los detalles de sesión se concretan en el [c
 
 ## 3. Pestaña «Añadir»
 
-La voz forma parte del MVP. La persona inicia y termina la captura mediante un control visible; también puede escribir.
+La voz forma parte del MVP. Con Apple Intelligence disponible, Añadir comienza con una pregunta y un micrófono centrados, sin mostrar un formulario vacío ni una revisión adicional. La persona inicia y termina la captura mediante el control visible. La entrada escrita y manual se conserva en la recuperación; sin modelo, la entrada manual es el recorrido principal.
 
 Ejemplo de aceptación: «Comprar jabón, cerveza y yogures en Mercadona» produce tres productos asociados a Mercadona.
 
 Flujo:
 
-1. Speech transcribe el audio.
-2. Foundation Models interpreta el texto y propone productos, cantidades cuando se indiquen y tienda.
-3. La app muestra un borrador editable.
-4. La persona puede corregir productos, cantidades y tienda, o quitar una entrada.
-5. Un botón explícito, por ejemplo «Añadir 3 productos», confirma el lote.
-6. La app envía al backend los valores revisados; no vuelve a interpretarlos con el modelo.
+1. Speech transcribe el audio; al terminar el dictado con una transcripción no vacía, se inicia automáticamente la interpretación.
+2. Foundation Models interpreta el texto y propone productos, cantidades cuando se indiquen y tienda. Si los datos están completos, una alerta muestra esos detalles y ofrece «Confirmar» o «Editar».
+3. «Confirmar» envía únicamente el lote de esa interpretación, sin incorporar otros productos del borrador ni volver a interpretar los valores. Una coincidencia exacta de tienda no añade otra revisión; una ambigüedad real usa la elección explícita existente.
+4. «Editar» muestra el texto, las filas corregibles y la entrada manual. La persona puede corregir productos, cantidades y tienda o quitar una entrada antes de pulsar Añadir. En esta recuperación, el texto conserva su acción de interpretar.
+5. Si no se encuentran productos, el modelo rechaza la entrada o falla la captura/interpretación, se explica el resultado y se muestran los mismos controles de recuperación, conservando los datos.
+6. Sólo después de la confirmación del servidor aparece el aviso de alta; para una sola tienda ofrece «Ver lista» o «Cerrar aviso».
 
 Reglas:
 
 - Antes de confirmar no se crean productos compartidos.
 - Los datos incompletos o ambiguos se hacen visibles para corregirlos; no se inventan cantidades, tiendas ni equivalencias entre unidades.
-- La app no fusiona silenciosamente productos distintos ni elimina variantes como «sin lactosa».
+- La app no fusiona silenciosamente productos distintos ni elimina variantes como «sin lactosa». Al reinterpretar, sólo sustituye sugerencias anteriores de la sesión que continúen intactas; conserva entradas manuales, corregidas y otros borradores. No infiere ese origen al restaurar un borrador de otra ejecución.
 - El backend valida el lote y lo guarda de forma atómica: completo o sin altas parciales.
 - Un mismo envío conserva su identificador al reintentarse. Un timeout o una doble pulsación no genera productos duplicados.
 - Dos altas voluntarias son distintas de un reintento del mismo envío; la deduplicación semántica queda fuera del MVP.
 - Sólo se comunica «guardado» cuando existe confirmación del servidor.
+- Tras añadir a una sola tienda, el aviso permite «Ver lista» para abrir Comprar con esa tienda seleccionada, también si acaba de crearse. Es opcional: cerrar el aviso mantiene la pantalla actual. El atajo requiere un destino confirmado y disponible en el grupo actual; los envíos a varias tiendas conservan el aviso sin elegir una por el usuario.
 - Un error conserva el borrador y permite reintentar. La transcripción y la interpretación no autorizan por sí mismas cambios en los datos compartidos.
-- La entrada manual permite indicar productos, cantidades cuando proceda y tienda sin depender de la IA, también si el usuario no concede permiso de micrófono. Esa alternativa no sustituye la validación de la voz y la IA comprometidas.
+- La entrada manual permite indicar producto, cantidad opcional y tienda sin depender de la IA. Con grupo activo, «Añadir producto» envía únicamente ese producto directamente, sin una segunda revisión y sin incluir otros borradores. Sin grupo, se conserva como borrador local. Editar una propuesta existente solo corrige el borrador hasta su alta explícita. Esta alternativa no sustituye la validación de voz e IA.
+- Una coincidencia exacta única de tienda se resuelve automáticamente; un nombre nuevo visible en el formulario o propuesta expresa su creación al confirmar el alta. Solo una ambigüedad real pide elegir. Se conservan acentos y puntuación según el contrato.
+- Las nuevas altas y ediciones admiten hasta 60 puntos de código Unicode en el nombre del producto y 40 en una tienda nueva; la cantidad conserva su límite de 80. Se comprueban texto recibido y normalizado. La ayuda de longitud aparece bajo el campo afectado, en rojo y con explicación textual, sólo mientras se excede su límite. No se recortan los datos guardados ni se invalidan recibos ya confirmados bajo el contrato anterior.
+- Si la IA no está disponible, Añadir prioriza la entrada manual y oculta los controles que dependen del modelo. Un texto con icono de información explica si el dispositivo no es compatible, Apple Intelligence está desactivada, el modelo aún no está listo, el idioma no es compatible o hay una indisponibilidad temporal. No se muestra un botón genérico de comprobar disponibilidad. Una transcripción conservada sigue siendo legible y editable en su propia sección. La consulta por voz de tiendas en Comprar no depende de Apple Intelligence.
+
+### Organización visual acordada el 25 de septiembre (#28)
+
+Añadir y Comprar comparten el nombre real del grupo como título y un acceso a Ajustes. Cuenta, identificación con Apple, creación de grupo e invitaciones se presentan en Ajustes, incluido cerrar sesión. La recepción de una invitación dirige a ese espacio y conserva las protecciones de presentación y recuperación existentes.
+
+Los controles de micrófono, editar y quitar usan iconos con nombre accesible; las acciones explícitas usan cápsulas primary. Se aplican los tokens del sistema de diseño en sus cuatro apariencias, preservando controles y alertas nativas. Se reserva espacio para la lista y el formulario, sin repetir «Grupo / Tu grupo / nombre» en las pantallas principales.
+
+Esta simplificación no incorpora un micrófono universal para añadir, consultar y borrar ni autoriza mutaciones automáticas por voz. Esa propuesta se aplaza hasta después del MVP.
 
 ## 4. Pestaña «Comprar»
 
@@ -91,15 +103,16 @@ Reglas:
 - Si hay ambigüedad, se ofrecen las coincidencias para elegir.
 - Se muestran los productos pendientes incorporados por todos los miembros.
 - La tienda reconocida permanece visible y puede corregirse sin volver a hablar.
-- La pantalla permite editar productos pendientes, seleccionarlos mediante checks y confirmar los seleccionados con «Finalizar compra».
-- Un producto seleccionado sigue visible, diferenciado del resto, hasta confirmar. Un contador y el botón, por ejemplo «Finalizar compra · 3 productos», hacen visible qué se enviará.
+- La pantalla permite editar productos pendientes, seleccionarlos mediante checks y confirmar los seleccionados con «Confirmar compra».
+- Editar y Quitar aparecen al deslizar la fila hacia la izquierda, con una ayuda breve bajo la lista y acciones nativas para VoiceOver. El gesto completo no ejecuta ninguna acción; Quitar mantiene la confirmación existente. Los nombres disponen del ancho liberado por los iconos de acción.
+- Un producto seleccionado sigue visible, diferenciado del resto, hasta confirmar. Un contador y el botón, por ejemplo «Confirmar compra · 3», hacen visible qué se enviará.
 - Se actualiza al entrar, tras las operaciones propias y mediante refresco explícito. No se promete presencia ni actualización instantánea entre dispositivos.
 
 ## 5. Compra, cancelación e historial
 
 - Cada producto pendiente tiene un check de selección provisional. Marcar o desmarcar sólo cambia el borrador local de esa compra; no modifica todavía el estado compartido ni crea historial.
 - Antes de enviar, una pulsación accidental se corrige desmarcando el producto.
-- «Finalizar compra» envía los identificadores concretos de los productos seleccionados de esa tienda. El backend confirma sus cambios en una transacción; no se actualiza una tienda completa mediante un filtro general.
+- «Confirmar compra» envía los identificadores concretos de los productos seleccionados de esa tienda. El backend confirma sus cambios en una transacción; no se actualiza una tienda completa mediante un filtro general.
 - Los productos confirmados pasan a comprados y salen de pendientes, conservando sus registros. Se guarda quién confirmó la compra y cuándo; puede ser una persona distinta de quien los añadió.
 - Los productos no seleccionados permanecen pendientes para la próxima visita. Para el MVP se adopta la simplificación permitida por el usuario: mantenerlos automáticamente, sin preguntar en cada compra si se eliminan.
 - Sin productos seleccionados no se envía una finalización vacía.
@@ -168,7 +181,7 @@ La documentación, los assets y los ratios no acreditan que los colores estén a
 
 ### Estrategia de validación acordada
 
-- En el iPhone físico sin Apple Intelligence se comprobará el recorrido mediante entrada manual de productos y tienda, con revisión del borrador y confirmación explícita del guardado.
+- En el iPhone físico sin Apple Intelligence se comprobará la entrada manual de producto y tienda con «Añadir producto» como única acción explícita de guardado; no se exige una segunda revisión. Con IA, la propuesta ofrece Confirmar/Editar; Editar y los errores conservan la recuperación editable. Se comprobará que Confirmar envía sólo el lote propuesto, que interpretar no envía nada y que se conservan otros borradores.
 - Foundation Models se probará en un simulador compatible del Mac, tras comprobar que el entorno y el modelo están disponibles. La compatibilidad y disponibilidad no se dan por garantizadas.
 - La voz y la IA siguen dentro del alcance. Se registrará por separado la evidencia de captura y transcripción, interpretación con Foundation Models y funcionamiento del recorrido manual.
 - Cada resultado identificará el dispositivo o simulador utilizado. Una prueba de Foundation Models en simulador no acredita su funcionamiento ni sus tiempos en el iPhone físico; la entrada manual tampoco acredita voz ni interpretación.
@@ -182,7 +195,7 @@ La documentación, los assets y los ratios no acreditan que los colores estén a
 4. Las correcciones prevalecen en los datos guardados y el lote no se duplica al reintentar.
 5. La consulta por voz y el selector muestran los pendientes reales de la tienda y del grupo.
 6. Altas concurrentes de distintos miembros se conservan.
-7. Marcar y desmarcar no modifica el backend; «Finalizar compra» confirma sólo los seleccionados. Por ejemplo, de cinco pendientes con tres checks, se registran tres compras y los otros dos siguen pendientes.
+7. Marcar y desmarcar no modifica el backend; «Confirmar compra» confirma sólo los seleccionados. Por ejemplo, de cinco pendientes con tres checks, se registran tres compras y los otros dos siguen pendientes.
 8. Reintentar una finalización o confirmar concurrentemente un mismo producto no cuenta dos compras. Una nueva alta de otro miembro queda intacta; cancelar no cuenta como comprar. Los errores conservan la selección sin presentar éxito falso.
 9. Reiniciar app y servidor conserva los datos confirmados.
 10. Fallos de micrófono, IA o red tienen estados comprensibles y no presentan éxito falso.

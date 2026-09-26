@@ -22,6 +22,18 @@ enum SpeechCaptureError: Error {
     case failed
 }
 
+private enum CaptureTranscriber {
+    case speech(SpeechTranscriber)
+    case dictation(DictationTranscriber)
+
+    var module: any SpeechModule {
+        switch self {
+        case .speech(let transcriber): transcriber
+        case .dictation(let transcriber): transcriber
+        }
+    }
+}
+
 actor SpeechCaptureService: SpeechCapturing {
     private let localeIdentifier: String
     private var captureID: UUID?
@@ -107,16 +119,11 @@ actor SpeechCaptureService: SpeechCapturing {
     private func runCapture(id: UUID) async {
         do {
             let transcriber = try await prepareCapture(id: id)
-            var finalizedText = ""
-            for try await result in transcriber.results {
-                try checkCapture(id)
-                let text = String(result.text.characters)
-                if result.isFinal {
-                    finalizedText += text
-                    continuation?.yield(.transcript(finalizedText))
-                } else {
-                    continuation?.yield(.transcript(finalizedText + text))
-                }
+            switch transcriber {
+            case .speech(let module):
+                try await consumeResults(module, id: id) { String($0.text.characters) }
+            case .dictation(let module):
+                try await consumeResults(module, id: id) { String($0.text.characters) }
             }
             try checkCapture(id)
             guard isFinishing else { throw SpeechCaptureError.failed }
@@ -128,27 +135,56 @@ actor SpeechCaptureService: SpeechCapturing {
         }
     }
 
-    private func prepareCapture(id: UUID) async throws -> SpeechTranscriber {
+    private func consumeResults<Module: SpeechModule>(
+        _ module: Module,
+        id: UUID,
+        text: @Sendable (Module.Result) -> String
+    ) async throws {
+        var finalizedText = ""
+        for try await result in module.results {
+            try checkCapture(id)
+            let recognizedText = text(result)
+            if result.isFinal {
+                finalizedText += recognizedText
+                continuation?.yield(.transcript(finalizedText))
+            } else {
+                continuation?.yield(.transcript(finalizedText + recognizedText))
+            }
+        }
+    }
+
+    private func selectTranscriber(id: UUID) async throws -> (CaptureTranscriber, Locale) {
         try checkCapture(id)
-        guard SpeechTranscriber.isAvailable else { throw SpeechCaptureError.unavailable }
         let requestedLocale = Locale(identifier: localeIdentifier)
-        guard let locale = await SpeechTranscriber.supportedLocale(equivalentTo: requestedLocale) else {
+        if SpeechTranscriber.isAvailable,
+           let locale = await SpeechTranscriber.supportedLocale(equivalentTo: requestedLocale) {
+            try checkCapture(id)
+            return (.speech(SpeechTranscriber(locale: locale, preset: .progressiveTranscription)), locale)
+        }
+        try checkCapture(id)
+        // The dictation module keeps recognition on-device on hardware or locales without SpeechTranscriber.
+        guard let locale = await DictationTranscriber.supportedLocale(equivalentTo: requestedLocale) else {
             throw SpeechCaptureError.unsupportedLocale
         }
         try checkCapture(id)
+        return (.dictation(DictationTranscriber(locale: locale, preset: .progressiveLongDictation)), locale)
+    }
+
+    private func prepareCapture(id: UUID) async throws -> CaptureTranscriber {
+        let (transcriber, locale) = try await selectTranscriber(id: id)
+        let module = transcriber.module
         guard await AVCaptureDevice.requestAccess(for: .audio) else { throw SpeechCaptureError.permissionDenied }
         try checkCapture(id)
 
-        let transcriber = SpeechTranscriber(locale: locale, preset: .progressiveTranscription)
-        if let request = try await AssetInventory.assetInstallationRequest(supporting: [transcriber]) {
+        if let request = try await AssetInventory.assetInstallationRequest(supporting: [module]) {
             try checkCapture(id)
             try await request.downloadAndInstall()
         }
         try checkCapture(id)
-        let captureProvider = try await makeCaptureProvider(transcriber: transcriber)
+        let captureProvider = try await makeCaptureProvider(transcriber: module)
         try checkCapture(id)
         provider = captureProvider
-        let speechAnalyzer = SpeechAnalyzer(modules: [transcriber])
+        let speechAnalyzer = SpeechAnalyzer(modules: [module])
         analyzer = speechAnalyzer
         try await speechAnalyzer.start(inputSequence: captureProvider.analyzerInputs)
         try checkCapture(id)
@@ -160,7 +196,7 @@ actor SpeechCaptureService: SpeechCapturing {
         return transcriber
     }
 
-    private func makeCaptureProvider(transcriber: SpeechTranscriber) async throws -> CaptureInputSequenceProvider {
+    private func makeCaptureProvider(transcriber: any SpeechModule) async throws -> CaptureInputSequenceProvider {
         guard let microphone = AVCaptureDevice.default(for: .audio) else {
             throw SpeechCaptureError.microphoneUnavailable
         }

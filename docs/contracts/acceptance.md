@@ -53,6 +53,8 @@ juntos contrato, OpenAPI, ejemplos y los casos C05–C07.
 | A08 | Lote anterior confirmado; la persona vuelve a necesitar los mismos productos. | Confirmar voluntariamente otra alta con una clave nueva. | Se crean entradas nuevas con IDs distintos aunque sus textos coincidan. No hay deduplicación semántica ni reutilización del historial anterior. | #4 |
 | A09 | Clave K ya asociada a un envío. | Reutilizar K cambiando productos, cantidades o tienda. | Se rechaza la reutilización con contenido distinto; el resultado original permanece intacto y el envío modificado no se guarda. | #4 |
 | A10 | A y B tienen sendos borradores válidos, con claves distintas. | Ambos confirman altas mientras el otro conserva una lista anterior. | Tras refrescar se recuperan todas las altas de ambos usuarios; ninguna escritura sustituye la lista completa del grupo. | #4 |
+| A11 | New or edited product and new store name at the current limits. | Submit 60 and 40 Unicode scalars, including multi-scalar graphemes; repeat at 61/41 and with trailing spaces exceeding the received limit. | Boundary values persist without truncation. Overlong input rejects the entire write with no new stores, changed products or retained receipt. Quantity remains limited to 80. | #28 |
+| A12 | A committed add/edit receipt from the historical 160/80 limits and a matching stored product. | Retry the exact operation, then submit it with a new operation ID; query and purchase/cancel the existing product. | The original receipt replays unchanged, while a new overlong write is rejected. Saved names remain readable and purchases/cancellations continue to work. | #28 |
 
 ## Checks, finalización y conflictos
 

@@ -12,63 +12,91 @@ struct DraftInputSection: View {
 
     var body: some View {
         Section {
-            TextField("For example: bread at Aldi", text: $viewModel.text, axis: .vertical)
-                .lineLimit(3...)
-                .accessibilityLabel("Shopping text")
-                .disabled(isDictating || !viewModel.hasLoaded)
+            if viewModel.showsShoppingText {
+                TextField("For example: bread at Aldi", text: $viewModel.shoppingText, axis: .vertical)
+                    .lineLimit(2...)
+                    .accessibilityLabel("Shopping text")
+                    .disabled(isDictating || !viewModel.hasLoaded)
+                    .listRowBackground(Color.surface)
+            }
 
             switch viewModel.activity {
             case .idle:
                 Button("Dictate", systemImage: "mic") {
-                    viewModel.startDictation()
+                    viewModel.startDictation(replacingText: true)
                 }
+                .labelStyle(.iconOnly)
+                .buttonStyle(ShoppingIconButtonStyle())
+                .frame(maxWidth: .infinity)
                 .disabled(!viewModel.hasLoaded)
-                Button("Interpret text", systemImage: "sparkles") {
-                    viewModel.interpretText()
+                if viewModel.showsShoppingText, viewModel.canInterpret {
+                    Button("Interpret text", systemImage: "sparkles") {
+                        viewModel.interpretText()
+                    }
+                    .buttonStyle(ShoppingActionButtonStyle())
                 }
-                .disabled(!viewModel.canInterpret)
             case .interpreting:
                 ProgressView("Interpreting text…")
+                    .frame(maxWidth: .infinity)
                 Button("Cancel interpretation", role: .cancel) {
                     viewModel.cancelInterpretation()
                 }
+                .buttonStyle(ShoppingActionButtonStyle())
             case .preparingSpeech:
                 ProgressView("Preparing dictation…")
+                    .frame(maxWidth: .infinity)
                 Button("Cancel dictation", role: .cancel) {
                     viewModel.cancelDictation()
                 }
+                .buttonStyle(ShoppingActionButtonStyle())
             case .recording:
                 Label("Listening…", systemImage: "waveform")
+                    .frame(maxWidth: .infinity)
                 Button("Finish dictation", systemImage: "stop.fill") {
                     viewModel.finishDictation()
                 }
+                .buttonStyle(ShoppingActionButtonStyle())
                 Button("Cancel dictation", role: .cancel) {
                     viewModel.cancelDictation()
                 }
+                .buttonStyle(ShoppingActionButtonStyle())
             case .finishingSpeech:
                 ProgressView("Finishing dictation…")
+                    .frame(maxWidth: .infinity)
                 Button("Cancel dictation", role: .cancel) {
                     viewModel.cancelDictation()
                 }
-            }
-
-            if viewModel.availability != .available {
-                Button("Check availability") {
-                    viewModel.refreshAvailability()
-                }
-                .disabled(viewModel.activity != .idle)
+                .buttonStyle(ShoppingActionButtonStyle())
             }
         } header: {
-            Text("Type or dictate")
-        } footer: {
-            Text(viewModel.availabilityMessage)
+            Text("What would you like to add?")
+                .font(.title2.weight(.semibold))
+                .foregroundStyle(.textPrimary)
+                .textCase(nil)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
+                .padding(.bottom, 8)
         }
+        .listRowBackground(Color.clear)
+        .listRowSeparator(.hidden)
     }
 }
 
-#Preview(traits: .shoppingDraft) {
+#Preview("Available model - ready") {
+    @Previewable @State var viewModel = DraftPreviewSupport.viewModel(
+        snapshot: ShoppingDraftSnapshot(),
+        state: .availableModel
+    )
+    Form {
+        DraftInputSection(viewModel: viewModel)
+    }
+    .modifier(ShoppingFormStyle())
+}
+
+#Preview("Available model - recovery", traits: .shoppingDraft(.availableModel)) {
     @Previewable @Environment(ShoppingDraftViewModel.self) var viewModel
     Form {
         DraftInputSection(viewModel: viewModel)
     }
+    .modifier(ShoppingFormStyle())
 }

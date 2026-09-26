@@ -26,6 +26,11 @@ struct ShoppingNoticeValidationView: View {
             } label: {
                 Text(verbatim: "3. Hide presenter while open")
             }
+            Button {
+                model.showStoreShortcut()
+            } label: {
+                Text(verbatim: "4. Notice with store shortcut")
+            }
             Text(verbatim: "Run test 3 after test 2 or a fresh launch. Do not dismiss: the alert hides after 5 seconds. Then restore the presenter below.")
             if !model.isEnabled {
                 Button {
@@ -36,7 +41,12 @@ struct ShoppingNoticeValidationView: View {
             }
             Text(verbatim: model.diagnosticStatus)
         }
-        .modifier(ShoppingNoticeModifier(notice: model.notice, isEnabled: model.isEnabled, dismiss: model.dismiss))
+        .modifier(ShoppingNoticeModifier(
+            notice: model.notice,
+            isEnabled: model.isEnabled,
+            dismiss: model.dismiss,
+            openStore: model.openStore
+        ))
         .task(id: model.runID) {
             await model.runScenario()
         }
@@ -55,9 +65,10 @@ private final class ShoppingNoticeValidationModel {
     private var scenario = Scenario.storage
     private var replacementDelivered = false
     private var dismissedMessage = "none"
+    private var openedStoreID: UUID?
 
     var diagnosticStatus: String {
-        "Presenter enabled: \(isEnabled). Replacement delivered: \(replacementDelivered). Last dismissed: \(dismissedMessage). Pending: \(notice.map { String(localized: $0.message) } ?? "none")"
+        "Presenter enabled: \(isEnabled). Replacement delivered: \(replacementDelivered). Last dismissed: \(dismissedMessage). Opened store: \(openedStoreID?.uuidString ?? "none"). Pending: \(notice.map { String(localized: $0.message) } ?? "none")"
     }
 
     func showStorage() {
@@ -65,6 +76,27 @@ private final class ShoppingNoticeValidationModel {
         isEnabled = true
         runID += 1
         notice = Self.storageNotice
+    }
+
+    func showStoreShortcut() {
+        scenario = .storage
+        isEnabled = true
+        runID += 1
+        openedStoreID = nil
+        notice = ShoppingNotice(
+            source: .group,
+            message: "Added \("Detergente ropa") to the list for \("Lidl").",
+            storeDestination: ShoppingNotice.StoreDestination(
+                operationID: UUID(),
+                userID: UUID(),
+                groupID: UUID(),
+                storeID: UUID()
+            )
+        )
+    }
+
+    func openStore(_ snapshot: ShoppingNotice) {
+        openedStoreID = snapshot.storeDestination?.storeID
     }
 
     func startReplacement() {

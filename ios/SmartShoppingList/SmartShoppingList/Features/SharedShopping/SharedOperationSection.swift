@@ -17,19 +17,21 @@ struct SharedOperationSection: View {
                             await viewModel.retryPendingOperation()
                         }
                     }
+                    .buttonStyle(ShoppingActionButtonStyle())
                     .disabled(!viewModel.canRetryOperation)
                     .accessibilityHint("Retries the same submission that is awaiting confirmation.")
                     if !viewModel.canRetryOperation && !viewModel.isBusy {
                         Text("To recover the submission, sign in with the same Apple Account that started it.")
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.textSecondary)
                     }
                 }
             }
+            .listRowBackground(Color.surface)
         }
     }
 }
 
-#Preview("Envío pendiente", traits: .sharedShopping(.pending)) {
+#Preview("Pending submission", traits: .sharedShopping(.pending)) {
     @Previewable @Environment(SharedShoppingViewModel.self) var viewModel
     Form {
         SharedOperationSection(viewModel: viewModel)

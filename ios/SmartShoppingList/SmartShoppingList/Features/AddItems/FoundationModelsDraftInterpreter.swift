@@ -141,8 +141,17 @@ struct FoundationModelsDraftInterpreter: DraftInterpreting {
         Include every requested product, even when only another product has a stated quantity.
         When conjunctions or commas enumerate distinct products, create a row for each one.
         Keep compound product names intact; a conjunction inside a product name does not split it.
-        Copy each name literally from the source. Do not use example names or placeholders.
-        quantity is the literal quantity only when explicit and unambiguous; otherwise use null.
+        Copy the product name literally from the source, excluding its quantity, packaging phrase and store.
+        Do not use example names or placeholders.
+        quantity includes an explicit count and its unit or packaging, written as digits OR words.
+        Preserve that quantity literally; do not convert words to digits or convert units.
+        Separate a leading count and packaging from the product, omitting the connecting "de" or "of".
+        For example, "Un paquete de bolsas de basura en Mercadona" has name "bolsas de basura",
+        quantity "Un paquete", store "Mercadona".
+        "Dos botellas de leche en Aldi" has name "leche", quantity "Dos botellas", store "Aldi".
+        "Three packs of coffee at Aldi" has name "coffee", quantity "Three packs", store "Aldi".
+        Keep numbers that are part of a product name, such as "queso cuatro quesos" or "7UP", in the name.
+        Use quantity null only when the quantity is missing or ambiguous.
         A quantity belongs only to the product it describes, not to the other products in the list.
         store is the explicit store only when its relationship to the product is unambiguous;
         otherwise use null. When a single store qualifies the whole list, copy that store into every product in that list.
@@ -180,10 +189,10 @@ private struct GeneratedShoppingDraft {
 
 @Generable(description: "A requested product", representNilExplicitlyInGeneratedContent: true)
 private struct GeneratedShoppingProduct {
-    @Guide(description: "Name copied literally from a product mention in the original text")
+    @Guide(description: "Product name copied literally, excluding any leading quantity or packaging phrase and the store; keep numbers intrinsic to the product name")
     var name: String
 
-    @Guide(description: "Explicit literal quantity; null if missing or ambiguous")
+    @Guide(description: "Explicit count in digits or words, including its unit or packaging, copied literally; for example Un paquete or Three packs; null if missing or ambiguous")
     var quantity: String?
 
     @Guide(description: "Explicit chosen store; null if missing, ambiguous, or the person has not chosen between alternatives")

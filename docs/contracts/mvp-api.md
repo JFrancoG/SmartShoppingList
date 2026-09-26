@@ -1,6 +1,6 @@
 # Contrato técnico del MVP
 
-Versión **0.1.0**, 19 de septiembre de 2026. Unidad: [#2](https://github.com/JFrancoG/SmartShoppingList/issues/2). Alcance funcional: [spec, secciones 2–6](../mvp-spec.md). Este contrato define lo que implementarán cliente y servidor; no acredita endpoints disponibles ni pruebas de colaboración ejecutadas.
+Versión **0.1.1**, 26 de septiembre de 2026. Unidad: [#2](https://github.com/JFrancoG/SmartShoppingList/issues/2). Alcance funcional: [spec, secciones 2–6](../mvp-spec.md). Este contrato define lo que implementarán cliente y servidor; no acredita endpoints disponibles ni pruebas de colaboración ejecutadas.
 
 ## Cómo utilizarlo
 
@@ -19,8 +19,10 @@ Los UUID se transmiten en minúsculas con guiones. El servidor genera los IDs pe
 
 | Entrada | Límite |
 |---|---|
-| Nombre de grupo o tienda | 1–80 puntos de código Unicode recibidos y tras normalizar |
-| Nombre de producto / nombre visible de usuario | 1–160; nombre visible opcional |
+| Nombre de producto nuevo o editado | 1–60 puntos de código Unicode recibidos y tras normalizar |
+| Nombre de tienda nueva | 1–40 puntos de código Unicode recibidos y tras normalizar |
+| Nombre de grupo | 1–80 puntos de código Unicode recibidos y tras normalizar |
+| Nombre visible de usuario | 1–160; nombre visible opcional |
 | Cantidad literal | `null` o 1–80; no se transforma en una unidad inventada |
 | Lote confirmado / selección de compra | 1–50 entradas |
 | Página de consulta | 50 por defecto; 1–100 solicitado |
@@ -29,6 +31,12 @@ Los UUID se transmiten en minúsculas con guiones. El servidor genera los IDs pe
 Primero se comprueba el límite de transporte y de cada string recibido; después se normaliza y se rechazan nombres vacíos o fuera del límite. Los límites cuentan puntos de código, no bytes ni `String.count` de grafemas de Swift. Normalización de nombres: NFC, recortar espacios Unicode externos y reducir cada secuencia interna de espacios Unicode a un espacio ASCII. Rechazar controles no espaciales. Preservar acentos, mayúsculas y calificativos como «sin lactosa». No reinterpretar texto confirmado.
 
 La cantidad literal sigue la misma normalización de espacios/NFC; si no existe se envía `null`, no texto vacío o solo espacios. El cliente muestra los límites antes de confirmar: no corta ni divide automáticamente un lote o una selección mayor de 50, porque eso cambiaría la unidad atómica confirmada.
+
+### Compatibility with names saved before version 0.1.1
+
+The 60-scalar product and 40-scalar store limits apply to new writes, including edits. Existing product names up to 160 scalars and store names up to 80 scalars remain unchanged in storage and responses; no migration or truncation is performed. Existing stores can still be referenced by ID, and existing products can be purchased or cancelled without renaming them.
+
+An exact replay of an operation already committed under the earlier limits returns its original receipt. The server therefore parses the historical 160/80 envelope, authorizes membership, checks the operation fingerprint and receipt, and only then validates 60/40 before a new write. Both received and normalized lengths are checked. A request above the current limits with a new operation ID is rejected without retaining a receipt or creating stores/items. Unconfirmed old submissions must be corrected before creating a new intent. OpenAPI request schemas describe new writes; response schemas retain the historical bounds for saved data and recovered receipts.
 
 ### Tiendas y ambigüedad
 
