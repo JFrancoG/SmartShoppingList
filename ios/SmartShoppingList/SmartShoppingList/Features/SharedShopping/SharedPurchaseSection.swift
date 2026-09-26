@@ -56,26 +56,28 @@ struct SharedPurchaseSection: View {
         .listRowBackground(Color.surface)
 
         Section {
-            if viewModel.editingItem != nil {
-                Button("Review product edit") {
-                    viewModel.isItemEditorPresented = true
+            ShoppingControlGroup {
+                if viewModel.editingItem != nil {
+                    Button("Review product edit") {
+                        viewModel.isItemEditorPresented = true
+                    }
                 }
-            }
-            Text("Selected: \(viewModel.purchaseSelection.count) of up to 50")
-                .frame(maxWidth: .infinity)
-                .multilineTextAlignment(.center)
-            Button {
-                Task {
-                    await viewModel.finalizePurchase()
-                }
-            } label: {
-                Text(viewModel.purchaseActionTitle)
-                    .fixedSize(horizontal: false, vertical: true)
+                Text("Selected: \(viewModel.purchaseSelection.count) of up to 50")
+                    .frame(maxWidth: .infinity)
                     .multilineTextAlignment(.center)
+                Button {
+                    Task {
+                        await viewModel.finalizePurchase()
+                    }
+                } label: {
+                    Text(viewModel.purchaseActionTitle)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .multilineTextAlignment(.center)
+                }
+                .buttonStyle(ShoppingActionButtonStyle())
+                .disabled(!viewModel.canFinalizePurchase)
+                .accessibilityHint("Confirms only the selected products from this store for the whole group.")
             }
-            .buttonStyle(ShoppingActionButtonStyle())
-            .disabled(!viewModel.canFinalizePurchase)
-            .accessibilityHint("Confirms only the selected products from this store for the whole group.")
         } footer: {
             Label(
                 "Switching stores or leaving this screen does not confirm the purchase. Refresh to check for group changes.",

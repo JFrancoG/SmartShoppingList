@@ -6,11 +6,7 @@ struct ShoppingActionButtonStyle: ButtonStyle {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     func makeBody(configuration: Configuration) -> some View {
-        ViewThatFits(in: .horizontal) {
-            actionLabel(configuration)
-                .containerRelativeFrame(.horizontal) { width, _ in
-                    width * (dynamicTypeSize.isAccessibilitySize ? 0.75 : 0.6)
-                }
+        ShoppingActionLayout(widthFraction: dynamicTypeSize.isAccessibilitySize ? 0.75 : 0.6) {
             actionLabel(configuration)
                 .frame(maxWidth: .infinity)
         }

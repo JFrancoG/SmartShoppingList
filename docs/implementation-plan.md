@@ -167,3 +167,9 @@ El README debe permitir reproducir compilación, arranque, firma/capacidades, va
 Una grabación breve puede servir de apoyo; no se trata como requisito publicado del evento ni sustituto del código funcional. Se confirma el canal y la hora de entrega, se comprueba el repositorio y se registra el envío efectivo. Que el repositorio ya sea público no acredita la entrega por el canal oficial.
 
 Las propuestas posteriores al 27 permanecen en la sección de futuro de la spec. No se convierten en tareas de este MVP.
+
+### Ajuste acotado para iPhone Duo: decisión del 26 de septiembre
+
+Después de aceptar y entregar #28 mediante PR #29, el usuario autoriza [#30](https://github.com/JFrancoG/SmartShoppingList/issues/30) en `codex/issue-30-duo-controls`: adaptar los bloques de entrada y confirmación a regiones reservadas, calcular anchos locales de acciones y limitar el botón nativo de Apple. Se conservan las pestañas, el selector de tienda, la lista continua y las hojas nativas. `NavigationSplitView` permanece fuera de esta unidad. Se respeta el mínimo iOS 27.0; para compilar las nuevas APIs hace falta SDK 27.1 o posterior.
+
+La validación focalizada comprueba geometría y continuidad de estado en abierto, libro, pliegue horizontal y exterior. Los fixtures aislados no acreditan micrófono real, interpretación real ni servidor; los límites pendientes constan en [el informe de #30](validation/issue-30-duo-controls.md). El usuario confirma el aspecto en todas las posiciones ensayadas y acepta el texto abreviado «Añadir a mano» / «Add manually». Autoriza commit, push, PR, merge y cierre de issue y rama, manteniendo explícitas las comprobaciones generales pendientes. El resultado definitivo se registra en #30 y su PR. Esta adaptación no cierra las comprobaciones finales de entrega ni incorpora App Intents.
