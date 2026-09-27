@@ -31,6 +31,7 @@ final class ShoppingDraftViewModel {
     private(set) var notice: LocalizedStringResource?
     private(set) var persistenceNotice: LocalizedStringResource?
     private(set) var hasLoaded: Bool
+    private(set) var isReceivingIntent = false
     var editorItem = ShoppingDraftItem()
     private(set) var isAddingItem = false
     var isEditorPresented = false {
@@ -58,8 +59,9 @@ final class ShoppingDraftViewModel {
     @ObservationIgnored private var captureTask: Task<Void, Never>?
     @ObservationIgnored private var pendingSnapshot: ShoppingDraftSnapshot?
     @ObservationIgnored private var saveTask: Task<Void, Never>?
-    @ObservationIgnored private var isLoading = false
+    @ObservationIgnored private var loadTask: Task<Void, Never>?
     @ObservationIgnored private var storageBlocked = false
+    @ObservationIgnored private var intentRequestIDs: [UUID]
 
     init(
         interpreter: any DraftInterpreting,
@@ -73,6 +75,7 @@ final class ShoppingDraftViewModel {
         text = initialDraft?.text ?? ""
         items = initialDraft?.items ?? []
         interpretedText = initialDraft?.interpretedText
+        intentRequestIDs = initialDraft?.intentRequestIDs ?? []
         showsRecoveryControls = !(initialDraft?.items.isEmpty ?? true)
             || (initialDraft?.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
                 && initialDraft?.text != initialDraft?.interpretedText)
@@ -81,10 +84,10 @@ final class ShoppingDraftViewModel {
     }
 
     var canInterpret: Bool {
-        hasLoaded && activity == .idle && availability == .available && text != interpretedText
+        hasLoaded && !isReceivingIntent && activity == .idle && availability == .available && text != interpretedText
             && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
-    var canAddItem: Bool { hasLoaded && items.count < 50 }
+    var canAddItem: Bool { hasLoaded && !isReceivingIntent && items.count < 50 }
 
     var showsShoppingText: Bool {
         showsRecoveryControls || activity == .preparingSpeech || activity == .recording || activity == .finishingSpeech
@@ -148,11 +151,20 @@ final class ShoppingDraftViewModel {
     }
 
     func load() async {
-        guard !hasLoaded, !isLoading else { return }
-        isLoading = true
+        if let loadTask {
+            await loadTask.value
+            return
+        }
+        guard !hasLoaded else { return }
+        let task = Task { await restoreDraft() }
+        loadTask = task
+        await task.value
+        loadTask = nil
+    }
+
+    private func restoreDraft() async {
         var clearedCompletedText = false
         defer {
-            isLoading = false
             hasLoaded = true
             if clearedCompletedText {
                 queuePersistence()
@@ -163,6 +175,7 @@ final class ShoppingDraftViewModel {
                 text = snapshot.text
                 items = snapshot.items
                 interpretedText = snapshot.interpretedText
+                intentRequestIDs = Array((snapshot.intentRequestIDs ?? []).suffix(100))
                 clearedCompletedText = clearCompletedText()
                 showsRecoveryControls = !items.isEmpty || hasUninterpretedText
             }
@@ -187,7 +200,7 @@ final class ShoppingDraftViewModel {
     }
 
     func beginEditingItem(_ item: ShoppingDraftItem) {
-        guard hasLoaded, items.contains(where: { $0.id == item.id }) else { return }
+        guard hasLoaded, !isReceivingIntent, items.contains(where: { $0.id == item.id }) else { return }
         stopForEditing()
         editorItem = item
         isAddingItem = false
@@ -197,6 +210,7 @@ final class ShoppingDraftViewModel {
 
     @discardableResult
     func saveEditor(closeEditor: Bool = true) -> ShoppingDraftItem? {
+        guard !isReceivingIntent else { return nil }
         guard !editorHasLengthIssue else {
             editorError = nil
             return nil
@@ -237,6 +251,7 @@ final class ShoppingDraftViewModel {
     }
 
     func removeItem(id: UUID) {
+        guard !isReceivingIntent else { return }
         cancelInterpretation()
         items.removeAll { $0.id == id }
         preparedItems = nil
@@ -244,6 +259,7 @@ final class ShoppingDraftViewModel {
     }
 
     func reviewDraft() {
+        guard !isReceivingIntent else { return }
         cancelInterpretation()
         do {
             preparedItems = try ShoppingDraftRules.prepare(items)
@@ -367,7 +383,7 @@ final class ShoppingDraftViewModel {
 
     @discardableResult
     func startDictation(replacingText: Bool = false) -> Task<Void, Never> {
-        guard hasLoaded, activity == .idle else { return Task {} }
+        guard hasLoaded, !isReceivingIntent, activity == .idle else { return Task {} }
         cancelInterpretation()
         if !replacingText {
             revisableInterpretedItems = []
@@ -485,6 +501,38 @@ final class ShoppingDraftViewModel {
         await saveTask?.value
     }
 
+    /// Reuses the UI's save queue. A failed save keeps the entry visible for recovery with the same request identity.
+    @discardableResult
+    func addItemFromIntent(_ item: ShoppingDraftItem) async throws -> Bool {
+        guard !isReceivingIntent else { throw DraftIntentError.busy }
+        isReceivingIntent = true
+        defer { isReceivingIntent = false }
+        await load()
+        guard !storageBlocked else { throw DraftIntentError.storageUnavailable }
+        guard activity == .idle, !isEditorPresentationActive, interpretationProposal == nil else {
+            throw DraftIntentError.busy
+        }
+        try Task.checkCancellation()
+        let validated = try PreparedDraftItem(validating: item)
+        let isNewRequest = !intentRequestIDs.contains(item.id)
+        if isNewRequest {
+            guard items.count < 50 else { throw DraftValidationError.tooManyItems }
+            items.append(ShoppingDraftItem(
+                id: item.id,
+                name: validated.name,
+                quantity: validated.quantity ?? "",
+                store: validated.store
+            ))
+            intentRequestIDs = Array((intentRequestIDs + [item.id]).suffix(100))
+            preparedItems = nil
+        }
+        showsRecoveryControls = true
+        queuePersistence()
+        await flushPersistence()
+        guard persistenceNotice == nil else { throw DraftIntentError.saveFailed }
+        return isNewRequest
+    }
+
     /// Remove only unchanged rows acknowledged by the server before clearing its retry envelope.
     func consumeConfirmedItems(_ confirmed: [ShoppingDraftItem]) async -> Bool {
         await load()
@@ -526,7 +574,12 @@ final class ShoppingDraftViewModel {
 
     private func queuePersistence() {
         guard hasLoaded, !storageBlocked else { return }
-        pendingSnapshot = ShoppingDraftSnapshot(text: text, items: items, interpretedText: interpretedText)
+        pendingSnapshot = ShoppingDraftSnapshot(
+            text: text,
+            items: items,
+            interpretedText: interpretedText,
+            intentRequestIDs: intentRequestIDs.isEmpty ? nil : intentRequestIDs
+        )
         guard saveTask == nil else { return }
         saveTask = Task {
             while let snapshot = pendingSnapshot {
@@ -542,7 +595,7 @@ final class ShoppingDraftViewModel {
         }
     }
 
-    private static func validationMessage(_ error: DraftValidationError) -> LocalizedStringResource {
+    static func validationMessage(_ error: DraftValidationError) -> LocalizedStringResource {
         switch error {
         case .emptyBatch: return "Add at least one product to review the draft."
         case .tooManyItems: return "The draft can contain up to 50 products."

@@ -1,10 +1,22 @@
+import AppIntents
 import SwiftUI
 
 @main
 struct SmartShoppingListApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @State private var iconController = AppIconController()
-    @State private var shopping: SharedShoppingViewModel? = {
+    @State private var shopping: SharedShoppingViewModel?
+
+    init() {
+        let shopping = Self.makeShopping()
+        _shopping = State(initialValue: shopping)
+        if let shopping {
+            AppDependencyManager.shared.add(dependency: shopping)
+            ShoppingAppShortcuts.updateAppShortcutParameters()
+        }
+    }
+
+    private static func makeShopping() -> SharedShoppingViewModel? {
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("-shopping-notice-validation") {
             return nil
@@ -21,7 +33,7 @@ struct SmartShoppingListApp: App {
         }
         #endif
         return SharedAppFactory.make()
-    }()
+    }
 
     var body: some Scene {
         WindowGroup {

@@ -134,7 +134,7 @@ struct AddItemsView: View {
                     }
                 }
                 .modifier(ShoppingFormStyle())
-                .disabled(!viewModel.hasLoaded)
+                .disabled(!viewModel.hasLoaded || viewModel.isReceivingIntent)
                 .navigationTitle(shared?.group?.name ?? String(localized: "Add"))
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
