@@ -12,6 +12,7 @@ struct ShoppingDraftSnapshot: Codable, Equatable {
     var text = ""
     var items: [ShoppingDraftItem] = []
     var interpretedText: String? = nil
+    var intentRequestIDs: [UUID]? = nil
 }
 
 struct DraftInterpretationProposal: Identifiable, Equatable {

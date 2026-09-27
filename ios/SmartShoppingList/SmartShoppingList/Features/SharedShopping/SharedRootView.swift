@@ -27,9 +27,16 @@ struct SharedRootView: View {
             }
         }
         .onChange(of: viewModel.pendingInvitation, initial: true) { _, invitation in
-            guard invitation != nil else { return }
+            guard invitation != nil, viewModel.draftIntentNavigationID == nil else { return }
             selectedTab = .shop
             requestSettings()
+        }
+        .onChange(of: viewModel.draftIntentNavigationID, initial: true) { _, requestID in
+            guard let requestID else { return }
+            selectedTab = .add
+            settingsPresentationRequested = false
+            isSettingsPresented = false
+            viewModel.acknowledgeDraftIntentNavigation(id: requestID)
         }
         .onChange(of: viewModel.canPresentRootNotice) { _, _ in
             presentSettingsIfPossible()

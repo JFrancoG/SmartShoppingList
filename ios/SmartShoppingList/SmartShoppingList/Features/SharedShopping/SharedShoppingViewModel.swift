@@ -36,7 +36,9 @@ final class SharedShoppingViewModel {
     private(set) var invitations: [SharedInvitation] = []
     private(set) var shareURL: URL?
     private(set) var hasLoaded = false
-    private(set) var isBusy = false
+    private var isPerformingAction = false
+    private var isProcessingShoppingIntent = false
+    private(set) var draftIntentNavigationID: UUID?
     private(set) var sessionIsVerified = false
     private(set) var notice: LocalizedStringResource? {
         didSet {
@@ -100,6 +102,9 @@ final class SharedShoppingViewModel {
     @ObservationIgnored private let credentials: any SharedCredentialStoring
     @ObservationIgnored private var appleState: String?
     @ObservationIgnored private var storageFailed = false
+    @ObservationIgnored private var hasRestoredLocalState = false
+    @ObservationIgnored private var localStateLoadTask: Task<Void, Never>?
+    @ObservationIgnored private var initialLoadTask: Task<Void, Never>?
     @ObservationIgnored private var reviewSnapshot: ShoppingDraftSnapshot?
     @ObservationIgnored private var retryNotBefore: Date?
 
@@ -119,11 +124,14 @@ final class SharedShoppingViewModel {
 
     var group: SharedGroup? { session?.user.group }
     var isConfigured: Bool { api != nil && configuration != nil }
+    var isBusy: Bool { isPerformingAction || isProcessingShoppingIntent }
     var canMutate: Bool {
         hasLoaded && sessionIsVerified && !isBusy && !storageFailed && pendingOperation == nil
-            && storeQuery.activity == .idle
+            && storeQuery.activity == .idle && !draft.isReceivingIntent
     }
-    var draftIsLocked: Bool { !hasLoaded || pendingOperation != nil || isBusy || isReviewPresented }
+    var draftIsLocked: Bool {
+        !hasLoaded || pendingOperation != nil || isBusy || isReviewPresented || draft.isReceivingIntent
+    }
     var isCreator: Bool { group?.creatorUserId == session?.user.id && group != nil }
     var canConfirmReview: Bool {
         canMutate && reviewOwner != nil && reviewOwner?.userID == session?.user.id
@@ -153,11 +161,37 @@ final class SharedShoppingViewModel {
     }
 
     func load() async {
-        guard !hasLoaded, !isBusy else { return }
-        await performAction {
-            defer {
-                hasLoaded = true
+        if let initialLoadTask {
+            await initialLoadTask.value
+            return
+        }
+        guard !hasLoaded, !isPerformingAction else { return }
+        let task = Task {
+            await performAction {
+                defer {
+                    hasLoaded = true
+                }
+                await restoreLocalState()
+                guard !storageFailed else { return }
+                guard isConfigured else {
+                    notice = "The group connection is not configured yet. You can prepare your draft manually."
+                    return
+                }
+                await refreshSessionAndLists()
             }
+        }
+        initialLoadTask = task
+        await task.value
+        initialLoadTask = nil
+    }
+
+    private func restoreLocalState() async {
+        guard !hasRestoredLocalState, !hasLoaded else { return }
+        if let localStateLoadTask {
+            await localStateLoadTask.value
+            return
+        }
+        let task = Task {
             await draft.load()
             do {
                 pendingOperation = try await credentials.loadOperation()
@@ -166,14 +200,122 @@ final class SharedShoppingViewModel {
             } catch {
                 storageFailed = true
                 notice = "Your saved access could not be restored. Unlock the device and reopen the app; your data is kept without overwriting it."
-                return
             }
-            guard isConfigured else {
-                notice = "The group connection is not configured yet. You can prepare your draft manually."
-                return
-            }
-            await refreshSessionAndLists()
+            hasRestoredLocalState = true
         }
+        localStateLoadTask = task
+        await task.value
+        localStateLoadTask = nil
+    }
+
+    /// Explicit shortcut input only changes the local draft, even while initial session verification is pending.
+    @discardableResult
+    func addDraftItemFromIntent(_ item: ShoppingDraftItem) async throws -> Bool {
+        try Task.checkCancellation()
+        guard !isProcessingShoppingIntent else { throw DraftIntentError.busy }
+        await restoreLocalState()
+        try Task.checkCancellation()
+        guard !storageFailed else { throw DraftIntentError.storageUnavailable }
+        guard !isProcessingShoppingIntent, pendingOperation == nil, !(hasLoaded && isBusy),
+              storeQuery.activity == .idle,
+              !isReviewPresented, !isReviewPresentationActive,
+              !isItemEditorPresented, !isItemEditorPresentationActive else {
+            throw DraftIntentError.busy
+        }
+        let added = try await draft.addItemFromIntent(item)
+        draftIntentNavigationID = UUID()
+        return added
+    }
+
+    /// Publishes only this saved input when its store has one exact match in the current group.
+    func addShoppingItemFromIntent(_ item: ShoppingDraftItem) async throws -> ShoppingIntentOutcome {
+        try Task.checkCancellation()
+        guard !isProcessingShoppingIntent, !isPerformingAction || initialLoadTask != nil else {
+            throw DraftIntentError.busy
+        }
+        isProcessingShoppingIntent = true
+        do {
+            let outcome = try await processShoppingItemFromIntent(item)
+            isProcessingShoppingIntent = false
+            await promoteIncomingInvitation()
+            return outcome
+        } catch {
+            isProcessingShoppingIntent = false
+            await promoteIncomingInvitation()
+            throw error
+        }
+    }
+
+    private func processShoppingItemFromIntent(_ item: ShoppingDraftItem) async throws -> ShoppingIntentOutcome {
+        await restoreLocalState()
+        try Task.checkCancellation()
+        guard !storageFailed else { throw DraftIntentError.storageUnavailable }
+        guard pendingOperation == nil, storeQuery.activity == .idle,
+              !isReviewPresented, !isReviewPresentationActive,
+              !isItemEditorPresented, !isItemEditorPresentationActive,
+              !isInvitationsPresented, !isInvitationsPresentationActive else {
+            throw DraftIntentError.busy
+        }
+        let isNewRequest = try await draft.addItemFromIntent(item)
+        try Task.checkCancellation()
+        guard isNewRequest else { return .alreadyProcessed }
+        guard let savedItem = draft.items.first(where: { $0.id == item.id }) else {
+            throw DraftIntentError.saveFailed
+        }
+        await load()
+        try Task.checkCancellation()
+        guard sessionIsVerified, !storageFailed, let api, let session, let group else {
+            return keepShoppingIntentInDraft()
+        }
+        let fetchedStores: [SharedStore]
+        do {
+            fetchedStores = try await api.stores(groupID: group.id, token: session.accessToken)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            try Task.checkCancellation()
+            await handle(error)
+            return keepShoppingIntentInDraft()
+        }
+        try Task.checkCancellation()
+        guard self.session?.user.id == session.user.id, self.group?.id == group.id, sessionIsVerified else {
+            return keepShoppingIntentInDraft()
+        }
+        stores = fetchedStores
+        let matches = fetchedStores.filter {
+            $0.groupId == group.id && Self.storeNameKey($0.name) == Self.storeNameKey(savedItem.store)
+        }
+        guard matches.count == 1, let store = matches.first else { return keepShoppingIntentInDraft() }
+        let preparedItem = try PreparedDraftItem(validating: savedItem)
+        let entry = SharedNewItem(name: preparedItem.name, quantity: preparedItem.quantity, store: .existing(store.id))
+        let operation = PendingSharedOperation.addItems(
+            userID: session.user.id,
+            groupID: group.id,
+            request: AddItemsRequest(operationId: item.id, items: [entry]),
+            sourceDraft: ShoppingDraftSnapshot(items: [savedItem])
+        )
+        try Task.checkCancellation()
+        do {
+            try await credentials.saveOperation(operation)
+        } catch {
+            notice = SharedErrorMessage.message(for: error)
+            throw ShoppingIntentError.needsReview
+        }
+        pendingOperation = operation
+        try Task.checkCancellation()
+        guard await performPendingOperation() else { throw ShoppingIntentError.needsReview }
+        draftIntentNavigationID = UUID()
+        return .added(storeName: store.name)
+    }
+
+    private func keepShoppingIntentInDraft() -> ShoppingIntentOutcome {
+        draftIntentNavigationID = UUID()
+        return .savedToDraft
+    }
+
+    func acknowledgeDraftIntentNavigation(id: UUID) {
+        guard draftIntentNavigationID == id else { return }
+        draftIntentNavigationID = nil
     }
 
     func refresh() async {
@@ -212,7 +354,7 @@ final class SharedShoppingViewModel {
         request.requestedScopes = [.fullName]
         request.nonce = challenge.nonce
         request.state = appleState
-        isBusy = true
+        isPerformingAction = true
     }
 
     func receiveAppleAuthorization(_ result: Result<ASAuthorization, any Error>) {
@@ -533,9 +675,10 @@ final class SharedShoppingViewModel {
         }
     }
 
-    private func performPendingOperation() async {
+    @discardableResult
+    private func performPendingOperation() async -> Bool {
         guard let api, let session, let operation = pendingOperation, operation.userID == session.user.id else {
-            return
+            return false
         }
         let submissionStores = stores
         var additionNotice: LocalizedStringResource?
@@ -568,7 +711,7 @@ final class SharedShoppingViewModel {
                 )
                 guard await draft.consumeConfirmedItems(sourceDraft.items) else {
                     notice = "The server confirmed the batch, but the result still needs to be saved on this device. Retry to complete the same submission."
-                    return
+                    return false
                 }
             }
             try await credentials.saveOperation(nil)
@@ -610,6 +753,7 @@ final class SharedShoppingViewModel {
             } else {
                 notice = "The operation is confirmed in the group."
             }
+            return true
         } catch let error as SharedAPIError {
             if case .server(let status, let code, _, let retryAfter) = error {
                 if let retryAfter {
@@ -624,7 +768,7 @@ final class SharedShoppingViewModel {
                             let previousSelection = purchaseSelection
                             let refreshed = await refreshSessionAndLists()
                             if code == "item_conflict", refreshed, previousSelection != purchaseSelection, notice != nil {
-                                return
+                                return false
                             }
                         }
                         if case .changeItem(_, let original, let request) = operation {
@@ -639,12 +783,12 @@ final class SharedShoppingViewModel {
                                 editNeedsReview = false
                                 isItemEditorPresented = false
                                 notice = "This product is no longer pending in this store. Your changes were not saved."
-                                return
+                                return false
                             }
                         }
                     } catch {
                         notice = SharedErrorMessage.message(for: error)
-                        return
+                        return false
                     }
                 }
             }
@@ -653,6 +797,7 @@ final class SharedShoppingViewModel {
             // Cancellation and local storage failures cannot establish whether the server committed.
             notice = SharedErrorMessage.message(for: error)
         }
+        return false
     }
 
     var canQueryStore: Bool {
@@ -796,7 +941,7 @@ final class SharedShoppingViewModel {
     }
 
     var canPresentRootNotice: Bool {
-        !isReviewPresentationActive && !isInvitationsPresentationActive
+        !isProcessingShoppingIntent && !isReviewPresentationActive && !isInvitationsPresentationActive
             && !isItemEditorPresentationActive && !draft.isEditorPresentationActive && storeQuery.activity == .idle
             && (noticeStoreDestination == nil || !isBusy)
     }
@@ -920,20 +1065,20 @@ final class SharedShoppingViewModel {
 
     /// Finishing a foreground action awaits its bounded inbox work; no background drain can swallow the next action.
     private func performAction(_ action: @MainActor () async -> Void) async {
-        isBusy = true
+        isPerformingAction = true
         await action()
         await finishAction()
     }
 
     private func finishAction() async {
-        isBusy = false
+        isPerformingAction = false
         await promoteIncomingInvitation()
     }
 
     private func promoteIncomingInvitation() async {
         guard hasLoaded, !isBusy, !storageFailed else { return }
-        isBusy = true
-        defer { isBusy = false }
+        isPerformingAction = true
+        defer { isPerformingAction = false }
         do {
             // Each iteration consumes one received value. An unresolved active invitation stops promotion.
             while let incoming = try await credentials.loadIncomingInvitation() {
@@ -1024,7 +1169,7 @@ extension SharedShoppingViewModel {
         invitations = preview.invitations
         shareURL = preview.shareURL
         hasLoaded = true
-        isBusy = false
+        isPerformingAction = false
         sessionIsVerified = preview.sessionIsVerified
         notice = preview.notice
         reviewedItems = preview.reviewedItems

@@ -577,10 +577,405 @@ struct SharedShoppingViewModelTests {
     }
 }
 
+extension SharedShoppingViewModelTests {
+    @Test(arguments: [false, true])
+    func `A cold shortcut restores the local draft without making API requests`(signedIn: Bool) async throws {
+        let api = SharedFlowAPI()
+        let credentials = MemorySharedCredentialStore(session: signedIn ? api.session : nil)
+        let existing = ShoppingDraftItem(name: "pan corregido", quantity: "2 barras", store: "Día")
+        let persistence = MemoryDraftPersistence()
+        try await persistence.save(ShoppingDraftSnapshot(text: "falta café", items: [existing]))
+        let model = try makeIntentModel(api: api, credentials: credentials, persistence: persistence)
+        let request = ShoppingDraftItem(name: "leche", quantity: "1 litro", store: "Aldi")
+
+        #expect(try await model.addDraftItemFromIntent(request))
+        #expect(try await model.addDraftItemFromIntent(request) == false)
+
+        #expect(model.draft.items == [existing, request])
+        #expect(model.draft.text == "falta café")
+        #expect(try await persistence.load()?.items == [existing, request])
+        #expect(model.session == (signedIn ? api.session : nil))
+        #expect(model.draftIntentNavigationID != nil)
+        #expect(await api.requestCount == 0)
+        #expect(await credentials.loadOperation() == nil)
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func `A shortcut persists while the initial session refresh is still waiting for the network`() async throws {
+        let gate = SharedFlowGate()
+        let api = SharedFlowAPI(currentUserGate: gate)
+        let persistence = MemoryDraftPersistence()
+        let model = try makeIntentModel(
+            api: api,
+            credentials: MemorySharedCredentialStore(session: api.session),
+            persistence: persistence
+        )
+        let loading = Task { await model.load() }
+        await gate.waitUntilReached()
+        #expect(model.isBusy)
+        #expect(!model.hasLoaded)
+        let request = ShoppingDraftItem(name: "leche", store: "Aldi")
+
+        #expect(try await model.addDraftItemFromIntent(request))
+
+        #expect(try await persistence.load()?.items == [request])
+        #expect(model.draft.items == [request])
+        #expect(model.draftIntentNavigationID != nil)
+        #expect(await api.requestCount == 1)
+        #expect(model.isBusy)
+        await gate.open()
+        await loading.value
+        #expect(model.draft.items == [request])
+        #expect(await api.sentBatches.isEmpty)
+    }
+
+    @Test(arguments: [false, true])
+    func `A restored pending batch blocks shortcut additions before any network request`(
+        sharedAddition: Bool
+    ) async throws {
+        let api = SharedFlowAPI()
+        let existing = ShoppingDraftItem(name: "pan", quantity: "2", store: "Aldi")
+        let snapshot = ShoppingDraftSnapshot(text: "borrador pendiente", items: [existing])
+        let operation = PendingSharedOperation.addItems(
+            userID: api.session.user.id,
+            groupID: try #require(api.session.user.group).id,
+            request: AddItemsRequest(
+                operationId: UUID(),
+                items: [SharedNewItem(name: "pan", quantity: "2", store: .newName("Aldi"))]
+            ),
+            sourceDraft: snapshot
+        )
+        let credentials = MemorySharedCredentialStore(session: api.session, operation: operation)
+        let persistence = MemoryDraftPersistence()
+        try await persistence.save(snapshot)
+        let model = try makeIntentModel(api: api, credentials: credentials, persistence: persistence)
+
+        await #expect(throws: DraftIntentError.busy) {
+            let product = ShoppingDraftItem(name: "leche", store: "Lidl")
+            if sharedAddition {
+                _ = try await model.addShoppingItemFromIntent(product)
+            } else {
+                try await model.addDraftItemFromIntent(product)
+            }
+        }
+
+        #expect(model.pendingOperation == operation)
+        #expect(await credentials.loadOperation() == operation)
+        #expect(model.draft.items == [existing])
+        #expect(model.draft.text == "borrador pendiente")
+        #expect(try await persistence.load() == snapshot)
+        #expect(model.draftIntentNavigationID == nil)
+        #expect(await api.requestCount == 0)
+    }
+
+    @Test
+    func `A credential restoration failure blocks shortcuts without changing saved draft or session`() async throws {
+        let api = SharedFlowAPI()
+        let credentials = ObservedSharedCredentials(session: api.session, failsLoading: true)
+        let existing = ShoppingDraftItem(name: "pan", store: "Aldi")
+        let snapshot = ShoppingDraftSnapshot(text: "compra sin terminar", items: [existing])
+        let persistence = MemoryDraftPersistence()
+        try await persistence.save(snapshot)
+        let model = try makeIntentModel(api: api, credentials: credentials, persistence: persistence)
+
+        await #expect(throws: DraftIntentError.storageUnavailable) {
+            try await model.addDraftItemFromIntent(ShoppingDraftItem(name: "leche", store: "Lidl"))
+        }
+
+        #expect(model.draft.items == [existing])
+        #expect(try await persistence.load() == snapshot)
+        #expect(await credentials.base.loadSession() == api.session)
+        #expect(model.draftIntentNavigationID == nil)
+        #expect(await api.requestCount == 0)
+    }
+
+    private func makeIntentModel(
+        api: SharedFlowAPI,
+        credentials: any SharedCredentialStoring,
+        persistence: any DraftPersisting
+    ) throws -> SharedShoppingViewModel {
+        SharedShoppingViewModel(
+            api: api,
+            configuration: try SharedAPIConfiguration(baseURL: "https://api.test", invitationOrigin: "https://links.test"),
+            credentials: credentials,
+            draft: ShoppingDraftViewModel(
+                interpreter: UnavailableDraftInterpreter(),
+                speech: UnavailableSpeechCapture(),
+                persistence: persistence
+            ),
+            storeQuery: StoreQueryViewModel(speech: UnavailableSpeechCapture())
+        )
+    }
+}
+
+extension SharedShoppingViewModelTests {
+    @Test
+    func `An exact store shortcut adds only its product and offers the confirmed list`() async throws {
+        let api = SharedFlowAPI(firstBatchError: nil)
+        let storeID = try await prepareShortcutStores(api)
+        let credentials = MemorySharedCredentialStore(session: api.session)
+        let existing = ShoppingDraftItem(name: "pan corregido", quantity: "2 barras", store: "")
+        let persistence = MemoryDraftPersistence()
+        try await persistence.save(ShoppingDraftSnapshot(text: "  falta revisar el café\n", items: [existing]))
+        let model = try makeIntentModel(api: api, credentials: credentials, persistence: persistence)
+        let product = ShoppingDraftItem(name: "leche", quantity: "2 litros", store: " aldi ")
+
+        #expect(try await model.addShoppingItemFromIntent(product) == .added(storeName: "Aldi"))
+
+        let batches = await api.sentBatches
+        try #require(batches.count == 1)
+        #expect(batches[0].operationId == product.id)
+        #expect(batches[0].items == [SharedNewItem(name: "leche", quantity: "2 litros", store: .existing(storeID))])
+        #expect(model.draft.items == [existing])
+        #expect(model.draft.text == "  falta revisar el café\n")
+        let saved = try #require(try await persistence.load())
+        #expect(saved.items == [existing])
+        #expect(saved.text == "  falta revisar el café\n")
+        #expect(model.pendingOperation == nil)
+        #expect(await credentials.loadOperation() == nil)
+        let notice = try #require(model.presentedNotice)
+        #expect(notice.storeDestination?.storeID == storeID)
+        #expect(model.openNoticeStore(notice))
+        #expect(model.selectedStoreID == storeID)
+        #expect(await api.sentBatches.count == 1)
+    }
+
+    @Test(arguments: [false, true])
+    func `Unknown or ambiguous shortcut stores retain the product for review without submitting`(
+        ambiguous: Bool
+    ) async throws {
+        let api = SharedFlowAPI(firstBatchError: nil)
+        let firstStoreID = try await prepareShortcutStores(api, ambiguous: ambiguous)
+        let persistence = MemoryDraftPersistence()
+        let model = try makeIntentModel(
+            api: api,
+            credentials: MemorySharedCredentialStore(session: api.session),
+            persistence: persistence
+        )
+        let product = ShoppingDraftItem(name: "leche", quantity: "2", store: ambiguous ? "ALDI" : "Al")
+
+        #expect(try await model.addShoppingItemFromIntent(product) == .savedToDraft)
+
+        #expect(model.draft.items == [product])
+        #expect(try await persistence.load()?.items == [product])
+        #expect(await api.sentBatches.isEmpty)
+        #expect(model.pendingOperation == nil)
+        #expect(model.presentedNotice?.storeDestination == nil)
+        #expect(model.draftIntentNavigationID != nil)
+        let secondStoreID = try #require(await api.purchaseItems.last).storeId
+        await api.nameStore(secondStoreID, name: "Mercadona")
+        await api.nameStore(firstStoreID, name: product.store)
+
+        #expect(try await model.addShoppingItemFromIntent(product) == .alreadyProcessed)
+        #expect(await api.sentBatches.isEmpty)
+        #expect(model.draft.items == [product])
+    }
+
+    @Test(arguments: ShortcutConnectionFailure.allCases)
+    func `Missing access or a failed lookup saves the shortcut without claiming a shared addition`(
+        failure: ShortcutConnectionFailure
+    ) async throws {
+        let api = SharedFlowAPI(firstBatchError: nil)
+        _ = try await prepareShortcutStores(api)
+        if failure == .sessionLookup {
+            await api.setCurrentUserFailure(true)
+        }
+        if failure == .storeLookup {
+            await api.configureStores(error: .transport)
+        }
+        let credentials = MemorySharedCredentialStore(session: failure == .signedOut ? nil : api.session)
+        let persistence = MemoryDraftPersistence()
+        let model = try makeIntentModel(api: api, credentials: credentials, persistence: persistence)
+        let product = ShoppingDraftItem(name: "leche", store: "Aldi")
+
+        #expect(try await model.addShoppingItemFromIntent(product) == .savedToDraft)
+
+        #expect(model.draft.items == [product])
+        #expect(try await persistence.load()?.items == [product])
+        #expect(await api.sentBatches.isEmpty)
+        #expect(await credentials.loadOperation() == nil)
+        #expect(model.presentedNotice?.storeDestination == nil)
+        if failure == .signedOut {
+            #expect(await api.requestCount == 0)
+        }
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func `A shortcut overlapping cold UI loading creates one submission after session verification`() async throws {
+        let gate = SharedFlowGate()
+        let api = SharedFlowAPI(currentUserGate: gate, firstBatchError: nil)
+        let storeID = try await prepareShortcutStores(api)
+        let persistence = MemoryDraftPersistence()
+        let model = try makeIntentModel(
+            api: api,
+            credentials: MemorySharedCredentialStore(session: api.session),
+            persistence: persistence
+        )
+        let loading = Task { await model.load() }
+        await gate.waitUntilReached()
+        let product = ShoppingDraftItem(name: "leche", store: "Aldi")
+        let adding = Task { try await model.addShoppingItemFromIntent(product) }
+        for await ids in Observations({ model.draft.items.map(\.id) }) {
+            if ids.contains(product.id) {
+                break
+            }
+        }
+        #expect(await api.sentBatches.isEmpty)
+        await gate.open()
+        await loading.value
+
+        #expect(try await adding.value == .added(storeName: "Aldi"))
+
+        let batches = await api.sentBatches
+        try #require(batches.count == 1)
+        #expect(batches[0].items == [SharedNewItem(name: "leche", quantity: nil, store: .existing(storeID))])
+        #expect(model.draft.items.isEmpty)
+        #expect(model.pendingOperation == nil)
+        #expect(!model.isBusy)
+    }
+
+    @Test(arguments: [false, true])
+    func `An uncertain shortcut result retries its original envelope and preserves unrelated work`(
+        serverConfirmed: Bool
+    ) async throws {
+        let api = SharedFlowAPI(firstBatchError: serverConfirmed ? nil : .transport)
+        let storeID = try await prepareShortcutStores(api)
+        let credentials = ObservedSharedCredentials(session: api.session, failsClearingOperation: serverConfirmed)
+        let existing = ShoppingDraftItem(name: "pan corregido", quantity: "3", store: "Mercadona")
+        let persistence = MemoryDraftPersistence()
+        try await persistence.save(ShoppingDraftSnapshot(text: "revisar fruta", items: [existing]))
+        let model = try makeIntentModel(api: api, credentials: credentials, persistence: persistence)
+        let product = ShoppingDraftItem(name: "leche", quantity: "2", store: "Aldi")
+
+        await #expect(throws: ShoppingIntentError.needsReview) {
+            try await model.addShoppingItemFromIntent(product)
+        }
+
+        let original = try #require(model.pendingOperation)
+        let firstRequest = try #require(await api.sentBatches.first)
+        #expect(firstRequest.operationId == product.id)
+        #expect(firstRequest.items == [SharedNewItem(name: "leche", quantity: "2", store: .existing(storeID))])
+        #expect(await credentials.loadOperation() == original)
+        #expect(model.draft.items == (serverConfirmed ? [existing] : [existing, product]))
+        #expect(model.presentedNotice?.storeDestination == nil)
+        await credentials.allowOperationClearing()
+        await model.retryPendingOperation()
+
+        #expect(await api.sentBatches == [firstRequest, firstRequest])
+        #expect(model.pendingOperation == nil)
+        #expect(await credentials.loadOperation() == nil)
+        #expect(model.draft.items == [existing])
+        #expect(model.draft.text == "revisar fruta")
+        #expect(try await persistence.load()?.items == [existing])
+    }
+
+    @Test
+    func `A confirmed shortcut identity survives relaunch while a new identity may add the same product`() async throws {
+        let api = SharedFlowAPI(firstBatchError: nil)
+        _ = try await prepareShortcutStores(api)
+        let credentials = MemorySharedCredentialStore(session: api.session)
+        let persistence = MemoryDraftPersistence()
+        let model = try makeIntentModel(api: api, credentials: credentials, persistence: persistence)
+        let first = ShoppingDraftItem(name: "leche", quantity: "2", store: "Aldi")
+        #expect(try await model.addShoppingItemFromIntent(first) == .added(storeName: "Aldi"))
+        let reopened = try makeIntentModel(api: api, credentials: credentials, persistence: persistence)
+
+        #expect(try await reopened.addShoppingItemFromIntent(first) == .alreadyProcessed)
+        #expect(await api.sentBatches.count == 1)
+        let second = ShoppingDraftItem(name: "leche", quantity: "2", store: "Aldi")
+        #expect(try await reopened.addShoppingItemFromIntent(second) == .added(storeName: "Aldi"))
+
+        let batches = await api.sentBatches
+        try #require(batches.count == 2)
+        #expect(batches[0].operationId != batches[1].operationId)
+        #expect(batches[0].items == batches[1].items)
+        #expect(reopened.draft.items.isEmpty)
+        #expect(try await persistence.load()?.items.isEmpty == true)
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func `An in flight shortcut locks concurrent shortcut and UI submissions`() async throws {
+        let api = SharedFlowAPI(firstBatchError: nil)
+        _ = try await prepareShortcutStores(api)
+        let gate = SharedFlowGate()
+        await api.configureBatch(gate: gate)
+        let model = try makeIntentModel(
+            api: api,
+            credentials: MemorySharedCredentialStore(session: api.session),
+            persistence: MemoryDraftPersistence()
+        )
+        let first = ShoppingDraftItem(name: "leche", store: "Aldi")
+        let adding = Task { try await model.addShoppingItemFromIntent(first) }
+        await gate.waitUntilReached()
+
+        #expect(model.draftIsLocked)
+        #expect(!model.canMutate)
+        await model.addDraftItems()
+        await #expect(throws: DraftIntentError.busy) {
+            try await model.addDraftItemFromIntent(ShoppingDraftItem(name: "arroz", store: "Aldi"))
+        }
+        await #expect(throws: DraftIntentError.busy) {
+            try await model.addShoppingItemFromIntent(ShoppingDraftItem(name: "arroz", store: "Aldi"))
+        }
+        #expect(await api.sentBatches.count == 1)
+        await gate.open()
+        #expect(try await adding.value == .added(storeName: "Aldi"))
+
+        #expect(await api.sentBatches.count == 1)
+        #expect(model.draft.items.isEmpty)
+        #expect(!model.draftIsLocked)
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func `Cancelling a shortcut during store lookup preserves its draft without submitting`() async throws {
+        let api = SharedFlowAPI(firstBatchError: nil)
+        _ = try await prepareShortcutStores(api)
+        let credentials = MemorySharedCredentialStore(session: api.session)
+        let persistence = MemoryDraftPersistence()
+        let model = try makeIntentModel(api: api, credentials: credentials, persistence: persistence)
+        await model.load()
+        let gate = SharedFlowGate()
+        await api.configureStores(gate: gate)
+        let product = ShoppingDraftItem(name: "leche", store: "Aldi")
+        let adding = Task { try await model.addShoppingItemFromIntent(product) }
+        await gate.waitUntilReached()
+
+        adding.cancel()
+        await gate.open()
+        await #expect(throws: CancellationError.self) {
+            try await adding.value
+        }
+
+        #expect(await api.sentBatches.isEmpty)
+        #expect(await credentials.loadOperation() == nil)
+        #expect(model.pendingOperation == nil)
+        #expect(model.draft.items == [product])
+        #expect(try await persistence.load()?.items == [product])
+        #expect(!model.isBusy)
+        #expect(!model.draftIsLocked)
+        #expect(model.presentedNotice?.storeDestination == nil)
+    }
+
+    private func prepareShortcutStores(_ api: SharedFlowAPI, ambiguous: Bool = false) async throws -> UUID {
+        let pending = try await api.preparePurchaseItems()
+        let first = try #require(pending.first).storeId
+        let second = try #require(pending.last).storeId
+        await api.nameStore(first, name: "Aldi")
+        await api.nameStore(second, name: ambiguous ? "ALDI" : "Mercadona")
+        return first
+    }
+}
+
+enum ShortcutConnectionFailure: CaseIterable {
+    case signedOut, sessionLookup, storeLookup
+}
+
 private actor SharedFlowAPI: SharedShoppingAPI {
     let session: SharedSession
+    private(set) var requestCount = 0
     private(set) var sentBatches: [AddItemsRequest] = []
     private var batchResults: [UUID: [SharedItem]] = [:]
+    private var batchGate: SharedFlowGate?
     private(set) var createdGroups = 0
     private(set) var loginRequests = 0
     private(set) var acceptedInvitations = 0
@@ -590,12 +985,17 @@ private actor SharedFlowAPI: SharedShoppingAPI {
     private var changeError: SharedAPIError? = .transport
     private var changeRefreshFails = false
 
+    func configureBatch(gate: SharedFlowGate) {
+        batchGate = gate
+    }
+
     func configureItemChange(error: SharedAPIError?, refreshFails: Bool = false) {
         changeError = error
         changeRefreshFails = refreshFails
     }
 
     func changeItem(_ request: SharedItemChangeRequest, item: SharedItem, token: String) async throws -> SharedItem {
+        requestCount += 1
         sentItemChanges.append(request)
         if case .server = changeError {
             if purchaseItems.contains(where: { $0.id == item.id }) {
@@ -722,6 +1122,7 @@ private actor SharedFlowAPI: SharedShoppingAPI {
         groupID: UUID,
         token: String
     ) async throws -> PurchaseResult {
+        requestCount += 1
         sentPurchases.append(request)
         if sentPurchases.count == 1, let purchaseError {
             throw purchaseError
@@ -780,24 +1181,30 @@ private actor SharedFlowAPI: SharedShoppingAPI {
     }
 
     func createChallenge() async throws -> SharedChallenge {
-        SharedChallenge(id: UUID(), nonce: String(repeating: "A", count: 43), expiresAt: .distantFuture)
+        requestCount += 1
+        return SharedChallenge(id: UUID(), nonce: String(repeating: "A", count: 43), expiresAt: .distantFuture)
     }
 
     func loginWithApple(_ request: AppleLoginRequest) async throws -> SharedSession {
+        requestCount += 1
         loginRequests += 1
         return session
     }
 
     func currentUser(token: String) async throws -> SharedUser {
+        requestCount += 1
         await currentUserGate?.pause()
         if failCurrentUser || (changeRefreshFails && !sentItemChanges.isEmpty) || (failRefreshAfterPurchase && !sentPurchases.isEmpty) {
             throw SharedAPIError.transport
         }
         return session.user
     }
-    func logout(token: String) async throws {}
+    func logout(token: String) async throws {
+        requestCount += 1
+    }
 
     func createGroup(_ request: CreateGroupRequest, token: String) async throws -> SharedGroup {
+        requestCount += 1
         createdGroups += 1
         return try #require(session.user.group)
     }
@@ -816,6 +1223,7 @@ private actor SharedFlowAPI: SharedShoppingAPI {
     }
 
     func stores(groupID: UUID, token: String) async throws -> [SharedStore] {
+        requestCount += 1
         await storesGate?.pause()
         if let storesError {
             throw storesError
@@ -826,14 +1234,22 @@ private actor SharedFlowAPI: SharedShoppingAPI {
         return Set(purchaseItems.map(\.storeId)).map { SharedStore(id: $0, groupId: groupID, name: storeNames[$0] ?? "Tienda") }
     }
     func createInvitation(groupID: UUID, token: String) async throws -> CreatedInvitation {
+        requestCount += 1
         throw SharedAPIError.transport
     }
-    func invitations(groupID: UUID, token: String) async throws -> [SharedInvitation] { [] }
-    func revokeInvitation(groupID: UUID, invitationID: UUID, token: String) async throws {}
+    func invitations(groupID: UUID, token: String) async throws -> [SharedInvitation] {
+        requestCount += 1
+        return []
+    }
+    func revokeInvitation(groupID: UUID, invitationID: UUID, token: String) async throws {
+        requestCount += 1
+    }
     func previewInvitation(_ invitation: PendingInvitation, token: String) async throws -> InvitationPreview {
+        requestCount += 1
         throw previewError
     }
     func acceptInvitation(_ invitation: PendingInvitation, token: String) async throws -> SharedGroup {
+        requestCount += 1
         acceptedInvitations += 1
         await acceptanceGate?.pause()
         if let acceptanceError {
@@ -843,7 +1259,9 @@ private actor SharedFlowAPI: SharedShoppingAPI {
     }
 
     func addItems(_ request: AddItemsRequest, groupID: UUID, token: String) async throws -> [SharedItem] {
+        requestCount += 1
         sentBatches.append(request)
+        await batchGate?.pause()
         if sentBatches.count == 1, let firstBatchError {
             throw firstBatchError
         }
@@ -875,6 +1293,7 @@ private actor SharedFlowAPI: SharedShoppingAPI {
     }
 
     func pendingItems(groupID: UUID, storeID: UUID, token: String) async throws -> [SharedItem] {
+        requestCount += 1
         let result = emptyPendingItems ? [] : purchaseItems.filter { $0.storeId == storeID }
         let error = pendingItemsError
         await pendingItemsGate?.pause()
@@ -935,16 +1354,26 @@ private actor SharedFlowGate {
 private actor ObservedSharedCredentials: SharedCredentialStoring {
     let base: MemorySharedCredentialStore
     let invitationSaveGate: SharedFlowGate?
+    private let failsLoading: Bool
+    private var failsClearingOperation: Bool
     private var savedInvitations: Set<UUID> = []
     private var saveObservers: [UUID: [CheckedContinuation<Void, Never>]] = [:]
 
-    init(session: SharedSession? = nil, invitationSaveGate: SharedFlowGate? = nil) {
+    init(
+        session: SharedSession? = nil,
+        invitationSaveGate: SharedFlowGate? = nil,
+        failsLoading: Bool = false,
+        failsClearingOperation: Bool = false
+    ) {
         base = MemorySharedCredentialStore(session: session)
         self.invitationSaveGate = invitationSaveGate
+        self.failsLoading = failsLoading
+        self.failsClearingOperation = failsClearingOperation
     }
 
-    func loadSession() async -> SharedSession? {
-        await base.loadSession()
+    func loadSession() async throws -> SharedSession? {
+        guard !failsLoading else { throw SharedCredentialError.unavailable(status: -25308) }
+        return await base.loadSession()
     }
     func saveSession(_ session: SharedSession?) async {
         await base.saveSession(session)
@@ -964,8 +1393,15 @@ private actor ObservedSharedCredentials: SharedCredentialStoring {
     func loadOperation() async -> PendingSharedOperation? {
         await base.loadOperation()
     }
-    func saveOperation(_ operation: PendingSharedOperation?) async {
+    func saveOperation(_ operation: PendingSharedOperation?) async throws {
+        guard operation != nil || !failsClearingOperation else {
+            throw SharedCredentialError.unavailable(status: -25308)
+        }
         await base.saveOperation(operation)
+    }
+
+    func allowOperationClearing() {
+        failsClearingOperation = false
     }
 
     func saveInvitation(_ invitation: PendingInvitation?) async {

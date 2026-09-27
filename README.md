@@ -21,6 +21,7 @@ Una persona dicta lo que necesita comprar y dónde. Revisa los productos interpr
 - [Validación de la compra](docs/validation/issue-11-purchase-flow.md): selección, reintentos, conflictos, despliegue y ensayo físico con dos cuentas.
 - [Validación del bloque 4](docs/validation/issue-4-shared-flow.md): pruebas locales y requisitos reales pendientes.
 - [Validación del borrador](docs/validation/issue-3-ios-draft.md): pruebas, disponibilidad real de modelos y comprobaciones pendientes.
+- [Intento de App Intents](docs/validation/issue-10-app-intents.md): borrador por Atajos y Siri tradicional confirmado en iPhone 14; el propietario acepta el nuevo recorrido de lista con pregunta de cantidad. Pruebas, variantes pendientes y ampliación con Siri AI documentadas.
 - [Localización ES/EN](docs/validation/issue-13-localization.md): idioma por app, recursos traducidos, ensayos bilingües y comprobaciones pendientes.
 - [Validación del arranque](docs/validation/issue-1-server-bootstrap.md): versiones evaluadas, resultados y límites de la prueba técnica del servidor.
 - [Excepciones de dependencias](docs/dependency-exceptions.md): diagnósticos externos aceptados expresamente, alcance y condiciones de retirada.
