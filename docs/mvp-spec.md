@@ -6,9 +6,11 @@ Revisión del 19 de septiembre: selección provisional de productos y confirmaci
 
 Revisión de diseño del 23 de septiembre: sistema visual semántico y accesibilidad en cuatro apariencias, documentados para su implementación y validación en el acabado del MVP. No amplía funcionalidades ni acredita validación de la interfaz.
 
-Entrega: **27 de septiembre de 2026**. Las bases publican las 23:00 CET; el plan reserva margen y no depende de interpretar esa hora como tiempo adicional en Madrid.
+Entrega: **27 de septiembre de 2026, antes de las 23:30 CET**, según el correo final de la organización facilitado por el usuario el día 27. Esta comunicación actualiza la referencia anterior de las bases a las 23:00 CET. Se entrega mediante el formulario enlazado en ese correo, con el repositorio GitHub público y el email del registro; solo se evalúan commits anteriores al cierre. Se conserva margen sin interpretar la zona horaria como tiempo adicional en Madrid.
 
 Esta especificación recoge el acuerdo de la conversación. Las decisiones técnicas que aún requieren una prueba se distinguen del comportamiento comprometido.
+
+Precisión de entrega del 27 de septiembre: el nombre visible de la app es **Smart List**; el repositorio y el proyecto Xcode conservan SmartShoppingList, y el bundle ID sigue siendo `com.plusprojects.SmartShoppingList`. Los destinos de la app son iPhone e iPad. Las decisiones y ensayos fechados conservan sus nombres y entornos originales; las instrucciones actuales están en el [README](../README.md), y la evidencia de cierre se enlaza desde el [plan](implementation-plan.md#fases-4-y-5-entrega-reproducible-y-margen).
 
 ## 1. Objetivo
 
@@ -156,7 +158,7 @@ El [contrato técnico](contracts/mvp-api.md) define el modelo lógico para las m
 - Voz: evaluar SpeechAnalyzer/SpeechTranscriber en el dispositivo e idioma reales.
 - Interpretación: Foundation Models con salida estructurada y revisión humana.
 - Comunicación: URLSession sobre HTTPS.
-- Backend: Vapor 4.122.2 y PostgreSQL, tras comprobar el bloqueo de la combinación Vapor 5 evaluada en Linux y aplicar la alternativa autorizada. La decisión y sus límites se documentan en [la validación del bloque 1](validation/issue-1-server-bootstrap.md). Alojamiento propuesto: Railway.
+- Backend: Vapor 4.122.2 y PostgreSQL, tras comprobar el bloqueo de la combinación Vapor 5 evaluada en Linux y aplicar la alternativa autorizada. La decisión y sus límites se documentan en [la validación del bloque 1](validation/issue-1-server-bootstrap.md). El servicio compartido está desplegado en Railway; la [guía de configuración](setup/shared-shopping.md) describe su identidad Apple, HTTPS y persistencia.
 - Pruebas unitarias y de integración en Swift Testing; no introducir XCTest unitario ni Core Data.
 - Warnings tratados como errores en el código propio; las excepciones externas expresamente aceptadas se delimitan en [el registro de dependencias](dependency-exceptions.md).
 - Verificar Xcode/SDK, toolchain del servidor y dispositivos compatibles antes de implementar. El objetivo iOS 27 no determina por sí solo la versión de Swift disponible en Linux.
@@ -207,6 +209,8 @@ La documentación, los assets y los ratios no acreditan que los colores estén a
 
 No forman parte del MVP: sugerencias, predicción de reposición, estadísticas de compra, recetas, precios, comparación comercial, inventario doméstico, múltiples grupos por persona, roles personalizados, varias plataformas, presencia en tiempo real, sincronización offline completa, envío automático de correos, seleccionar toda la tienda automáticamente, vaciar pendientes al terminar y órdenes de modificación o borrado por voz. La confirmación conjunta de los checks sí forma parte del MVP.
 
+El 27 de septiembre se aprueba como evolución posterior al MVP la pertenencia a varios grupos, con un único administrador miembro por grupo y posibilidad de que una persona administre ninguno, uno o varios. Se descarta limitar la administración a un grupo por cuenta. El traspaso exige aceptación de otro miembro, conserva al responsable actual hasta completarse y convierte al anterior en miembro sin cambiar el creador histórico. Las reglas aprobadas, los casos de aceptación y las decisiones aún abiertas se conservan en [varios grupos y traspaso de administración](architecture/multiple-groups.md). Se documenta para retomarlo dentro de unos días; no se incorpora a esta entrega ni se inicia su implementación.
+
 El 25 de septiembre se propone estudiar compra y cancelación de productos por voz con Apple Intelligence. Sigue fuera del MVP; solo se reconsiderará como extra si la entrega obligatoria está resuelta y sobra tiempo. El [plan](implementation-plan.md) conserva el diseño preliminar y sus decisiones pendientes. No equivale a autorizar su implementación ahora.
 
 Tras la entrega podrán estudiarse sugerencias de productos frecuentes por tienda, reutilización de compras anteriores y otras mejoras. Son posibilidades, no compromisos ni tareas activas. Cualquier ampliación anterior al cierre exige acordar explícitamente qué se sustituye o se retira del MVP.
@@ -220,6 +224,8 @@ El 27 de septiembre se acuerda conservar dos vías sobre la misma operación de 
 Ampliación aprobada del extra #10 el 27 de septiembre, después de validar la acción local: una segunda acción explícita «Añadir a la lista» recibe una única entrada y permite enviarla al grupo cuando la tienda existe y hay una coincidencia exacta única según la normalización vigente. La orden de añadir es la confirmación de esa entrada; no incluye otras filas ni texto del borrador. Se verifica la sesión y el grupo, se conserva la operación para reintentos y sólo se anuncia el alta tras confirmación del servidor. El aviso existente ofrece «Ver lista / Cerrar». Sin coincidencia o ante varias tiendas posibles, se abre el borrador con los datos recibidos, sin crear una tienda automáticamente. La ausencia de acceso o los errores conservan datos recuperables y no se presentan como un alta compartida correcta. Se mantiene «Añadir al borrador» con su contrato y frases anteriores. No hay catálogo de productos ni puntuación de confianza de Siri: la regla se basa en validación de campos y coincidencia de tienda. No se amplía a comprar, cancelar ni interpretar frases libres con Siri AI.
 
 Refinamiento de #10 aprobado el 27 de septiembre: añadir la frase «Añade a mi lista de la compra en SmartShoppingList», conservando «Añade a mi lista en SmartShoppingList». La nueva acción pide producto, cantidad y tienda como campos separados; la cantidad es texto requerido sin valor por defecto, para que Siri la solicite antes de ejecutar. Permite cantidades literales como «dos packs de seis unidades», sin extraerlas automáticamente del nombre ni convertirlas a un número. La acción anterior de borrador conserva la cantidad opcional. El nombre de la app forma parte de las frases publicadas; no se promete resolver la orden genérica sin él.
+
+Tras el cambio de nombre visible del mismo día, las frases actuales usan **Smart List**, por ejemplo «Añade a mi lista de la compra en Smart List» / «Add to my shopping list in Smart List». La [compilación Release](validation/release-2026-09-27.md) verifica sus metadatos en ES/EN. El usuario confirma después el [recorrido de lista desde cero en español e inglés con Smart List](validation/issue-10-app-intents.md#siri-con-smart-list-en-español-e-inglés); son confirmaciones posteriores al renombrado, independientes de los ensayos con el nombre anterior.
 
 ## 10. Fuentes y decisiones
 

@@ -1,8 +1,8 @@
 # Sistema de diseño de SmartShoppingList
 
-Versión 2 · 25 de septiembre de 2026 · plataforma mínima: iOS 27.
+Versión 3 · 27 de septiembre de 2026 · plataforma mínima: iOS 27. Consolidación de integración y evidencia; tokens y pares sin cambios.
 
-Estado: **base de color de [#20](https://github.com/JFrancoG/SmartShoppingList/issues/20), con aplicación a las pantallas pendiente**. Los 21 tokens tienen assets de cuatro variantes, acceso semántico y un tinte global compartido. Sus pares se validan matemáticamente; la aplicación a cada vista y componente, y la accesibilidad de la app en ejecución, requieren validación posterior. Este documento no declara conformidad global AA/AAA. Los iconos Brain/Check se incorporan por aprobación del usuario del 24 de septiembre (#16), con alcance y evidencia separados de la integración visual de las pantallas.
+Estado: **base de color #20 integrada en las pantallas mediante [#28 / PR #29](https://github.com/JFrancoG/SmartShoppingList/pull/29), con adaptación Duo [#30 / PR #31](https://github.com/JFrancoG/SmartShoppingList/pull/31); ambas unidades están entregadas**. Los 21 tokens tienen assets de cuatro variantes, acceso semántico y un tinte global compartido; los formularios, acciones y filas usan sus componentes. Las validaciones de [UI](validation/issue-28-shopping-ui.md) y [Duo](validation/issue-30-duo-controls.md) recogen previews, interacción y aceptación focalizada. La comprobación matemática de pares no acredita por sí sola el contraste renderizado, los materiales nativos ni toda la accesibilidad de la app. Este documento no declara conformidad global AA/AAA. Los iconos Brain/Check mantienen su [evidencia propia](validation/issue-16-app-icons.md).
 
 Documentos relacionados: [fuentes y novedades verificadas](research/design-system-sources.md), [matriz de contraste generada](validation/design-system-contrast.md), [evidencia de la base visual #20](validation/issue-20-visual-foundation.md), [criterios y ensayo de accesibilidad](accessibility.md), [spec](mvp-spec.md) y [plan](implementation-plan.md).
 
@@ -174,13 +174,13 @@ Las [fuentes actuales](research/design-system-sources.md) confirman refinamiento
 | Dynamic Type / negrita | Refluir contenido, conservar controles y permitir scroll; sin recortar producto, error o CTA |
 | VoiceOver y controles alternativos | Nombre, rol, valor, orden, acciones y foco comprobados en el recorrido completo |
 
-Orden de integración, sin añadir dependencias:
+Estado de integración y comprobaciones, sin añadir dependencias:
 
 1. La base de #20 incorpora los 21 colores en Asset Catalog, con Any/Light, Dark y las dos variantes High Contrast, color space sRGB, y acceso directo mediante los símbolos de Xcode, como `.appPrimary`. No copiar los HEX por las vistas. `AppPrimary` es el tinte global; afecta a los controles nativos que lo heredan y requiere inspección renderizada.
-2. La aplicación posterior define los pares de foreground/background en componentes propios y los utiliza en las pantallas. Colores y tipografía nativos siguen siendo preferentes en superficies del sistema; no atribuirles los ratios de los tokens propios. La base de assets no completa esta aplicación ni el ensayo de accesibilidad.
-3. Resolver preferencias con el entorno SwiftUI (`colorScheme`, `colorSchemeContrast`, `accessibilityReduceTransparency`, `accessibilityReduceMotion`, `accessibilityDifferentiateWithoutColor`, `accessibilityShowButtonShapes`, `dynamicTypeSize`). Verificar disponibilidad y nombres en el SDK usado antes de implementar.
-4. Preparar previews de los cuatro modos y estados principales, incluyendo texto grande ES/EN. Previews no sustituyen el ensayo físico ni la semántica real de VoiceOver.
-5. Ejecutar el [protocolo de accesibilidad](accessibility.md) y conservar evidencia por versión de iOS, dispositivo, ajuste, idioma y flujo. No declarar Accessibility Nutrition Labels sin validar los recorridos requeridos.
+2. #28 aplica los pares de foreground/background a los componentes y pantallas; #30 adapta sus bloques de controles a las regiones reservadas de Duo. Colores y tipografía nativos siguen siendo preferentes en superficies del sistema; no atribuirles los ratios de los tokens propios. La implementación está entregada, con los límites de validación indicados en ambos informes.
+3. Mantener la adaptación a preferencias mediante el entorno SwiftUI y los controles nativos. La tabla anterior conserva el comportamiento exigido; la integración no declara ejecutadas todas las combinaciones de transparencia, movimiento, contraste, formas de botones, idioma y texto.
+4. Los informes de #28 y #30 registran las previews y comprobaciones de texto grande, idiomas y posturas realmente realizadas. Conservan los huecos de cobertura; una preview no sustituye el ensayo físico ni la semántica real de VoiceOver.
+5. Completar y registrar las comprobaciones pendientes del [protocolo de accesibilidad](accessibility.md) por versión de iOS, dispositivo, ajuste, idioma y flujo. No declarar Accessibility Nutrition Labels sin validar los recorridos requeridos.
 
 ## 7. Mantenimiento
 

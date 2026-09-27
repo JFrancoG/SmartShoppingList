@@ -1,6 +1,14 @@
 # Edición y cancelación segura de pendientes · #22
 
-Estado del 25 de septiembre de 2026: implementación `db32534` publicada en `codex/issue-22-edit-cancel-items`, desplegada en Railway e instalada en ambos iPhone. Edición y cancelación entre dispositivos confirmadas por el responsable. El ensayo detectó avisos redundantes y una alerta vacía; corrección iOS y evidencia descritas abajo. La issue permanece abierta; esto no constituye el cierre completo del MVP.
+## Estado vigente — reconciliación del 27 de septiembre
+
+La [issue #22](https://github.com/JFrancoG/SmartShoppingList/issues/22) está cerrada. La [PR #23](https://github.com/JFrancoG/SmartShoppingList/pull/23) se integró en `main` el 25 de septiembre mediante [`dbd9ca5`](https://github.com/JFrancoG/SmartShoppingList/commit/dbd9ca594e04694b997951a8869fced6b21da89f), con el mismo árbol que el HEAD validado `427d736`. El [registro de entrega](https://github.com/JFrancoG/SmartShoppingList/issues/22#issuecomment-5838162605) reconcilia los criterios con las pruebas automáticas, la aceptación física de ambos iPhone y el reinicio local descritos aquí. El merge no acredita otra ejecución de pruebas ni un nuevo despliegue.
+
+La aceptación física del 25 de septiembre incluye los recorridos funcionales y la accesibilidad focalizada: con VoiceOver activado antes de abrir la alerta, el retorno a Store Aldi tras Keep product fue aceptado. La alternativa posterior se retiró. Los pendientes de corrección, ensayo y entrega de los puntos de control siguientes quedan sustituidos por esa aceptación final y el cierre verificado; no representan trabajo aún abierto de #22 ni acreditan una matriz amplia de accesibilidad o el cierre completo del MVP.
+
+## Punto de control inicial — 25 de septiembre
+
+Implementación `db32534` publicada en `codex/issue-22-edit-cancel-items`, desplegada en Railway e instalada en ambos iPhone. Edición y cancelación entre dispositivos confirmadas por el responsable. El ensayo detectó avisos redundantes y una alerta vacía; corrección iOS y evidencia descritas abajo. La issue seguía abierta en este punto previo a la entrega.
 
 ## Alcance comprobado
 
@@ -165,4 +173,4 @@ Evidencia local: `/tmp/ssl22-restart-validation/check.py`, `result.json`, `befor
 
 **Estado de aceptación física vigente:** el responsable confirma los recorridos funcionales en ambos iPhone y la accesibilidad focalizada. Con VoiceOver activo antes de abrir la alerta, Keep product devuelve el foco a Store Aldi, destino aceptado. La observación anterior de Refresh ocurrió al activar VoiceOver con el aviso ya abierto. La alternativa posterior se retiró sin commit ni instalación. Esto sustituye los pendientes físicos históricos de las secciones anteriores; no acredita una matriz amplia de accesibilidad.
 
-Con este ensayo queda resuelta la comprobación local de persistencia de #22. Sigue pendiente su entrega final por PR/merge y cierre; la consulta de tienda por voz y el cierre completo del MVP son trabajo posterior.
+Con este ensayo quedó resuelta la comprobación local de persistencia de #22. La entrega final que aún faltaba en ese punto se completó después mediante PR #23 y cierre, según el resumen vigente. La consulta de tienda por voz se documenta por separado en [#24](issue-24-store-voice-query.md); el cierre de #22 no equivale al cierre completo del MVP.

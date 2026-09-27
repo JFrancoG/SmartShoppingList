@@ -69,7 +69,7 @@ struct SharedItemEditorView: View {
                             Text("This product is no longer in this store. Close the editor and refresh the list.")
                         }
                     }
-                    Button("Save product changes") {
+                    Button("Save") {
                         Task {
                             await viewModel.saveItemEdit()
                         }
@@ -86,9 +86,10 @@ struct SharedItemEditorView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") {
+                    Button("Close", systemImage: "xmark") {
                         viewModel.isItemEditorPresented = false
                     }
+                    .labelStyle(.iconOnly)
                     .disabled(viewModel.isBusy)
                 }
                 ToolbarItem(placement: .primaryAction) {

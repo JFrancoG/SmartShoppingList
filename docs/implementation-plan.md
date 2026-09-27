@@ -1,8 +1,10 @@
 # Plan de implementación
 
-Fecha de creación: 18 de septiembre de 2026. Última revisión: 25 de septiembre de 2026.
+Fecha de creación: 18 de septiembre de 2026. Última revisión: 27 de septiembre de 2026.
 
 Especificación de referencia: [MVP aprobado](mvp-spec.md). Este documento conserva las fases, dependencias y condiciones para avanzar; no amplía el contrato funcional ni registra el progreso de cada tarea.
+
+Las decisiones y ensayos fechados describen el momento indicado, incluidos sus pendientes de entonces. Las condiciones de cierre vigentes se concretan en [fases 4 y 5](#fases-4-y-5-entrega-reproducible-y-margen); el estado operativo de cada bloque permanece en GitHub Issues.
 
 ## Organización y seguimiento
 
@@ -16,7 +18,7 @@ Una persona desarrolla con ayuda de Codex, con jornadas disponibles de 4–8 hor
 | Este plan | Fases, ventanas objetivo, dependencias y resultados esperados |
 | [GitHub Issues](https://github.com/JFrancoG/SmartShoppingList/issues) | Plan de cada bloque, situación, bloqueos, decisiones de ejecución y evidencia de cierre |
 
-GitHub Issues es el único seguimiento operativo. El [hito «MVP · September 27»](https://github.com/JFrancoG/SmartShoppingList/milestone/1) agrupa el trabajo de la entrega. Su fecha es un objetivo de planificación; el canal y la hora oficial de entrega deben confirmarse. El porcentaje del hito sólo representa las issues creadas, no todo el alcance del MVP.
+GitHub Issues es el único seguimiento operativo. El [hito «MVP · September 27»](https://github.com/JFrancoG/SmartShoppingList/milestone/1) agrupa el trabajo de la entrega. El correo final de la organización, facilitado por el usuario el 27, confirma el formulario de entrega y su cierre a las 23:30 CET de ese día: repositorio GitHub público, una entrega por equipo con el email del registro y evaluación de commits anteriores al cierre. Permite reenviar el formulario hasta esa hora; el envío efectivo y su confirmación siguen pendientes. El porcentaje del hito sólo representa las issues creadas, no todo el alcance del MVP.
 
 Se detallan las unidades del bloque inmediato. Las fases posteriores permanecen aquí hasta que corresponda concretarlas en issues. No se crean tareas por conversación, archivo o commit, ni issues retrospectivas para trabajos ya entregados. Tampoco se mantiene una segunda lista de estados en un archivo de progreso.
 
@@ -170,12 +172,24 @@ Las evidencias y limitaciones se enlazan desde las issues correspondientes, dist
 
 El README debe permitir reproducir compilación, arranque, firma/capacidades, variables, servicios y recuperación de los datos persistentes, sin credenciales. La demostración con dos usuarios cubre invitación, alta, consulta, selección y finalización, conservando pendientes para otra visita. Se documentan voz/IA en el entorno acordado, el recorrido físico manual y los límites conocidos.
 
-Una grabación breve puede servir de apoyo; no se trata como requisito publicado del evento ni sustituto del código funcional. Se confirma el canal y la hora de entrega, se comprueba el repositorio y se registra el envío efectivo. Que el repositorio ya sea público no acredita la entrega por el canal oficial.
+Consolidación del 27 de septiembre: el [README bilingüe](../README.md) describe la UI vigente, con cuenta, grupo e invitaciones en Ajustes y alta de una propuesta completa mediante Confirmar en el aviso; el borrador permite corregir o recuperar el flujo. La app se presenta como **Smart List** en iPhone/iPad. Los ensayos anteriores con el nombre SmartShoppingList o con iOS sobre Mac conservan su valor histórico, sin convertir Mac en un destino actual ni acreditar Siri con el nombre nuevo.
 
-Las propuestas posteriores al 27 permanecen en la sección de futuro de la spec. No se convierten en tareas de este MVP.
+La [validación Release iOS](validation/release-2026-09-27.md) acredita compilación con Xcode 27.2 beta, cero errores y warnings y firma de desarrollo. El usuario confirma su arranque en iPhone 11, sin indicar la versión exacta de iOS ni un recorrido completo. La [validación Release del servidor](validation/server-release-2026-09-27.md) acredita 82 funciones en 8 suites y arranque local contra PostgreSQL temporal. El [CI de `6fd8452`](https://github.com/JFrancoG/SmartShoppingList/actions/runs/36314523700), comprobado como completado y correcto, aporta servidor Linux arm64, contrato y colores. Son evidencias complementarias: CI no compila iOS ni despliega Railway; los ensayos Release no prueban por sí mismos un despliegue nuevo.
+
+El [recorrido de lista por Siri con Smart List en español e inglés](validation/issue-10-app-intents.md#siri-con-smart-list-en-español-e-inglés) queda confirmado desde cero por el usuario. También confirma el [recorrido focalizado de VoiceOver en español e inglés](accessibility.md#recorrido-focalizado-de-voiceover-en-español-e-inglés) sobre Ajustes, cancelar edición/conservar producto y confirmar compra, antes del posterior ajuste de textos e icono de cierre. Siguen pendientes un arranque reciente en el mínimo iOS 27.0 y las comprobaciones de accesibilidad no cubiertas por la evidencia registrada, incluida la comprobación física de los controles modificados después de ese ensayo. Se conserva lo ya aceptado en #7, #22 y los recorridos posteriores, sin repetirlo por esta consolidación ni extenderlo a toda la matriz. Los resultados, límites y decisiones de cierre se registran en las issues existentes; esta revisión documental no cambia su estado administrativo.
+
+Una grabación breve puede servir de apoyo; no se trata como requisito publicado del evento ni sustituto del código funcional. Con canal y hora confirmados por el correo final, se comprueba el repositorio público, se publican los commits antes del cierre y se registra el envío efectivo mediante el formulario y su confirmación. Que el repositorio ya sea público no acredita la entrega por el canal oficial.
+
+Las propuestas posteriores al 27 permanecen en la sección de futuro de la spec. No se convierten en tareas de este MVP. La decisión sobre varios grupos y traspaso se enlaza en [su bloque posterior](#después-del-mvp-varios-grupos-y-traspaso).
 
 ### Ajuste acotado para iPhone Duo: decisión del 26 de septiembre
 
 Después de aceptar y entregar #28 mediante PR #29, el usuario autoriza [#30](https://github.com/JFrancoG/SmartShoppingList/issues/30) en `codex/issue-30-duo-controls`: adaptar los bloques de entrada y confirmación a regiones reservadas, calcular anchos locales de acciones y limitar el botón nativo de Apple. Se conservan las pestañas, el selector de tienda, la lista continua y las hojas nativas. `NavigationSplitView` permanece fuera de esta unidad. Se respeta el mínimo iOS 27.0; para compilar las nuevas APIs hace falta SDK 27.1 o posterior.
 
 La validación focalizada comprueba geometría y continuidad de estado en abierto, libro, pliegue horizontal y exterior. Los fixtures aislados no acreditan micrófono real, interpretación real ni servidor; los límites pendientes constan en [el informe de #30](validation/issue-30-duo-controls.md). El usuario confirma el aspecto en todas las posiciones ensayadas y acepta el texto abreviado «Añadir a mano» / «Add manually». Autoriza commit, push, PR, merge y cierre de issue y rama, manteniendo explícitas las comprobaciones generales pendientes. El resultado definitivo se registra en #30 y su PR. Esta adaptación no cierra las comprobaciones finales de entrega ni incorpora App Intents.
+
+## Después del MVP: varios grupos y traspaso
+
+Decisión del 27 de septiembre: preparar para una iteración posterior la pertenencia a varios grupos y el traspaso de administración, con un administrador por grupo y sin limitar a uno los grupos administrados por persona. El [documento de diseño futuro](architecture/multiple-groups.md) conserva las reglas aprobadas, el motivo de descartar ese límite, los impactos de migración y los casos que deberán validarse.
+
+Se retomará después de la entrega, sin fecha cerrada ni implementación activa. El primer paso será resolver las decisiones abiertas sobre traspaso, salida/cierre, selección de grupo, Siri y compatibilidad; después se concretarán contrato, migración y unidad de ejecución en GitHub. Como secuencia propuesta, separar creador y administrador e incorporar el traspaso antes de ampliar pertenencias y selección de grupo. El diseño técnico queda pendiente de revisión; esta anotación no amplía el MVP ni crea un segundo seguimiento operativo.

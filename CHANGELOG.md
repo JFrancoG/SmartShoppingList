@@ -81,6 +81,8 @@
 
 ### Maintenance
 
+- 2026-09-27 | 🔧 chore: finalize delivery documentation and UI
+
 - 2026-09-27 | 🔧 chore: prepare Smart List for delivery
 
 - 2026-09-25 | 👷 ci: add server and repository checks

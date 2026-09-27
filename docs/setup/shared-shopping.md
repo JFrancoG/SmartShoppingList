@@ -82,7 +82,7 @@ Compilar e instalar de nuevo tras configurar los dominios. Comprobar la asociaci
 ## Ensayo con dos personas
 
 1. Con dos Apple IDs distintos, abrir **Ajustes → Preparar acceso con Apple** en dos clientes, continuar con el botón nativo de Apple y verificar que la primera cuenta puede crear el grupo. La segunda cuenta debe estar sin grupo para aceptar la invitación.
-2. Desde **Ajustes → Gestionar invitaciones**, crear y compartir un enlace. Abrirlo en el segundo cliente sin sesión: debe presentar Ajustes, conservarlo durante el acceso y pedir aceptación explícita mediante **Aceptar invitación**.
+2. Desde **Ajustes → Invitaciones**, crear y compartir un enlace. Abrirlo en el segundo cliente sin sesión: debe presentar Ajustes, conservarlo durante el acceso y pedir aceptación explícita mediante **Aceptar invitación**.
 3. Confirmar que los enlaces caducados, revocados, consumidos por otra cuenta o manipulados no permiten incorporarse. La previsualización y el GET web no consumen el enlace.
 4. En el primer cliente, con los controles manuales disponibles, abrir **Añadir a mano**, indicar producto, cantidad opcional y tienda y pulsar **Añadir producto**. Con grupo activo se envía solo esa entrada, sin una segunda revisión. Una coincidencia exacta única resuelve la tienda; un nombre nuevo explícito permite crearla y una ambigüedad real pide elegir. Con voz o texto interpretado, **Confirmar** en el aviso añade una propuesta completa directamente a la lista; el borrador permite corregir errores o datos incompletos y también se abre al elegir **Editar**.
 5. En ambos clientes, seleccionar la misma tienda y actualizar. Cortar la red durante otro envío y reintentar la operación conservada; debe aparecer una sola incorporación.

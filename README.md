@@ -74,7 +74,7 @@ Para detener el entorno, desde `server/`, usa `docker compose --profile testing 
 
 Prepara dos clientes instalados, dos Apple IDs diferentes, conexión al mismo backend y una de las cuentas sin grupo para aceptar la invitación. Para este ejemplo, usa la app y Siri en español. Para la parte de IA, utiliza un entorno con Foundation Models disponible; comprueba por separado la captura de voz.
 
-1. En el primer cliente, abre **Ajustes**, prepara el acceso con Apple, inicia sesión y crea un grupo. Desde **Gestionar invitaciones → Crear invitación → Compartir invitación**, envía un enlace al segundo usuario.
+1. En el primer cliente, abre **Ajustes**, prepara el acceso con Apple, inicia sesión y crea un grupo. Desde **Invitaciones → Crear invitación → Compartir invitación**, envía un enlace al segundo usuario.
 2. Abre el enlace en el segundo cliente, inicia sesión si es necesario y pulsa **Aceptar invitación** en **Ajustes**.
 3. En **Añadir**, dicta «Comprar jabón, cerveza y yogures en Mercadona» y pulsa **Terminar dictado**; si usas el campo de texto, escribe los productos y la tienda y pulsa **Interpretar texto**. Cuando la identificación es correcta, **Confirmar** en el aviso añade los productos directamente a la lista. Si faltan datos o hay errores, corrígelos en el borrador; **Editar** también permite abrirlo voluntariamente. Sin IA, introduce cada producto mediante **Añadir a mano → Añadir producto**.
 4. En el segundo cliente, abre **Comprar**, selecciona Mercadona y pulsa **Actualizar**. Deben aparecer los productos compartidos; la sincronización se solicita expresamente.
@@ -167,7 +167,7 @@ To stop the environment, run `docker compose --profile testing stop` from `serve
 
 Prepare two installed clients, two different Apple IDs, access to the same backend and one account without a group to accept the invitation. For this example, use English in the app and Siri. For the AI portion, use an environment with available Foundation Models; check speech capture separately.
 
-1. On the first client, open **Settings**, prepare Sign in with Apple, sign in and create a group. Use **Manage invitations → Create invitation → Share invitation** to send a link to the second user.
+1. On the first client, open **Settings**, prepare Sign in with Apple, sign in and create a group. Use **Invitations → Create invitation → Share invitation** to send a link to the second user.
 2. Open the link on the second client, sign in if needed and tap **Accept invitation** in **Settings**.
 3. In **Add**, dictate “Buy soap, beer and yogurts at Mercadona,” then tap **Finish dictation**; if using the text field, type the products and store and tap **Interpret text**. When identification succeeds, **Confirm** in the alert adds the products directly to the list. Correct missing or misidentified details in the draft; **Edit** also lets you open it voluntarily. Without AI, enter each product through **Add manually → Add product**.
 4. On the second client, open **Shop**, select Mercadona and tap **Refresh**. The shared products should appear; synchronization is requested explicitly.
@@ -213,6 +213,7 @@ La documentación técnica enlazada conserva su idioma original, principalmente 
 | [Servidor / Server](server/README.md) · [Configuración / Shared setup](docs/setup/shared-shopping.md) | PostgreSQL, Apple, HTTPS, firma y enlaces / PostgreSQL, Apple, HTTPS, signing and links |
 | [Contrato / API contract](docs/contracts/mvp-api.md) · [Aceptación / Acceptance](docs/contracts/acceptance.md) | Operaciones, errores y casos verificables / Operations, errors and verifiable cases |
 | [Borrador / Draft architecture](docs/architecture/ios-draft.md) · [Colaboración / Shared architecture](docs/architecture/shared-shopping.md) | Persistencia, coordinación y reintentos / Persistence, coordination and retries |
+| [Varios grupos y traspaso / Multiple groups and admin transfer](docs/architecture/multiple-groups.md) | Diseño futuro, fuera del MVP / Future design, outside the MVP |
 | [Diseño / Design system](docs/design-system.md) · [Accesibilidad / Accessibility](docs/accessibility.md) · [Contraste / Contrast](docs/validation/design-system-contrast.md) | Cuatro apariencias, criterios y cobertura / Four appearances, criteria and coverage |
 | [UI](docs/validation/issue-28-shopping-ui.md) · [Duo](docs/validation/issue-30-duo-controls.md) · [Siri](docs/validation/issue-10-app-intents.md) · [ES/EN](docs/validation/issue-13-localization.md) | Evidencia por entorno y limitaciones / Environment-specific evidence and limitations |
 | Release 2026-09-27: [iOS](docs/validation/release-2026-09-27.md) · [Servidor / Server](docs/validation/server-release-2026-09-27.md) | Compilación, pruebas y arranque por entorno / Build, tests and startup per environment |

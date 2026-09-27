@@ -1,10 +1,12 @@
 # SmartShoppingListServer
 
-Servidor del MVP configurado con Vapor 4.122.2, Fluent/PostgreSQL y Swift 6.4. Se utiliza la alternativa Vapor 4 autorizada después de que la combinación evaluada con Vapor 5.0.0-beta.2 fallara al compilar PostgresNIO en Linux. Implementa identidad Apple, sesiones, grupos, invitaciones, lotes confirmados y consultas del bloque 4. La plantilla Todo permanece como prueba local de infraestructura y no se registra en producción.
+Servidor del MVP configurado con Vapor 4.122.2, Fluent/PostgreSQL y Swift 6.4. Se utiliza la alternativa Vapor 4 autorizada después de que la combinación evaluada con Vapor 5.0.0-beta.2 fallara al compilar PostgresNIO en Linux. Implementa identidad Apple, sesiones, grupos, invitaciones, incorporación por lotes, consulta por tienda, compra atómica de los productos seleccionados, edición y cancelación. Conserva los registros comprados y cancelados como historial mínimo, sin una pantalla de historial. La plantilla Todo permanece como prueba local de infraestructura y no se registra en producción.
 
-El seguimiento está en [la issue #1](https://github.com/JFrancoG/SmartShoppingList/issues/1) y los resultados, entornos y límites en [el informe de validación](../docs/validation/issue-1-server-bootstrap.md). Se ha comprobado esta configuración en macOS y en un contenedor Linux arm64 local. El alcance del producto permanece en [la especificación](../docs/mvp-spec.md).
+El arranque inicial se entregó en [#1](https://github.com/JFrancoG/SmartShoppingList/issues/1); su [informe de validación](../docs/validation/issue-1-server-bootstrap.md) conserva los resultados por versión y entorno. El alcance del producto permanece en [la especificación](../docs/mvp-spec.md).
 
-El recorrido compartido se sigue en [#4](https://github.com/JFrancoG/SmartShoppingList/issues/4). Consultar su [configuración reproducible](../docs/setup/shared-shopping.md), [arquitectura](../docs/architecture/shared-shopping.md) e [informe de pruebas](../docs/validation/issue-4-shared-flow.md). HTTPS, Apple y los enlaces reales necesitan la configuración descrita allí.
+El recorrido compartido de [#4](https://github.com/JFrancoG/SmartShoppingList/issues/4), la compra de [#11](https://github.com/JFrancoG/SmartShoppingList/issues/11) y la edición/cancelación de [#22](https://github.com/JFrancoG/SmartShoppingList/issues/22) están integrados en `main`. Sus informes conservan la evidencia de [colaboración](../docs/validation/issue-4-shared-flow.md), [compra](../docs/validation/issue-11-purchase-flow.md) y [edición/cancelación](../docs/validation/issue-22-edit-cancel-items.md). La [configuración reproducible](../docs/setup/shared-shopping.md) y la [arquitectura](../docs/architecture/shared-shopping.md) describen PostgreSQL, HTTPS, identidad Apple y enlaces.
+
+La [validación Release del 27 de septiembre](../docs/validation/server-release-2026-09-27.md) acredita compilación nativa macOS, 82 funciones de prueba en 8 suites aprobadas y arranque local del ejecutable en modo producción. El [CI de `6fd8452`](https://github.com/JFrancoG/SmartShoppingList/actions/runs/36314523700), completado el mismo día, acredita las 82 funciones en Linux arm64 Debug y los validadores de contrato/diseño. La [guía de CI](../docs/setup/ci.md) explica su reproducción y alcance. Estas comprobaciones no despliegan Railway ni acreditan una nueva imagen Linux Release, autenticación Apple real o restauración de backups.
 
 ## Requisitos
 
@@ -38,7 +40,7 @@ Son los valores por defecto. Para variar el puerto del contenedor de pruebas, ex
 
 Las pruebas nunca heredan `DATABASE_*` como conexión. Rechazan nombres sin sufijo `_testing`, un nombre igual al de desarrollo, hosts fuera del entorno local y puertos inválidos. `configure` exige una configuración de base explícita para aplicaciones `.testing`. No ejecutar varias suites de integración a la vez contra la misma base.
 
-La suite cubre operaciones HTTP con persistencia real, commit y rollback por fallo de restricción, propagación de errores de migración, guardas de configuración, sesiones, invitaciones concurrentes, aislamiento e idempotencia. Las pruebas de identidad usan tokens y concesiones sintéticos, sin acceso a cuentas Apple. La ejecución de cada versión y sus resultados se acreditan en los informes enlazados.
+La suite cubre operaciones HTTP con persistencia real, commit y rollback por fallo de restricción, propagación de errores de migración, guardas de configuración, sesiones, invitaciones concurrentes, compra, edición, cancelación, aislamiento e idempotencia. Las pruebas de identidad usan tokens y concesiones sintéticos, sin acceso a cuentas Apple. Los comandos anteriores compilan y ejecutan Debug; para Release, usar el [procedimiento validado del 27 de septiembre](../docs/validation/server-release-2026-09-27.md#compilación-y-pruebas), que compila el producto y ejecuta `swift test -c release --enable-testable-imports` por separado.
 
 ## Ejecución nativa
 

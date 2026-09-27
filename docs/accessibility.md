@@ -1,12 +1,12 @@
 # Accesibilidad: requisitos y protocolo de aceptación
 
-23 de septiembre de 2026 · iOS 27 · español e inglés · fase 3 del MVP.
+Creado el 23 de septiembre de 2026 · consolidado el 27 de septiembre · iOS 27 · español e inglés · fase 3 del MVP.
 
-El [sistema de diseño](design-system.md) define los componentes y colores. Este documento define cómo comprobarlos y cómo aplicar las recomendaciones Apple/W3C al recorrido real. **El protocolo está preparado, no ejecutado**; el [informe de contraste](validation/design-system-contrast.md) sólo valida colores opacos. Los hallazgos físicos anteriores conservan su evidencia y no se consideran resueltos por escribir estas reglas.
+El [sistema de diseño](design-system.md) define los componentes y colores. Este documento define cómo comprobarlos y cómo aplicar las recomendaciones Apple/W3C al recorrido real. **Hay validaciones focalizadas; el protocolo completo no está ejecutado.** Los informes de [localización y avisos](validation/issue-13-localization.md), [UI final](validation/issue-28-shopping-ui.md) y [Duo](validation/issue-30-duo-controls.md) identifican los entornos y recorridos comprobados. El [informe de contraste](validation/design-system-contrast.md) valida pares de colores opacos; no sustituye la medición renderizada ni la interacción con tecnologías de asistencia.
 
 ## Alcance y criterio de cierre
 
-Evaluar acceso con Apple, crear/aceptar grupo, invitaciones válidas e inválidas, entrada manual y voz, interpretación, editor y revisión, incorporación de lote, selector de tienda, selección provisional, finalización y recuperación de red/conflictos. Incluir edición/cancelación conforme se implementen y la página web mínima de invitación. Esta última se evalúa como contenido web, sin atribuirle la evidencia nativa.
+Evaluar acceso con Apple, crear/aceptar grupo, invitaciones válidas e inválidas, entrada manual y voz, interpretación, editor y revisión, incorporación de lote, selector de tienda, selección provisional, finalización y recuperación de red/conflictos. Incluir la edición/cancelación ya implementada y la página web mínima de invitación. Esta última se evalúa como contenido web, sin atribuirle la evidencia nativa.
 
 Base: [WCAG 2.2](https://www.w3.org/TR/WCAG22/) A/AA, interpretada para software nativo mediante [WCAG2ICT](https://www.w3.org/TR/wcag2ict-22/), más HIG actuales. El contraste de texto de los componentes propios se eleva a 7:1 en HC. Ni cumplir 1.4.6 en unos pares ni pasar Accessibility Inspector equivale a AAA global. Los detalles de versión y las guías complementarias están en [fuentes](research/design-system-sources.md).
 
@@ -125,9 +125,27 @@ Registrar dispositivo y build exactos de iOS, versión Xcode/SDK, commit, idioma
 
 Acciones del ensayo: usar Accessibility Inspector para inspeccionar etiquetas/traits, contraste y problemas detectables; medir pares renderizados con muestras del foreground/fondo reales; revisar tamaño hit-test y clipping. Conservar capturas y resultados, sin usar un pixel antialiasado aislado como sustituto de los colores de texto. Completar manualmente recorrido y escucha; las herramientas no prueban por sí solas el orden o la claridad de una operación.
 
-### Hallazgos que deben revalidarse
+### Evidencia consolidada y límites de revalidación
 
-Se mantienen los pendientes ya recogidos en el [plan de fase 3](implementation-plan.md#fase-3-validar-y-corregir): aviso oculto de interpretación, avisos de red duplicados, copy de reintento genérico, conflicto fuera de vista, validación del editor sin anuncio, placeholder recortado y retorno de foco al encabezado. Fuentes: [borrador/#7](validation/issue-3-ios-draft.md), [recorrido compartido](validation/issue-4-shared-flow.md) y [compra](validation/issue-11-purchase-flow.md). Este documento no vuelve a marcar como validados esos casos ni cambia el estado de las issues.
+La lista de defectos observados antes del 24 de septiembre no representa el estado actual. La [validación de localización/#7](validation/issue-13-localization.md) documenta la presentación nativa de avisos, la recuperación de red sin duplicados, el anuncio del error del editor, el placeholder completo en ES/EN y el retorno de VoiceOver al botón Edit de origen al cerrar con Cancel o Apply. El reemplazo de un aviso mientras otro sigue abierto se corrigió y se comprobó con VoiceOver en iPhone 17 simulado. Cada resultado conserva su dispositivo, versión y límites; el cierre interactivo del editor no tiene un ensayo físico independiente.
+
+La [ronda de UI #28](validation/issue-28-shopping-ui.md) añade aceptación física de recorridos de alta/cancelación y refresco entre iPhone 11 y 14, errores de longitud y texto grande, además de previews e interpretación real en los entornos documentados. La [adaptación Duo #30](validation/issue-30-duo-controls.md) comprueba posturas, crecimiento y continuidad del estado con fixtures. Estas evidencias no acreditan toda la UI final con VoiceOver ni todas las combinaciones de apariencia, idioma, teclado y controles alternativos.
+
+Las comprobaciones pendientes se delimitan en esos informes y en [consulta de tienda por voz #24](validation/issue-24-store-voice-query.md#remaining-physical-checks-for-phase-3), incluidos los límites de VoiceOver, teclado e idioma de Duo. El recorrido focalizado de Ajustes, acciones de producto y confirmación de compra queda confirmado en ES/EN en el ensayo siguiente. No se repiten recorridos ya aceptados sólo por consolidar documentación; una repetición requiere un cambio relevante o una regresión. La [compilación Release y su arranque físico](validation/release-2026-09-27.md) tampoco completan la matriz de accesibilidad.
+
+#### Recorrido focalizado de VoiceOver en español e inglés
+
+El 27 de septiembre, tras indicarle activar VoiceOver antes de empezar, el usuario confirma «Todo correcto en español» y después «Correcto el recorrido en inglés». Se registra como ensayo físico manual comunicado por el usuario del siguiente recorrido acotado:
+
+- Abrir y cerrar Ajustes, conservando un foco útil para seguir navegando.
+- Abrir Editar y cancelar sobre un producto de prueba; abrir Eliminar y elegir Conservar producto, comprobando que permanece y que se puede continuar recorriendo la lista.
+- Seleccionar ese producto y confirmar la compra, identificando la selección, entendiendo la confirmación y reconociendo el resultado con VoiceOver.
+
+Resultado: correcto en español e inglés para esos pasos. Las confirmaciones no especifican dispositivo, versión de iOS, configuración de compilación ni ajustes de apariencia o tamaño de texto. No acreditan un destino exacto del foco, la matriz completa de accesibilidad, controles alternativos ni los casos de error o consulta por voz no incluidos en el recorrido. No se ejecutan nuevas pruebas automáticas para registrar estos resultados.
+
+Este ensayo es anterior al cambio solicitado después: abreviar los botones a «Guardar» / «Save» e «Invitaciones» / «Invitations» y sustituir el texto Cerrar del editor por un icono. La comprobación física de esos controles tras el cambio queda separada; estas confirmaciones no la acreditan.
+
+El ajuste se aplica con las traducciones ES/EN y el mismo botón nativo `Close` + `xmark` + `.iconOnly` de Ajustes, conservando «Cerrar» / «Close» como nombre accesible. La revisión estática independiente no encuentra desviaciones. Xcode 27.2 beta compila `Debug-iphoneos` con cero errores y warnings. Se inspeccionan previews en iPhone 18 Pro Max / iOS 27.2: editor en EN/Large, ES/XXX Large y ES/AX 5; Ajustes en ES/Large, EN/XXX Large y ES/AX 5. Los textos abreviados se muestran correctamente y el cierre usa el icono previsto. En AX 5, Invitaciones sigue creciendo en varias líneas; no se impone una sola línea ni se reduce la fuente. Estas capturas no prueban interacción, foco o anuncios de VoiceOver.
 
 ### Registro de evidencia
 

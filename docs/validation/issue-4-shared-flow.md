@@ -1,10 +1,18 @@
 # Evidencia del recorrido compartido
 
-Evidencia local inicial: 19 de septiembre de 2026, CEST; ensayo físico ampliado el 21 de septiembre. Trabajo en `codex/issue-4-shared-shopping-flow`, iniciado sobre `2f3ee14`. Seguimiento: [#4](https://github.com/JFrancoG/SmartShoppingList/issues/4). Las secciones distinguen pruebas locales, comprobaciones HTTP y resultados físicos comunicados por el usuario; no acreditan entrega en `main`.
+Evidencia local inicial: 19 de septiembre de 2026, CEST; ensayo físico ampliado el 21 de septiembre. Trabajo en `codex/issue-4-shared-shopping-flow`, iniciado sobre `2f3ee14`. Seguimiento: [#4](https://github.com/JFrancoG/SmartShoppingList/issues/4). Las secciones distinguen pruebas locales, comprobaciones HTTP y resultados físicos comunicados por el usuario. Cada resultado corresponde a su versión y entorno; la integración posterior se reconcilia a continuación.
 
-## Estado vigente — revisión del 24 de septiembre
+## Estado vigente — reconciliación del 27 de septiembre
 
-Las secciones fechadas conservan el estado observado en cada ensayo; sus pendientes históricos no sustituyen este resumen. [#4](https://github.com/JFrancoG/SmartShoppingList/issues/4) y [PR #9](https://github.com/JFrancoG/SmartShoppingList/pull/9) registran los ensayos alojados posteriores:
+La issue #4 está cerrada y el recorrido compartido está integrado en `main` mediante [PR #9](https://github.com/JFrancoG/SmartShoppingList/pull/9), merge [`c3a5cf8`](https://github.com/JFrancoG/SmartShoppingList/commit/c3a5cf808c1b249cbf5cfa8b800bd5baaa806a7e), del 24 de septiembre. Ese mismo día se completó el orden #9 → [#12](https://github.com/JFrancoG/SmartShoppingList/pull/12) → [#14](https://github.com/JFrancoG/SmartShoppingList/pull/14), con merges `0e91b5a` y `084af0c`: compra y localización también quedaron integradas. La comprobación actual de GitHub confirma esos estados; no añade pruebas ni atribuye un despliegue al merge.
+
+Los pendientes de integración del punto de control del 24 de septiembre están resueltos. [#7](https://github.com/JFrancoG/SmartShoppingList/issues/7) también está cerrada con su alcance aceptado; sus ensayos no equivalen a una matriz completa de accesibilidad de la UI final. La compra, edición/cancelación, consulta de tienda por voz y App Intents cuentan con los informes posteriores de [#11](issue-11-purchase-flow.md), [#22](issue-22-edit-cancel-items.md), [#24](issue-24-store-voice-query.md) y [#10](issue-10-app-intents.md). Las menciones siguientes a esas funciones como trabajo futuro describen el momento de cada ensayo.
+
+El [README](../../README.md), la [configuración compartida](../setup/shared-shopping.md) y los informes Release del 27 de septiembre de [iOS](release-2026-09-27.md) y [servidor](server-release-2026-09-27.md) recogen el recorrido y los límites actuales. Esta consolidación conserva la evidencia histórica y no da por ejecutados los recorridos completos o matrices que no figuran acreditados en sus informes.
+
+## Punto de control previo a la integración — 24 de septiembre
+
+Esta sección conserva el estado anterior al merge. Sus pendientes quedan sustituidos por el resumen vigente cuando existe evidencia posterior. [#4](https://github.com/JFrancoG/SmartShoppingList/issues/4) y [PR #9](https://github.com/JFrancoG/SmartShoppingList/pull/9) registran los ensayos alojados:
 
 - El 23 de septiembre, el usuario confirmó en iPhone 14 el rechazo por caducidad de una invitación creada, según comunica, 26–27 horas antes: «La invitación ha caducado. Pide un enlace nuevo.». No se capturó HTTP ni se verificaron directamente las marcas de tiempo del servidor.
 - Después, una tercera cuenta Apple normal aceptó una invitación nueva; el grupo pasó a tres miembros. Al abrir el mismo enlace con su cuenta habitual, ya miembro, el usuario confirmó «Otra persona ya ha utilizado esta invitación. Pide un enlace de nuevo.». Acredita el rechazo presentado tras consumo por otra identidad, sin inspección de la base de producción.
@@ -13,7 +21,7 @@ Las secciones fechadas conservan el estado observado en cada ensayo; sus pendien
 
 La revisión de entrega conserva el orden #9 → #12 → #14. #7 y fase 3 mantienen los pendientes de accesibilidad, permisos y matriz completa; los cierres de Foundation Models en previews tienen el tratamiento limitado documentado en #13. No se repiten pruebas ni se acredita la cadena completa IA → revisión → grupo → segundo cliente: sus tramos siguen comprobados por separado. Merge, cierre de issues y retirada de ramas no se han realizado.
 
-## Resultado implementado
+## Resultado implementado en el bloque 4
 
 - Backend: challenge y canje Apple, JWKS, concesiones cifradas, sesiones persistentes, grupo, invitaciones, lotes atómicos con recibos idempotentes, tiendas y pendientes paginados. PostgreSQL conserva las restricciones y arbitra las carreras.
 - iOS: acceso nativo, Keychain, conservación del enlace durante carga/SIWA/aceptación, grupo e invitaciones, confirmación explícita de tiendas, envío del borrador y consulta con refresco. Una respuesta incierta conserva el sobre original, incluido usuario y `operationId`.
@@ -328,11 +336,8 @@ El usuario autorizó consolidar este informe y publicarlo mediante commit y push
 
 ## Pendientes vigentes de entrega y validación
 
-Los rechazos alojados de caducidad y consumo por otra identidad ya están confirmados; el resumen inicial de este informe recoge su alcance. Los ensayos ingleses y regionales están publicados en #14, sin sustituir los criterios amplios de #7.
+Actualizado el 27 de septiembre: la integración #9 → #12 → #14 y el cierre de #4 están completados. Los rechazos alojados de caducidad y consumo por otra identidad están confirmados dentro del alcance descrito en este informe. #7 está cerrada con sus criterios reconciliados; no se reabren sus comprobaciones por esta actualización documental.
 
-- Integrar las PR en orden #9 → #12 → #14, revisando el diff y estado de cada PR al cambiar su base a `main` después de integrar la anterior. La evidencia bilingüe no justifica cerrar #7 ni declarar terminada la fase 3.
-- Completar los pendientes reales de permisos, accesibilidad con interacción, foco, anuncios y visibilidad de avisos en #7/fase 3; conservar los resultados ya realizados por entorno sin repetirlos por un mero cambio documental.
-- Mantener explícito el presupuesto del alojamiento antes de cualquier contratación o ampliación; el despliegue de prueba no autoriza gastos nuevos.
-- El 24 de septiembre el usuario autoriza publicar las correcciones, integrar #9 → #12 → #14 y cerrar sus issues y ramas tras verificar la entrega. La ejecución definitiva se registra en GitHub; esta autorización no acredita por sí sola el merge o el cierre.
-
-En este punto documental la issue permanece abierta y la PR #9 continúa en borrador; la ejecución de la entrega autorizada se registra en GitHub. EXC-002 conserva exclusivamente su alcance aceptado; no cubre los cierres de previews. Las autorizaciones históricas de publicación no equivalen a haber realizado el merge o el cierre.
+- Conservar los límites de cada prueba y la evidencia posterior enlazada en el resumen vigente. La [validación Release iOS](release-2026-09-27.md#límites) y el [README](../../README.md) identifican las comprobaciones pendientes de la entrega actual; la matriz completa de accesibilidad de la UI final no se considera acreditada por los ensayos focalizados.
+- Usar la [configuración compartida](../setup/shared-shopping.md) para el entorno alojado. Los resultados locales y la integración Git no acreditan restauración de backups ni autorizan nuevas contrataciones o ampliaciones de gasto.
+- Mantener [EXC-002](../dependency-exceptions.md#exc-002--extracción-de-metadatos-app-intents-sin-adopción) dentro de su alcance vigente: el aviso de metadatos de los bundles de pruebas indicados. No cubre los cierres históricos de previews ni amplía la validación de Foundation Models.

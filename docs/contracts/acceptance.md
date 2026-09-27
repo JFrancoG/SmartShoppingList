@@ -3,13 +3,14 @@
 Referencia funcional: [MVP, secciones 2–6](../mvp-spec.md). Esta matriz define resultados
 observables para revisar el contrato de la [issue #2](https://github.com/JFrancoG/SmartShoppingList/issues/2)
 y derivar las pruebas de implementación. Revisar ejemplos, esquemas o este documento no
-acredita llamadas reales, persistencia, concurrencia ni comportamiento de iOS: las pruebas
-de backend y cliente descritas aquí quedan para sus bloques de implementación.
+acredita llamadas reales, persistencia, concurrencia ni comportamiento de iOS. La evidencia
+de backend y cliente se conserva en los informes de validación de cada bloque.
 
-La columna «Bloque» asigna la comprobación futura: [#3](https://github.com/JFrancoG/SmartShoppingList/issues/3)
+La columna «Bloque» conserva la trazabilidad de implementación: [#3](https://github.com/JFrancoG/SmartShoppingList/issues/3)
 para entrada y borrador iOS; [#4](https://github.com/JFrancoG/SmartShoppingList/issues/4) para el primer
 recorrido de identidad, invitación y datos compartidos; **Fase 2** para completar el resto del
-MVP en backend e iOS. La evidencia y el estado operativo pertenecen a las issues, no a esta matriz.
+MVP en backend e iOS, concretada en [compra/#11](https://github.com/JFrancoG/SmartShoppingList/issues/11)
+y [edición/cancelación/#22](https://github.com/JFrancoG/SmartShoppingList/issues/22). La evidencia y el estado operativo pertenecen a las issues, no a esta matriz.
 
 Preparación común: A y B son usuarios distintos del grupo G; C pertenece a otro grupo H.
 S y T son tiendas distintas de G. Cuando se indiquen cinco pendientes, son exactamente
@@ -43,9 +44,9 @@ juntos contrato, OpenAPI, ejemplos y los casos C05–C07.
 
 | ID | Preparación | Acción | Resultado observable | Bloque |
 |---|---|---|---|---|
-| A01 | Micrófono e interpretación disponibles en el entorno identificado. | Decir «Comprar jabón, cerveza y yogures en Mercadona» y revisar el borrador. | Aparecen tres productos corregibles y la tienda; antes de confirmar no hay altas compartidas. Las correcciones humanas, incluidas variantes como «sin lactosa», son las que se envían. | #3; guardado real en #4 |
-| A02 | Micrófono denegado o Apple Intelligence no disponible. | Introducir productos, cantidades opcionales y supermercado a mano; revisar y confirmar. | Puede completarse el mismo guardado sin IA; no se inventan cantidades o tienda. La prueba manual física se registra por separado de transcripción y Foundation Models en simulador. | #3; integración en #4 |
-| A03 | Texto de tienda ambiguo o que no determina una tienda existente. | Revisar la propuesta antes de guardar o consultar. | Se solicita una elección humana entre opciones pertinentes o la creación explícita de una tienda; no se asigna una por parecido. La elección permanece visible y puede corregirse sin hablar otra vez. | #3; consulta completa en Fase 2 |
+| A01 | Grupo activo, micrófono e interpretación disponibles en el entorno identificado. | Decir «Comprar jabón, cerveza y yogures en Mercadona» y revisar la propuesta del aviso; elegir **Confirmar** o **Editar**. | Antes de confirmar no hay altas compartidas. **Confirmar** envía los tres productos y su tienda directamente cuando la identificación está completa; **Editar**, los errores o los datos incompletos abren el borrador para corregir. Las correcciones humanas, incluidas variantes como «sin lactosa», son las que se envían. | #3; guardado real en #4; UI en #28 |
+| A02 | Micrófono denegado o Apple Intelligence no disponible; controles manuales disponibles. | Introducir producto, cantidad opcional y supermercado a mano; pulsar **Añadir producto** con un grupo activo. | Se guarda esa entrada directamente, sin IA ni una segunda revisión; no se inventan cantidades o tienda. Sin grupo, **Guardar producto** conserva la entrada en el borrador local. La prueba manual física se registra por separado de transcripción y Foundation Models. | #3; integración en #4; UI en #28 |
+| A03 | Nombre de una tienda existente, nombre nuevo explícito o referencia ambigua. | Confirmar un alta con la tienda visible o consultar una tienda del grupo. | En el alta, una coincidencia exacta única reutiliza la tienda; un nombre nuevo explícito permite crearla al confirmar, sin una segunda elección. Una ambigüedad real exige elección humana y no se resuelve por parecido. La consulta de Comprar solo busca tiendas del grupo y no crea tiendas; el texto puede corregirse sin hablar otra vez. | #3; alta en #4; consulta en #24; UI en #28 |
 | A04 | Una tienda `Café` en G; entradas de nombre `CAFÉ` y `Café` con acento descompuesto. | Resolver o crear la tienda siguiendo la normalización contractual NFC y casefold. | Las formas equivalentes identifican la misma tienda de G; no crean duplicados por mayúsculas o representación Unicode. `Cafe` sin acento o una errata distinta no se fusionan mediante coincidencia difusa. | #4 |
 | A05 | Lote de tres entradas revisadas, una inválida según los límites del contrato. | Enviar el lote. | Se rechaza el lote completo: cero altas, ninguna tienda creada solo por el intento fallido y borrador conservado para corregir. | #4 |
 | A06 | Lote válido y clave K; doble pulsación o dos peticiones simultáneas idénticas. | Enviar ambas con K y el mismo contenido. | Hay un único lote persistido y los mismos IDs en su resultado; no se duplica ninguna entrada. El cliente solo comunica guardado al recibir confirmación. | #4; cliente en #3 |

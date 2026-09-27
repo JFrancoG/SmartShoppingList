@@ -1157,16 +1157,6 @@
         }
       }
     },
-    "Manage invitations" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gestionar invitaciones"
-          }
-        }
-      }
-    },
     "Microphone access is not allowed. Enable it in Settings or use the Store selector." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1912,22 +1902,23 @@
         }
       }
     },
+    "Save" : {
+      "comment" : "Button that saves changes in the product editor.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guardar"
+          }
+        }
+      }
+    },
     "Save product" : {
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Guardar producto"
-          }
-        }
-      }
-    },
-    "Save product changes" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Guardar cambios del producto"
           }
         }
       }

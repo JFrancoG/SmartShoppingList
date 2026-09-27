@@ -1,10 +1,16 @@
 # Issue #10 · Entrada al borrador y a la lista con App Intents
 
-Fecha: 26 de septiembre de 2026. Rama: `codex/issue-10-app-intents`, base `0e5ab1c` (`main`).
+Inicio: 26 de septiembre de 2026. Consolidación: 27 de septiembre de 2026. Rama original: `codex/issue-10-app-intents`, base `0e5ab1c` (`main`).
 
 ## Estado y alcance
 
-Intento opcional autorizado por el propietario con un margen de 3–4 horas. El 27 de septiembre el propietario confirma el alta al borrador desde Atajos en el iPhone 14 y el recorrido básico de Siri tradicional con la app en primer plano, en segundo plano y cerrada: en este último caso Siri abre la app y añade el producto al borrador. Después autoriza una segunda acción que añade directamente a una tienda existente cuando existe una coincidencia exacta y única. **La ampliación pasa la validación automática y el propietario confirma que el recorrido mejorado funciona y lo acepta tras instalar la pregunta de cantidad**. Autoriza commit y push de la rama; la issue sigue abierta y PR, merge y cierre quedan como pasos posteriores. No se ha desplegado el servidor. Siri AI queda como ampliación posterior al MVP.
+**Entregado mediante [PR #32](https://github.com/JFrancoG/SmartShoppingList/pull/32), integrado en `main` como [3fdae1b](https://github.com/JFrancoG/SmartShoppingList/commit/3fdae1b9bfddddcb7de1509622a11fa1411dc71d); [#10 está cerrada](https://github.com/JFrancoG/SmartShoppingList/issues/10).** El propietario confirmó en iPhone 14 el alta al borrador desde Atajos y el recorrido básico de Siri tradicional con la app en primer plano, segundo plano y cerrada. También aceptó la acción de lista en español con producto, cantidad literal y tienda separados. El 27 de septiembre confirmó ese recorrido de lista en inglés a la primera en iPhone 14/iOS 27.2, completando el único criterio que quedaba abierto; la [confirmación y el cierre](https://github.com/JFrancoG/SmartShoppingList/issues/10#issuecomment-5854364702) delimitan su alcance. No se infiere una repetición inglesa de todos los estados de la app ni del editor manual de Atajos.
+
+La entrega conserva las **280 ejecuciones Fast y 12 Integration** verificadas abajo. Los [checks de PR](https://github.com/JFrancoG/SmartShoppingList/actions/runs/36283046808) y el [CI posterior al merge](https://github.com/JFrancoG/SmartShoppingList/actions/runs/36283280423) pasaron. #10 no necesitó un despliegue del servidor. Siri AI permanece fuera del MVP; las variantes físicas no acreditadas son límites de evidencia, no nuevos requisitos para reabrir la issue.
+
+Posteriormente, [6fd8452](https://github.com/JFrancoG/SmartShoppingList/commit/6fd8452) publica el nombre visible **Smart List** y la [validación Release](release-2026-09-27.md): ambos intents, cuatro frases por idioma y `applicationName = Smart List` en los metadatos ES/EN. El propietario confirma después el recorrido de alta a la lista desde cero en español y en inglés con Smart List, según los ensayos registrados abajo. El arranque Release en iPhone 11 es una evidencia separada.
+
+Los checkpoints fechados siguientes conservan la secuencia de implementación y sus autorizaciones originales. Sus menciones a rama sin entregar, issue abierta y al nombre anterior **SmartShoppingList** describen aquel momento; el estado vigente es el de este resumen y el apartado final de límites.
 
 Una acción «Añadir producto al borrador» recibe producto y tienda obligatorios y cantidad literal opcional. Abre la app, requiere desbloqueo local y añade al borrador para revisar antes del envío al grupo. No invoca Foundation Models ni envía productos, compra o cancela. Funciona sobre la instancia de aplicación registrada en `AppDependencyManager`, sin escritor de archivo adicional.
 
@@ -14,7 +20,7 @@ La protección frente al doble procesamiento acepta la **misma identidad interna
 
 ## Ampliación aprobada: añadir directamente a una tienda existente
 
-La nueva acción `AddShoppingItemIntent` se invoca con «Añade a mi lista de la compra en SmartShoppingList» o la variante anterior «Añade a mi lista en SmartShoppingList»; en inglés, `Add to my shopping list in SmartShoppingList` o `Add to my list in SmartShoppingList`. Tras el refinamiento descrito más abajo, solicita producto, cantidad literal y tienda por separado. La acción anterior y sus dos frases mantienen su comportamiento de borrador local.
+Las frases actuales de `AddShoppingItemIntent` son «Añade a mi lista de la compra en Smart List» y «Añade a mi lista en Smart List»; en inglés, `Add to my shopping list in Smart List` y `Add to my list in Smart List`. Solicita producto, cantidad literal y tienda por separado. La acción anterior y sus dos frases mantienen su comportamiento de borrador local. Los ensayos anteriores se realizaron con el nombre SmartShoppingList. El nuevo nombre está comprobado en metadatos ES/EN y en los recorridos físicos de lista en español e inglés registrados abajo.
 
 La entrada se guarda antes de consultar la sesión y las tiendas del grupo. Una coincidencia exacta y única, normalizada sin distinguir mayúsculas, permite enviar sólo ese producto mediante la operación persistida existente. Una tienda desconocida o ambigua, o la falta de acceso, deja la fila editable en el borrador sin crear tiendas. No se utiliza un catálogo para resolver o sustituir nombres de productos. El resto de filas y texto del borrador se conserva.
 
@@ -141,11 +147,11 @@ Acuerdo del 27 de septiembre: conservar el acceso sencillo para dispositivos sin
 
 | Vía | Experiencia prevista | Estado real |
 | --- | --- | --- |
-| Siri tradicional · borrador | Decir «Añade un producto en SmartShoppingList» o «Añade a mi borrador en SmartShoppingList», responder producto y tienda, revisar la fila en la app. En inglés: `Add a product in SmartShoppingList` o `Add to my draft in SmartShoppingList`. | Alta desde Atajos y recorrido básico por Siri con la app en primer plano, segundo plano y cerrada confirmados por el propietario en iPhone 14. En el último caso confirma apertura y producto añadido al borrador. |
-| Siri tradicional · lista | Decir «Añade a mi lista de la compra en SmartShoppingList»; responder producto, cantidad y tienda; tienda exacta y única → alta y aviso; desconocida o ambigua → borrador. | Implementado y validado automáticamente; el propietario confirma y acepta el recorrido tras añadir la pregunta de cantidad. Variantes físicas pendientes delimitadas en este informe. |
+| Siri tradicional · borrador | Decir «Añade un producto en Smart List» o «Añade a mi borrador en Smart List», responder producto y tienda, revisar la fila en la app. En inglés: `Add a product in Smart List` o `Add to my draft in Smart List`. | Alta desde Atajos y recorrido básico por Siri con la app en primer plano, segundo plano y cerrada confirmados por el propietario en iPhone 14 con el nombre anterior. En el último caso confirma apertura y producto añadido al borrador. Pendiente invocación física tras renombrar. |
+| Siri tradicional · lista | Decir «Añade a mi lista de la compra en Smart List»; responder producto, cantidad y tienda; tienda exacta y única → alta y aviso; desconocida o ambigua → borrador. | Recorrido de lista aceptado físicamente en español e inglés con el nombre anterior; #10 cerrada. El nuevo nombre está verificado en los metadatos ES/EN y el recorrido de lista está confirmado desde cero en español e inglés. Las variantes restantes se delimitan abajo. |
 | Siri AI | Entender variantes de una orden que incluya producto, tienda y cantidad, y preguntar cuando falten datos. | Ampliación pendiente. El ensayo escrito en el Mac termina ofreciendo abrir la app, sin ejecutar el intent. |
 
-El App Shortcut está preparado para su invocación directa; no se pretende que cada persona tenga que construir un atajo manual para el uso habitual. En la acción original de borrador, la cantidad sigue siendo opcional y editable en Atajos. La nueva acción de lista la solicita como texto requerido separado. Extraer la cantidad de una respuesta que mezcla producto y unidades no está implementado ni prometido. Si este recorrido no ahorra esfuerzo o su reconocimiento requiere cambios amplios, se aplaza el extra y se prioriza la entrega.
+El App Shortcut está preparado para su invocación directa; no se pretende que cada persona tenga que construir un atajo manual para el uso habitual. En la acción original de borrador, la cantidad sigue siendo opcional y editable en Atajos. La nueva acción de lista la solicita como texto requerido separado. Extraer la cantidad de una respuesta que mezcla producto y unidades no está implementado ni prometido. La entrega de este extra no amplía el alcance a órdenes conversacionales.
 
 El propietario advierte que el micrófono del iPhone no funciona mientras está conectado a Device Hub. Por tanto, la prueba de voz se hará tras desconectarlo; escribir a Siri, si está disponible, sólo acreditaría el reconocimiento de la orden escrita. No se registra un fallo del intent por ausencia de audio en esa conexión.
 
@@ -163,10 +169,19 @@ Trabajo futuro, después del MVP o mediante una nueva decisión de alcance:
 4. Validar órdenes completas, datos omitidos, ambigüedades, correcciones y cantidades literales en ES/EN realmente disponibles. El éxito debe corresponder a datos guardados y revisables, con todos los valores conservados. Registrar explícitamente lo que el sistema no interprete.
 5. Conservar las dos semánticas: borrador local, o petición explícita de añadir a una tienda existente con recuperación al borrador. Siri AI no amplía por sí sola el alcance a comprar, cancelar, crear tiendas ni publicar otras filas del borrador.
 
+## Siri con Smart List en español e inglés
+
+El 27 de septiembre, tras el cambio de nombre, se propone abrir Smart List una vez e invocar «Añade a mi lista de la compra en Smart List», responder producto, cantidad y una tienda existente y comprobar el alta en la lista. El usuario confirma: «Si, correcto, desde cero y en español».
+
+A continuación se propone repetir el recorrido con la app y Siri en inglés mediante «Add to my shopping list in Smart List», respondiendo producto, cantidad y una tienda existente y comprobando el alta. El usuario confirma: «Todo el recorrido correcto desde cero».
+
+Quedan acreditados por confirmación del usuario los recorridos de lista en español e inglés con el nombre nuevo: invocación, preguntas separadas y producto añadido a la tienda existente. Estas confirmaciones no identifican el dispositivo ni la versión de iOS; no se convierte «desde cero» en evidencia de reinstalación o de un estado concreto del proceso. La acción de borrador y las variantes indicadas abajo conservan sus límites separados. No se ejecutan nuevas pruebas automáticas para registrar estos resultados.
+
 ## Variantes físicas no acreditadas
 
 1. Conservación explícita de otro texto y filas previas durante una invocación, así como presentación física de errores de ocupado, valores vacíos y límites. Los casos de persistencia y validación automatizados anteriores no se presentan como esta prueba del sistema.
-2. Segunda frase española e invocación inglesa. Las traducciones y metadatos compilados no acreditan esos recorridos. La cantidad opcional se configura en Atajos; la frase libre «añade pan a Mercadona» no está prometida.
+2. Frases alternativas no ensayadas, repetición inglesa de todos los estados de la app y uso del editor manual de Atajos en inglés. La acción de lista en inglés sí está confirmada; no se extrapola a esas variantes. La cantidad opcional del borrador se configura en Atajos; la frase libre «añade pan a Mercadona» no está prometida.
 3. Dispositivo bloqueado y autenticación. El éxito con teléfono desbloqueado no sustituye esa prueba.
+4. Acción de borrador con el nombre actual Smart List. Los recorridos de lista en español e inglés sí quedan confirmados en los ensayos anteriores; no se extrapolan a esta acción ni a las variantes restantes.
 
-El descubrimiento, el alta básica desde Atajos y el recorrido básico de borrador por Siri en los tres estados están confirmados en iPhone 14. También se acepta el recorrido mejorado de lista tras incorporar la pregunta de cantidad. No se repiten esas pruebas. Las variantes anteriores permanecen identificadas para decidir su tratamiento al entregar la rama; esta evidencia no cierra por sí sola la issue #10 ni acredita Siri AI.
+El descubrimiento, el alta básica desde Atajos y el recorrido básico de borrador por Siri en los tres estados están confirmados en iPhone 14. También está aceptado el recorrido de lista en español e inglés tras incorporar la pregunta de cantidad. No se repiten esos ensayos sin una regresión o un cambio relevante. La rama ya fue integrada y #10 quedó cerrada; las variantes anteriores y la recuperación física ante tienda desconocida o ambigua conservan su alcance no acreditado, sin atribuirles la cobertura de los tests automáticos. Siri AI sigue siendo trabajo futuro.

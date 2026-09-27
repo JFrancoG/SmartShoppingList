@@ -18,7 +18,7 @@ struct SharedSettingsView: View {
                             .foregroundStyle(.textPrimary)
                             .fixedSize(horizontal: false, vertical: true)
                         if viewModel.isCreator {
-                            Button("Manage invitations", systemImage: "person.badge.plus") {
+                            Button("Invitations", systemImage: "person.badge.plus") {
                                 Task {
                                     await viewModel.openInvitations()
                                 }
