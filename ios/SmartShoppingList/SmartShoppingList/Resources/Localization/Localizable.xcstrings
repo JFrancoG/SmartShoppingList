@@ -667,7 +667,6 @@
       }
     },
     "Confirm purchase" : {
-      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {

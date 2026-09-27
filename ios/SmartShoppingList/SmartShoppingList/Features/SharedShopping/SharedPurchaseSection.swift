@@ -3,8 +3,7 @@ import SwiftUI
 struct SharedPurchaseSection: View {
     @Environment(\.accessibilityVoiceOverEnabled) private var isVoiceOverEnabled
     let viewModel: SharedShoppingViewModel
-    @State private var cancellationItem: SharedItem?
-    @State private var confirmsCancellation = false
+    let onRemove: (SharedItem) -> Void
     @State private var editorSourceID: UUID?
     @AccessibilityFocusState(for: .voiceOver) private var focusedProductID: UUID?
 
@@ -29,8 +28,7 @@ struct SharedPurchaseSection: View {
                 } onEdit: {
                     viewModel.beginEditingItem(item)
                 } onRemove: {
-                    cancellationItem = item
-                    confirmsCancellation = true
+                    onRemove(item)
                 }
                 .listRowBackground(viewModel.isPurchaseSelected(item) ? Color.primarySoft : .surface)
             }
@@ -70,12 +68,13 @@ struct SharedPurchaseSection: View {
                         await viewModel.finalizePurchase()
                     }
                 } label: {
-                    Text(viewModel.purchaseActionTitle)
+                    Text("Confirm purchase")
                         .fixedSize(horizontal: false, vertical: true)
                         .multilineTextAlignment(.center)
                 }
                 .buttonStyle(ShoppingActionButtonStyle())
                 .disabled(!viewModel.canFinalizePurchase)
+                .accessibilityLabel(Text(viewModel.purchaseActionTitle))
                 .accessibilityHint("Confirms only the selected products from this store for the whole group.")
             }
         } footer: {
@@ -88,16 +87,6 @@ struct SharedPurchaseSection: View {
         }
         .listRowBackground(Color.clear)
         .listRowSeparator(.hidden)
-        .alert("Cancel pending product?", isPresented: $confirmsCancellation, presenting: cancellationItem) { item in
-            Button("No longer needed", role: .destructive) {
-                Task {
-                    await viewModel.cancelItem(item)
-                }
-            }
-            Button("Keep product", role: .cancel) {}
-        } message: { item in
-            Text("Remove \(item.name) from the group’s pending list without recording a purchase?")
-        }
         .onChange(of: viewModel.isItemEditorPresentationActive) { _, isActive in
             if isActive {
                 editorSourceID = viewModel.editingItem?.id
@@ -113,8 +102,5 @@ struct SharedPurchaseSection: View {
 
 #Preview("Purchase selection", traits: .sharedShopping) {
     @Previewable @Environment(SharedShoppingViewModel.self) var viewModel
-    Form {
-        SharedPurchaseSection(viewModel: viewModel)
-    }
-    .modifier(ShoppingFormStyle())
+    SharedGroupView(viewModel: viewModel)
 }

@@ -3,6 +3,8 @@ import SwiftUI
 struct SharedGroupView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @State private var cancellationItem: SharedItem?
+    @State private var confirmsCancellation = false
     @AccessibilityFocusState private var storeIsFocused: Bool
     @Bindable var viewModel: SharedShoppingViewModel
     var onOpenSettings: () -> Void = {}
@@ -48,7 +50,10 @@ struct SharedGroupView: View {
                     }
                     .listRowBackground(Color.surface)
                     if viewModel.selectedStoreID != nil {
-                        SharedPurchaseSection(viewModel: viewModel)
+                        SharedPurchaseSection(viewModel: viewModel) { item in
+                            cancellationItem = item
+                            confirmsCancellation = true
+                        }
                     }
                 } else if viewModel.hasLoaded && !viewModel.isBusy {
                     Section {
@@ -64,6 +69,16 @@ struct SharedGroupView: View {
                 }
             }
             .modifier(ShoppingFormStyle())
+            .alert("Cancel pending product?", isPresented: $confirmsCancellation, presenting: cancellationItem) { item in
+                Button("No longer needed", role: .destructive) {
+                    Task {
+                        await viewModel.cancelItem(item)
+                    }
+                }
+                Button("Keep product", role: .cancel) {}
+            } message: { item in
+                Text("Remove \(item.name) from the group’s pending list without recording a purchase?")
+            }
             .navigationTitle(viewModel.group.map { Text($0.name) } ?? Text("Shop"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

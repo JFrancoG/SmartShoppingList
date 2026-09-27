@@ -54,6 +54,8 @@
 
 ### Fixed
 
+- 2026-09-27 | 🐛 fix(ios): refine shopping confirmations
+
 - 2026-09-27 | 🐛 fix(ios): streamline signed-out flows
 
 - 2026-09-25 | 🐛 fix(ios): restore stable cancellation presentation
