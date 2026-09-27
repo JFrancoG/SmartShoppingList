@@ -27,6 +27,8 @@
 
 ### Documentation
 
+- 2026-09-27 | 📝 docs: record final Release validation
+
 - 2026-09-25 | 📝 docs: record voice query delivery scope
 
 - 2026-09-25 | 📝 docs: record server restart validation
