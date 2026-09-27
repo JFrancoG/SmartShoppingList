@@ -3,6 +3,7 @@ import SwiftUI
 
 struct SharedAccountSection: View {
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.scenePhase) private var scenePhase
     @ScaledMetric(relativeTo: .body) private var appleButtonHeight = 44.0
     let viewModel: SharedShoppingViewModel
 
@@ -35,25 +36,28 @@ struct SharedAccountSection: View {
             Section {
                 Text("Sign in with Apple to create a group or accept an invitation.")
                     .foregroundStyle(.textPrimary)
-                Button("Prepare Sign in with Apple") {
-                    Task {
-                        await viewModel.prepareAppleLogin()
-                    }
+                SignInWithAppleButton(.signIn) { request in
+                    viewModel.configureAppleRequest(request)
+                } onCompletion: { result in
+                    viewModel.receiveAppleAuthorization(result)
                 }
-                .buttonStyle(ShoppingActionButtonStyle())
-                .disabled(!viewModel.hasLoaded || viewModel.isBusy)
+                .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
+                .frame(maxWidth: 375)
+                .frame(height: appleButtonHeight)
+                .frame(maxWidth: .infinity)
+                .disabled(scenePhase != .active || !viewModel.canRequestAppleLogin)
 
-                if viewModel.challenge != nil {
-                    SignInWithAppleButton(.signIn) { request in
-                        viewModel.configureAppleRequest(request)
-                    } onCompletion: { result in
-                        viewModel.receiveAppleAuthorization(result)
+                if let error = viewModel.appleLoginPreparationError {
+                    Text(error)
+                        .foregroundStyle(.textSecondary)
+                    Button("Retry") {
+                        viewModel.retryAppleLoginPreparation()
                     }
-                    .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
-                    .frame(maxWidth: 375)
-                    .frame(height: appleButtonHeight)
-                    .frame(maxWidth: .infinity)
+                    .buttonStyle(ShoppingActionButtonStyle())
                     .disabled(viewModel.isBusy)
+                } else if !viewModel.hasLoaded || viewModel.isPreparingAppleLogin {
+                    ProgressView("Connecting…")
+                        .foregroundStyle(.textSecondary)
                 }
             } header: {
                 Text("Sign in with Apple")
@@ -61,6 +65,10 @@ struct SharedAccountSection: View {
                 Text("Your draft and pending invitation are kept while you sign in.")
             }
             .listRowBackground(Color.surface)
+            .task(id: scenePhase == .active && viewModel.shouldMaintainAppleLogin) {
+                guard scenePhase == .active, viewModel.shouldMaintainAppleLogin else { return }
+                await viewModel.maintainAppleLogin()
+            }
         }
     }
 }
@@ -74,6 +82,14 @@ struct SharedAccountSection: View {
 }
 
 #Preview("Sign in", traits: .sharedShopping(.signedOut)) {
+    @Previewable @Environment(SharedShoppingViewModel.self) var viewModel
+    Form {
+        SharedAccountSection(viewModel: viewModel)
+    }
+    .modifier(ShoppingFormStyle())
+}
+
+#Preview("Sign-in unavailable", traits: .sharedShopping(.signInUnavailable)) {
     @Previewable @Environment(SharedShoppingViewModel.self) var viewModel
     Form {
         SharedAccountSection(viewModel: viewModel)

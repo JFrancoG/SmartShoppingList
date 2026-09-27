@@ -47,6 +47,9 @@ final class SharedShoppingViewModel {
     }
     private var noticeStoreDestination: ShoppingNotice.StoreDestination?
     private(set) var challenge: SharedChallenge?
+    private(set) var appleLoginPreparationError: LocalizedStringResource?
+    private var applePreparationID: UUID?
+    private var isAuthorizingWithApple = false
     private(set) var reviewedItems: [PreparedDraftItem] = []
     private var reviewOwner: ReviewOwner?
     var storeChoices: [DraftStoreChoice] = []
@@ -101,6 +104,7 @@ final class SharedShoppingViewModel {
     @ObservationIgnored private let configuration: SharedAPIConfiguration?
     @ObservationIgnored private let credentials: any SharedCredentialStoring
     @ObservationIgnored private var appleState: String?
+    @ObservationIgnored private let appleLoginDate: @MainActor () -> Date
     @ObservationIgnored private var storageFailed = false
     @ObservationIgnored private var hasRestoredLocalState = false
     @ObservationIgnored private var localStateLoadTask: Task<Void, Never>?
@@ -113,18 +117,31 @@ final class SharedShoppingViewModel {
         configuration: SharedAPIConfiguration?,
         credentials: any SharedCredentialStoring,
         draft: ShoppingDraftViewModel,
-        storeQuery: StoreQueryViewModel
+        storeQuery: StoreQueryViewModel,
+        appleLoginDate: @escaping @MainActor () -> Date = { Date() }
     ) {
         self.api = api
         self.configuration = configuration
         self.credentials = credentials
         self.draft = draft
         self.storeQuery = storeQuery
+        self.appleLoginDate = appleLoginDate
     }
 
     var group: SharedGroup? { session?.user.group }
     var isConfigured: Bool { api != nil && configuration != nil }
     var isBusy: Bool { isPerformingAction || isProcessingShoppingIntent }
+    var isPreparingAppleLogin: Bool { applePreparationID != nil }
+    var shouldMaintainAppleLogin: Bool {
+        hasLoaded && isConfigured && session == nil && !isAuthorizingWithApple && !storageFailed
+            && appleLoginPreparationError == nil
+    }
+    var canRequestAppleLogin: Bool {
+        shouldMaintainAppleLogin && !isBusy && !isPreparingAppleLogin && hasReadyAppleChallenge
+    }
+    private var hasReadyAppleChallenge: Bool {
+        appleState != nil && (challenge?.expiresAt.timeIntervalSince(appleLoginDate()) ?? 0) > 30
+    }
     var canMutate: Bool {
         hasLoaded && sessionIsVerified && !isBusy && !storageFailed && pendingOperation == nil
             && storeQuery.activity == .idle && !draft.isReceivingIntent
@@ -326,34 +343,68 @@ final class SharedShoppingViewModel {
     }
 
     func prepareAppleLogin() async {
-        guard hasLoaded, !isBusy, !storageFailed, let api else { return }
-        await performAction {
-            challenge = nil
-            appleState = nil
-            notice = nil
-            do {
-                let result = try await api.createChallenge()
-                var bytes = [UInt8](repeating: 0, count: 32)
-                guard SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes) == errSecSuccess else {
-                    throw SharedAPIError.invalidResponse
-                }
-                appleState = Data(bytes).base64EncodedString()
-                challenge = result
-            } catch {
-                notice = SharedErrorMessage.message(for: error)
+        guard !Task.isCancelled, shouldMaintainAppleLogin, let api else { return }
+        guard !hasReadyAppleChallenge else { return }
+        // A new visible task may supersede a cancelled request that has not returned yet.
+        let preparationID = UUID()
+        applePreparationID = preparationID
+        resetAppleAttempt()
+        defer {
+            if applePreparationID == preparationID {
+                applePreparationID = nil
+            }
+        }
+        do {
+            let result = try await api.createChallenge()
+            try Task.checkCancellation()
+            guard applePreparationID == preparationID, shouldMaintainAppleLogin else { return }
+            guard result.expiresAt.timeIntervalSince(appleLoginDate()) > 30 else {
+                throw SharedAPIError.invalidResponse
+            }
+            var bytes = [UInt8](repeating: 0, count: 32)
+            guard SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes) == errSecSuccess else {
+                throw SharedAPIError.invalidResponse
+            }
+            appleState = Data(bytes).base64EncodedString()
+            challenge = result
+        } catch {
+            guard !Task.isCancelled, !(error is CancellationError),
+                  applePreparationID == preparationID, shouldMaintainAppleLogin else { return }
+            if case SharedAPIError.server(_, "rate_limited", _, _) = error {
+                appleLoginPreparationError = SharedErrorMessage.message(for: error)
+            } else {
+                appleLoginPreparationError = "Could not start Sign in with Apple. Please try again."
             }
         }
     }
 
+    func maintainAppleLogin() async {
+        while !Task.isCancelled, shouldMaintainAppleLogin {
+            await prepareAppleLogin()
+            guard !Task.isCancelled, shouldMaintainAppleLogin, hasReadyAppleChallenge, let challenge else { return }
+            let renewalDelay = challenge.expiresAt.timeIntervalSince(appleLoginDate()) - 30
+            do {
+                try await Task.sleep(for: .seconds(min(270, max(1, renewalDelay))))
+            } catch {
+                return
+            }
+        }
+    }
+
+    func retryAppleLoginPreparation() {
+        appleLoginPreparationError = nil
+    }
+
     func configureAppleRequest(_ request: ASAuthorizationAppleIDRequest) {
-        guard let challenge, challenge.expiresAt > Date(), let appleState, !isBusy else {
+        guard canRequestAppleLogin, let challenge, let appleState else {
             request.state = UUID().uuidString
-            notice = "This sign-in attempt has expired. Prepare Sign in with Apple again."
+            notice = "This sign-in attempt has expired. Try signing in again."
             return
         }
         request.requestedScopes = [.fullName]
         request.nonce = challenge.nonce
         request.state = appleState
+        isAuthorizingWithApple = true
         isPerformingAction = true
     }
 
@@ -1103,6 +1154,7 @@ final class SharedShoppingViewModel {
     private func resetAppleAttempt() {
         challenge = nil
         appleState = nil
+        isAuthorizingWithApple = false
     }
 
     private func clearSessionPresentation() {

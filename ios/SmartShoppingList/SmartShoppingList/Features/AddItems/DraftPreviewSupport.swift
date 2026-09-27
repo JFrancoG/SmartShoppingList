@@ -29,6 +29,7 @@ enum DraftPreviewState {
     case empty
     case missingStore
     case availableModel
+    case availableModelEmpty
 }
 
 @MainActor
@@ -74,7 +75,7 @@ enum DraftPreviewSupport {
         switch state {
         case .content, .availableModel:
             break
-        case .empty:
+        case .empty, .availableModelEmpty:
             draft = ShoppingDraftSnapshot()
         case .missingStore:
             draft.items = draft.items.prefix(1).map { item in
@@ -84,7 +85,9 @@ enum DraftPreviewSupport {
             }
         }
         let viewModel = ShoppingDraftViewModel(
-            interpreter: PreviewDraftInterpreter(availability: state == .availableModel ? .available : .deviceNotEligible),
+            interpreter: PreviewDraftInterpreter(
+                availability: state == .availableModel || state == .availableModelEmpty ? .available : .deviceNotEligible
+            ),
             speech: PreviewSpeechCapture(),
             persistence: MemoryDraftPersistence(),
             initialDraft: draft

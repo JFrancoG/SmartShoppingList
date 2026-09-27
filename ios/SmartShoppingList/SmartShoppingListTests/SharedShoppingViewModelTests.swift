@@ -93,6 +93,196 @@ struct SharedShoppingViewModelTests {
         #expect(!model.canMutate)
     }
 
+    @Test
+    func `Apple login prepares only after loading and reuses a challenge until renewal is needed`() async throws {
+        var now = Date(timeIntervalSince1970: 1_800_000_000)
+        let api = SharedFlowAPI()
+        let first = SharedChallenge(
+            id: UUID(),
+            nonce: String(repeating: "A", count: 43),
+            expiresAt: now.addingTimeInterval(300)
+        )
+        await api.configureChallenge(first)
+        let model = try makeModel(
+            api: api,
+            credentials: MemorySharedCredentialStore(),
+            appleLoginDate: { now }
+        )
+
+        await model.prepareAppleLogin()
+        #expect(await api.challengeRequests == 0)
+        await model.load()
+        await model.prepareAppleLogin()
+        try #require(model.challenge?.id == first.id)
+        #expect(model.canRequestAppleLogin)
+
+        now = now.addingTimeInterval(120)
+        await model.prepareAppleLogin()
+        #expect(await api.challengeRequests == 1)
+        #expect(model.challenge?.id == first.id)
+
+        now = first.expiresAt.addingTimeInterval(-20)
+        #expect(!model.canRequestAppleLogin)
+        let renewed = SharedChallenge(
+            id: UUID(),
+            nonce: String(repeating: "B", count: 43),
+            expiresAt: now.addingTimeInterval(300)
+        )
+        await api.configureChallenge(renewed)
+        await model.prepareAppleLogin()
+        #expect(await api.challengeRequests == 2)
+        #expect(model.challenge?.id == renewed.id)
+        #expect(model.canRequestAppleLogin)
+    }
+
+    @Test
+    func `An existing session never prepares another Apple login`() async throws {
+        let api = SharedFlowAPI()
+        let model = try makeModel(api: api, credentials: MemorySharedCredentialStore(session: api.session))
+        await model.load()
+        await model.prepareAppleLogin()
+        #expect(await api.challengeRequests == 0)
+        #expect(model.challenge == nil)
+        #expect(!model.shouldMaintainAppleLogin)
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func `A preparation failure waits for an explicit retry before requesting another challenge`() async throws {
+        let api = SharedFlowAPI()
+        await api.configureChallenge(error: .transport)
+        let model = try makeModel(api: api, credentials: MemorySharedCredentialStore())
+        await model.load()
+        await model.maintainAppleLogin()
+        try #require(model.appleLoginPreparationError != nil)
+        #expect(!model.canRequestAppleLogin)
+        #expect(!model.shouldMaintainAppleLogin)
+
+        await api.configureChallenge()
+        await model.maintainAppleLogin()
+        #expect(await api.challengeRequests == 1)
+        model.retryAppleLoginPreparation()
+        #expect(model.shouldMaintainAppleLogin)
+        await model.prepareAppleLogin()
+        #expect(await api.challengeRequests == 2)
+        #expect(model.appleLoginPreparationError == nil)
+        #expect(model.canRequestAppleLogin)
+    }
+
+    @Test(.timeLimit(.minutes(1)), arguments: [false, true])
+    func `A cancelled preparation cannot publish its late response or overwrite a newer challenge`(
+        replaceBeforeOldCompletes: Bool
+    ) async throws {
+        let gate = SharedFlowGate()
+        let api = SharedFlowAPI()
+        let oldChallenge = SharedChallenge(id: UUID(), nonce: String(repeating: "A", count: 43), expiresAt: .distantFuture)
+        let replacement = SharedChallenge(id: UUID(), nonce: String(repeating: "B", count: 43), expiresAt: .distantFuture)
+        await api.configureChallenge(oldChallenge, gate: gate)
+        let model = try makeModel(api: api, credentials: MemorySharedCredentialStore())
+        await model.load()
+        let preparing = Task {
+            await model.prepareAppleLogin()
+        }
+        await gate.waitUntilReached()
+        #expect(model.isPreparingAppleLogin)
+        #expect(!model.canRequestAppleLogin)
+        preparing.cancel()
+        await api.configureChallenge(replacement)
+        if replaceBeforeOldCompletes {
+            await model.prepareAppleLogin()
+        }
+        await gate.open()
+        await preparing.value
+
+        if !replaceBeforeOldCompletes {
+            #expect(model.challenge == nil)
+            #expect(model.appleLoginPreparationError == nil)
+            await model.prepareAppleLogin()
+        }
+        #expect(await api.challengeRequests == 2)
+        #expect(model.challenge?.id == replacement.id)
+        #expect(model.canRequestAppleLogin)
+        #expect(!model.isPreparingAppleLogin)
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func `Preparing Apple login survives an invitation promotion while its button waits for that action`() async throws {
+        let challengeGate = SharedFlowGate()
+        let invitationGate = SharedFlowGate()
+        let api = SharedFlowAPI()
+        let challenge = SharedChallenge(id: UUID(), nonce: String(repeating: "A", count: 43), expiresAt: .distantFuture)
+        await api.configureChallenge(challenge, gate: challengeGate)
+        let credentials = ObservedSharedCredentials(invitationSaveGate: invitationGate)
+        let model = try makeModel(api: api, credentials: credentials)
+        await model.load()
+        let preparing = Task {
+            await model.prepareAppleLogin()
+        }
+        await challengeGate.waitUntilReached()
+        let invitation = PendingInvitation(id: UUID(), token: String(repeating: "A", count: 43))
+        let receiving = Task {
+            await model.receiveInvitation(invitationURL(invitation))
+        }
+        await invitationGate.waitUntilReached()
+        #expect(model.isBusy)
+        #expect(model.shouldMaintainAppleLogin)
+
+        await challengeGate.open()
+        await preparing.value
+        #expect(model.challenge?.id == challenge.id)
+        #expect(!model.canRequestAppleLogin)
+        #expect(model.shouldMaintainAppleLogin)
+
+        await invitationGate.open()
+        await receiving.value
+        #expect(await api.challengeRequests == 1)
+        #expect(model.canRequestAppleLogin)
+        #expect(model.pendingInvitation == invitation)
+        #expect(await credentials.loadInvitation() == invitation)
+    }
+
+    @Test
+    func `The Apple sheet keeps its original challenge and an invalid completion preserves local work`() async throws {
+        var now = Date(timeIntervalSince1970: 1_800_000_000)
+        let api = SharedFlowAPI()
+        let challenge = SharedChallenge(
+            id: UUID(),
+            nonce: String(repeating: "A", count: 43),
+            expiresAt: now.addingTimeInterval(300)
+        )
+        await api.configureChallenge(challenge)
+        let product = ShoppingDraftItem(name: "Leche", quantity: "2 litros", store: "Aldi")
+        let invitation = PendingInvitation(id: UUID(), token: String(repeating: "A", count: 43))
+        let credentials = MemorySharedCredentialStore(invitation: invitation)
+        let model = try makeModel(
+            api: api,
+            credentials: credentials,
+            items: [product],
+            appleLoginDate: { now }
+        )
+        await model.load()
+        await model.prepareAppleLogin()
+        let request = ASAuthorizationAppleIDProvider().createRequest()
+        model.configureAppleRequest(request)
+        try #require(model.isBusy)
+        #expect(request.nonce == challenge.nonce)
+
+        now = challenge.expiresAt.addingTimeInterval(1)
+        await model.prepareAppleLogin()
+        #expect(await api.challengeRequests == 1)
+        #expect(model.challenge?.id == challenge.id)
+        await model.completeAppleLogin(
+            token: "token",
+            code: "code",
+            returnedState: "wrong",
+            displayName: nil
+        )
+        #expect(await api.loginRequests == 0)
+        #expect(model.draft.items == [product])
+        #expect(await credentials.loadInvitation() == invitation)
+        #expect(model.challenge == nil)
+        #expect(model.shouldMaintainAppleLogin)
+    }
+
     @Test("A mismatched Apple state never sends credentials and preserves the pending invitation")
     func wrongState() async throws {
         let api = SharedFlowAPI()
@@ -557,7 +747,8 @@ struct SharedShoppingViewModelTests {
         credentials: any SharedCredentialStoring,
         items: [ShoppingDraftItem] = [],
         speech: any SpeechCapturing = UnavailableSpeechCapture(),
-        interpreter: any DraftInterpreting = UnavailableDraftInterpreter()
+        interpreter: any DraftInterpreting = UnavailableDraftInterpreter(),
+        appleLoginDate: @escaping @MainActor () -> Date = { Date() }
     ) throws -> SharedShoppingViewModel {
         SharedShoppingViewModel(
             api: api,
@@ -572,7 +763,8 @@ struct SharedShoppingViewModelTests {
                 persistence: MemoryDraftPersistence(),
                 initialDraft: ShoppingDraftSnapshot(items: items)
             ),
-            storeQuery: StoreQueryViewModel(speech: speech)
+            storeQuery: StoreQueryViewModel(speech: speech),
+            appleLoginDate: appleLoginDate
         )
     }
 }
@@ -978,6 +1170,10 @@ private actor SharedFlowAPI: SharedShoppingAPI {
     private var batchGate: SharedFlowGate?
     private(set) var createdGroups = 0
     private(set) var loginRequests = 0
+    private(set) var challengeRequests = 0
+    private var challengeResult: SharedChallenge?
+    private var challengeError: SharedAPIError?
+    private var challengeGate: SharedFlowGate?
     private(set) var acceptedInvitations = 0
     let currentUserGate: SharedFlowGate?
     private(set) var sentItemChanges: [SharedItemChangeRequest] = []
@@ -1180,9 +1376,30 @@ private actor SharedFlowAPI: SharedShoppingAPI {
         )
     }
 
+    func configureChallenge(
+        _ result: SharedChallenge? = nil,
+        gate: SharedFlowGate? = nil,
+        error: SharedAPIError? = nil
+    ) {
+        challengeResult = result
+        challengeGate = gate
+        challengeError = error
+    }
+
     func createChallenge() async throws -> SharedChallenge {
         requestCount += 1
-        return SharedChallenge(id: UUID(), nonce: String(repeating: "A", count: 43), expiresAt: .distantFuture)
+        challengeRequests += 1
+        let result = challengeResult ?? SharedChallenge(
+            id: UUID(),
+            nonce: String(repeating: "A", count: 43),
+            expiresAt: .distantFuture
+        )
+        let error = challengeError
+        await challengeGate?.pause()
+        if let error {
+            throw error
+        }
+        return result
     }
 
     func loginWithApple(_ request: AppleLoginRequest) async throws -> SharedSession {

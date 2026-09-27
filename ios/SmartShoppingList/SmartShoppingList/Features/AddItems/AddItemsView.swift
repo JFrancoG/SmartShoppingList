@@ -8,10 +8,6 @@ struct AddItemsView: View {
     var shared: SharedShoppingViewModel? = nil
     var onOpenSettings: () -> Void = {}
 
-    private var showsManualEntry: Bool {
-        viewModel.availability != .available || viewModel.showsManualEntry || shared?.group == nil
-    }
-
     private var showsDraftReview: Bool {
         !viewModel.items.isEmpty && (viewModel.showsDraftReview || shared?.group == nil)
     }
@@ -33,7 +29,7 @@ struct AddItemsView: View {
                             .disabled(shared?.draftIsLocked == true)
                     }
 
-                    if showsManualEntry {
+                    if viewModel.showsManualEntry {
                         Section {
                             ShoppingControlGroup {
                                 if viewModel.availability != .available {
@@ -198,6 +194,11 @@ struct AddItemsView: View {
 }
 
 #Preview("Empty draft", traits: .shoppingDraft(.empty)) {
+    @Previewable @Environment(ShoppingDraftViewModel.self) var viewModel
+    AddItemsView(viewModel: viewModel)
+}
+
+#Preview("Available model - no group", traits: .shoppingDraft(.availableModelEmpty)) {
     @Previewable @Environment(ShoppingDraftViewModel.self) var viewModel
     AddItemsView(viewModel: viewModel)
 }

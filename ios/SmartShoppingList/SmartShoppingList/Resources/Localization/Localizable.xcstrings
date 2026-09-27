@@ -724,12 +724,32 @@
         }
       }
     },
+    "Connecting…" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conectando…"
+          }
+        }
+      }
+    },
     "Could not load this store. Refresh to try again." : {
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "No se ha podido cargar esta tienda. Actualiza para reintentarlo."
+          }
+        }
+      }
+    },
+    "Could not start Sign in with Apple. Please try again." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se ha podido iniciar sesión con Apple. Inténtalo de nuevo."
           }
         }
       }
@@ -1476,16 +1496,6 @@
         }
       }
     },
-    "Prepare Sign in with Apple" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Preparar acceso con Apple"
-          }
-        }
-      }
-    },
     "Preparing dictation…" : {
       "localizations" : {
         "es" : {
@@ -1771,6 +1781,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Repite el mismo envío que quedó pendiente de confirmar."
+          }
+        }
+      }
+    },
+    "Retry" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reintentar"
           }
         }
       }
@@ -2806,12 +2826,12 @@
         }
       }
     },
-    "This sign-in attempt has expired. Prepare Sign in with Apple again." : {
+    "This sign-in attempt has expired. Try signing in again." : {
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "El intento ha caducado. Prepara de nuevo el acceso con Apple."
+            "value" : "El intento ha caducado. Intenta iniciar sesión de nuevo."
           }
         }
       }

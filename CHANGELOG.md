@@ -54,6 +54,8 @@
 
 ### Fixed
 
+- 2026-09-27 | 🐛 fix(ios): streamline signed-out flows
+
 - 2026-09-25 | 🐛 fix(ios): restore stable cancellation presentation
 
 - 2026-09-25 | 🐛 fix(ios): anchor cancellation alerts to products

@@ -34,6 +34,7 @@ extension PreviewTrait where T == Preview.ViewTraits {
 enum SharedPreviewState: CaseIterable, Hashable {
     case group
     case signedOut
+    case signInUnavailable
     case invitation
     case review
     case invitations
@@ -235,11 +236,13 @@ enum SharedPreviewSupport {
             sourceDraft: fixture.draft
         ) : nil
         let credentials = MemorySharedCredentialStore(
-            session: state == .signedOut || state == .unconfigured ? nil : session,
+            session: state == .signedOut || state == .signInUnavailable || state == .unconfigured ? nil : session,
             invitation: state == .invitation || state == .signedOut ? fixture.pendingInvitation : nil,
             operation: pending
         )
-        let api = state == .unconfigured ? nil : PreviewSharedShoppingAPI(fixture: fixture, user: session.user)
+        let api = state == .unconfigured ? nil : PreviewSharedShoppingAPI(
+            fixture: fixture, user: session.user, signInUnavailable: state == .signInUnavailable
+        )
         let configuration = state == .unconfigured ? nil : fixture.configuration
         #if DEBUG
         if let presentation {
@@ -280,7 +283,7 @@ enum SharedPreviewSupport {
         case .invitations:
             await model.openInvitations()
             await model.createInvitation()
-        case .signedOut, .invitation, .pending, .unconfigured:
+        case .signedOut, .signInUnavailable, .invitation, .pending, .unconfigured:
             break
         }
     }
@@ -290,6 +293,7 @@ enum SharedPreviewSupport {
 private final class PreviewSharedShoppingAPI: SharedShoppingAPI {
     let fixture: SharedPreviewFixture
     let user: SharedUser
+    let signInUnavailable: Bool
     private var storedStores: [SharedStore]
     private var storedItems: [SharedItem]
     #if DEBUG
@@ -297,15 +301,19 @@ private final class PreviewSharedShoppingAPI: SharedShoppingAPI {
     private var additions: [UUID: [SharedItem]] = [:]
     #endif
 
-    init(fixture: SharedPreviewFixture, user: SharedUser) {
+    init(fixture: SharedPreviewFixture, user: SharedUser, signInUnavailable: Bool = false) {
         self.fixture = fixture
         self.user = user
+        self.signInUnavailable = signInUnavailable
         storedStores = fixture.stores
         storedItems = fixture.items
     }
 
-    // Preview actions never initiate native Apple authorization or perform remote mutations.
-    func createChallenge() async throws -> SharedChallenge { throw SharedAPIError.configuration }
+    // Preview data never requires a remote request.
+    func createChallenge() async throws -> SharedChallenge {
+        guard !signInUnavailable else { throw SharedAPIError.transport }
+        return SharedChallenge(id: UUID(), nonce: String(repeating: "A", count: 43), expiresAt: Date().addingTimeInterval(300))
+    }
     func loginWithApple(_ request: AppleLoginRequest) async throws -> SharedSession { throw SharedAPIError.configuration }
     func currentUser(token: String) async throws -> SharedUser { user }
     func logout(token: String) async throws {}
