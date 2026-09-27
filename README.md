@@ -8,7 +8,7 @@
 
 Lista de compra compartida para iPhone y iPad, desarrollada para **ACoding Hackathon 2026 · 27 de septiembre**. Dicta o escribe los productos y la tienda para añadirlos a la lista de tu grupo. Durante la compra, marca los productos y confirma solo los seleccionados; los demás siguen pendientes.
 
-**Demo:** [Ver el vídeo en YouTube](https://youtube.com/shorts/zHynGpQbE8U?feature=share).
+**Demo:** [Ver el vídeo en YouTube](https://www.youtube.com/shorts/zHynGpQbE8U).
 
 ### Qué puedes hacer
 
@@ -103,7 +103,7 @@ El MVP contempla un grupo por cuenta y refresco explícito. No incluye sincroniz
 
 A shared shopping list for iPhone and iPad, built for **ACoding Hackathon 2026 · September 27**. Say or type the products and store to add them to your group's list. While shopping, select products and confirm only those selected; the rest remain pending.
 
-**Demo:** [Watch the video on YouTube](https://youtube.com/shorts/zHynGpQbE8U?feature=share).
+**Demo:** [Watch the video on YouTube](https://www.youtube.com/shorts/zHynGpQbE8U).
 
 ### What you can do
 

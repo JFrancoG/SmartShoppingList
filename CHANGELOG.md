@@ -27,6 +27,8 @@
 
 ### Documentation
 
+- 2026-09-27 | 📝 docs: simplify demo links
+
 - 2026-09-27 | 📝 docs: record hackathon submission
 
 - 2026-09-27 | 📝 docs: record final Release validation
