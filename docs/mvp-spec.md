@@ -107,7 +107,7 @@ Esta simplificación no incorpora un micrófono universal para añadir, consulta
 - La tienda reconocida permanece visible y puede corregirse sin volver a hablar.
 - La pantalla permite editar productos pendientes, seleccionarlos mediante checks y confirmar los seleccionados con «Confirmar compra».
 - Editar y Quitar aparecen al deslizar la fila hacia la izquierda, con una ayuda breve bajo la lista y acciones nativas para VoiceOver. El gesto completo no ejecuta ninguna acción; Quitar mantiene la confirmación existente. Los nombres disponen del ancho liberado por los iconos de acción.
-- Un producto seleccionado sigue visible, diferenciado del resto, hasta confirmar. Un contador y el botón, por ejemplo «Confirmar compra · 3», hacen visible qué se enviará.
+- Un producto seleccionado sigue visible, diferenciado del resto, hasta confirmar. El contador situado sobre «Confirmar compra» muestra cuántos productos se enviarán; la etiqueta accesible del botón también conserva esa cantidad.
 - Se actualiza al entrar, tras las operaciones propias y mediante refresco explícito. No se promete presencia ni actualización instantánea entre dispositivos.
 
 ## 5. Compra, cancelación e historial

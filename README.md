@@ -8,6 +8,8 @@
 
 Lista de compra compartida para iPhone y iPad, desarrollada para **ACoding Hackathon 2026 · 27 de septiembre**. Dicta o escribe los productos y la tienda para añadirlos a la lista de tu grupo. Durante la compra, marca los productos y confirma solo los seleccionados; los demás siguen pendientes.
 
+**Demo:** [Ver el vídeo en YouTube](https://youtube.com/shorts/zHynGpQbE8U?feature=share).
+
 ### Qué puedes hacer
 
 - **Compartir la compra:** iniciar sesión con Apple, crear un grupo e invitar a otra persona mediante un enlace. Cuenta, grupo e invitaciones se gestionan desde **Ajustes**.
@@ -78,7 +80,7 @@ Prepara dos clientes instalados, dos Apple IDs diferentes, conexión al mismo ba
 2. Abre el enlace en el segundo cliente, inicia sesión si es necesario y pulsa **Aceptar invitación** en **Ajustes**.
 3. En **Añadir**, dicta «Comprar jabón, cerveza y yogures en Mercadona» y pulsa **Terminar dictado**; si usas el campo de texto, escribe los productos y la tienda y pulsa **Interpretar texto**. Cuando la identificación es correcta, **Confirmar** en el aviso añade los productos directamente a la lista. Si faltan datos o hay errores, corrígelos en el borrador; **Editar** también permite abrirlo voluntariamente. Sin IA, introduce cada producto mediante **Añadir a mano → Añadir producto**.
 4. En el segundo cliente, abre **Comprar**, selecciona Mercadona y pulsa **Actualizar**. Deben aparecer los productos compartidos; la sincronización se solicita expresamente.
-5. Añade dos productos más para tener cinco pendientes. Marca tres y pulsa **Confirmar compra · 3**. Actualiza el otro cliente: deben quedar los dos no seleccionados.
+5. Añade dos productos más para tener cinco pendientes. Marca tres y pulsa **Confirmar compra**. Actualiza el otro cliente: deben quedar los dos no seleccionados.
 6. Desliza una fila a la izquierda para editar un pendiente y guarda los cambios. En otra fila, **Quitar → Ya no lo necesitamos** cancela el producto sin registrarlo como comprado. Cierra y vuelve a abrir la app para comprobar los datos conservados.
 7. Como extra, di «**Añade a mi lista de la compra en Smart List**». Responde producto, cantidad y una tienda existente. Tras confirmar el servidor, **Ver lista** abre esa tienda. La acción **Añadir producto al borrador** conserva la revisión local.
 
@@ -100,6 +102,8 @@ El MVP contempla un grupo por cuenta y refresco explícito. No incluye sincroniz
 ## English
 
 A shared shopping list for iPhone and iPad, built for **ACoding Hackathon 2026 · September 27**. Say or type the products and store to add them to your group's list. While shopping, select products and confirm only those selected; the rest remain pending.
+
+**Demo:** [Watch the video on YouTube](https://youtube.com/shorts/zHynGpQbE8U?feature=share).
 
 ### What you can do
 
@@ -171,7 +175,7 @@ Prepare two installed clients, two different Apple IDs, access to the same backe
 2. Open the link on the second client, sign in if needed and tap **Accept invitation** in **Settings**.
 3. In **Add**, dictate “Buy soap, beer and yogurts at Mercadona,” then tap **Finish dictation**; if using the text field, type the products and store and tap **Interpret text**. When identification succeeds, **Confirm** in the alert adds the products directly to the list. Correct missing or misidentified details in the draft; **Edit** also lets you open it voluntarily. Without AI, enter each product through **Add manually → Add product**.
 4. On the second client, open **Shop**, select Mercadona and tap **Refresh**. The shared products should appear; synchronization is requested explicitly.
-5. Add two more products to reach five pending entries. Select three and tap **Confirm purchase · 3**. Refresh the other client: the two unselected products should remain pending.
+5. Add two more products to reach five pending entries. Select three and tap **Confirm purchase**. Refresh the other client: the two unselected products should remain pending.
 6. Swipe a row left to edit a pending product and save the changes. On another row, **Remove → No longer needed** cancels the product without recording a purchase. Close and reopen the app to check retained data.
 7. As an extra, say “**Add to my shopping list in Smart List**.” Answer with a product, quantity and existing store. After the server confirms the addition, **Open list** opens that store. The **Add product to draft** action retains local review.
 
