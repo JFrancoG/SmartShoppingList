@@ -81,12 +81,12 @@ Compilar e instalar de nuevo tras configurar los dominios. Comprobar la asociaci
 
 ## Ensayo con dos personas
 
-1. Con dos Apple IDs distintos, acceder en dos clientes y verificar que la primera cuenta puede crear el grupo.
-2. Desde **Comprar → Gestionar invitaciones**, crear y compartir un enlace. Abrirlo en el segundo cliente sin sesión: debe mostrar Comprar, conservarlo durante el acceso y pedir aceptación explícita.
+1. Con dos Apple IDs distintos, abrir **Ajustes → Preparar acceso con Apple** en dos clientes, continuar con el botón nativo de Apple y verificar que la primera cuenta puede crear el grupo. La segunda cuenta debe estar sin grupo para aceptar la invitación.
+2. Desde **Ajustes → Gestionar invitaciones**, crear y compartir un enlace. Abrirlo en el segundo cliente sin sesión: debe presentar Ajustes, conservarlo durante el acceso y pedir aceptación explícita mediante **Aceptar invitación**.
 3. Confirmar que los enlaces caducados, revocados, consumidos por otra cuenta o manipulados no permiten incorporarse. La previsualización y el GET web no consumen el enlace.
-4. En el primer cliente, preparar un producto manual con su tienda, revisarlo, elegir la tienda del grupo o confirmar su nombre y pulsar **Confirmar incorporación al grupo**.
+4. En el primer cliente, con los controles manuales disponibles, abrir **Añadir a mano**, indicar producto, cantidad opcional y tienda y pulsar **Añadir producto**. Con grupo activo se envía solo esa entrada, sin una segunda revisión. Una coincidencia exacta única resuelve la tienda; un nombre nuevo explícito permite crearla y una ambigüedad real pide elegir. Con voz o texto interpretado, **Confirmar** en el aviso añade una propuesta completa directamente a la lista; el borrador permite corregir errores o datos incompletos y también se abre al elegir **Editar**.
 5. En ambos clientes, seleccionar la misma tienda y actualizar. Cortar la red durante otro envío y reintentar la operación conservada; debe aparecer una sola incorporación.
 6. Reiniciar la app iOS y el proceso del servidor; comprobar sesión, pertenencia, pendientes e idempotencia. Las credenciales y el sobre pendiente se mantienen en Keychain del mismo dispositivo.
 7. Registrar los resultados físicos manuales y, por separado, la entrada de voz/IA del entorno compatible según [#7](https://github.com/JFrancoG/SmartShoppingList/issues/7).
 
-La consulta se actualiza expresamente; no hay tiempo real. Checks y finalización están implementados en #11; edición y cancelación de #22 requieren desplegar su servidor e instalar su cliente compatible antes del ensayo. El historial mínimo conserva registros; no hay una pantalla de historial.
+La consulta se actualiza expresamente mediante **Actualizar**; no hay tiempo real. Checks y finalización de #11, edición y cancelación de #22 están implementados y desplegados en el entorno del proyecto. Una instalación propia necesita cliente y servidor compatibles. El historial mínimo conserva registros; no hay una pantalla de historial. El [README bilingüe](../../README.md) incluye la demostración actual de compra parcial, edición, cancelación y Siri.

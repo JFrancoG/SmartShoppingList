@@ -30,6 +30,7 @@ struct DraftStoreClarificationSection: View {
 
 }
 
+#if DEBUG
 #Preview("Store clarification", traits: .sharedShopping(.review)) {
     @Previewable @Environment(SharedShoppingViewModel.self) var viewModel
     Form {
@@ -40,3 +41,4 @@ struct DraftStoreClarificationSection: View {
         viewModel.seedStoreClarificationPreview()
     }
 }
+#endif
