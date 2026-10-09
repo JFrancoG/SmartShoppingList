@@ -92,6 +92,14 @@ extension SharedAPIKeychainTests {
                 action: .accept,
                 request: ResolveGroupTransferRequest(operationId: operationID)
             )
+        case .archive, .restore:
+            .changeStoreState(
+                userID: fixture.session.user.id,
+                groupID: fixture.group.id,
+                storeID: fixture.stores[1].id,
+                action: kind == .archive ? .archive : .restore,
+                request: ChangeStoreStateRequest(operationId: operationID)
+            )
         case .leave:
             .leaveGroup(
                 userID: fixture.session.user.id,
@@ -145,7 +153,7 @@ extension SharedAPIKeychainTests {
 }
 
 enum GroupOperationFixtureKind: CaseIterable {
-    case propose, accept, leave
+    case propose, accept, leave, archive, restore
 }
 
 extension SharedAPIKeychainTests {

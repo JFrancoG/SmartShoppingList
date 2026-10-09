@@ -65,6 +65,7 @@ struct AppTrait: TestTrait, SuiteTrait, TestScoping {
                     CreateAppleAuthentication(),
                     AddGroupAdministration(),
                     AddGroupMemberships(),
+                    AddStoreArchiving(),
                     on: app
                 )
             } catch {

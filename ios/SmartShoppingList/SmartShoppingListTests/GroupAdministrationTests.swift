@@ -387,6 +387,29 @@ private actor GroupAdministrationAPI: SharedShoppingAPI {
     func stores(groupID: UUID, token: String) async throws -> [SharedStore] {
         fixture.stores.filter { $0.groupId == groupID }
     }
+    func archivedStores(groupID: UUID, token: String) async throws -> [SharedStore] { [] }
+    func groupCapacity(groupID: UUID, token: String) async throws -> SharedGroupCapacity {
+        let count = fixture.stores.filter { $0.groupId == groupID }.count
+        return try SharedGroupCapacity(
+            groupId: groupID,
+            capacityOwnerUserId: user.group?.administratorUserId ?? fixture.session.user.id,
+            activeStoreCount: count,
+            limits: SharedStoreLimits(
+                storesPerGroup: SharedResourceLimit(maximum: 3, enforced: true),
+                pendingItemsPerStore: SharedResourceLimit(maximum: 20, enforced: true)
+            ),
+            canCreateStore: count < 3
+        )
+    }
+    func changeStoreState(
+        _ request: ChangeStoreStateRequest,
+        groupID: UUID,
+        storeID: UUID,
+        action: SharedStoreAction,
+        token: String
+    ) async throws -> SharedStore {
+        throw SharedAPIError.configuration
+    }
     func pendingItems(groupID: UUID, storeID: UUID, token: String) async throws -> [SharedItem] {
         fixture.items.filter { $0.groupId == groupID && $0.storeId == storeID }
     }

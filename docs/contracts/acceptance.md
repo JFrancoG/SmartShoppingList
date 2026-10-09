@@ -2,7 +2,7 @@
 
 Referencia funcional: [MVP, secciones 2–6](../mvp-spec.md). Esta matriz define resultados
 observables para revisar el contrato de la [issue #2](https://github.com/JFrancoG/SmartShoppingList/issues/2)
-y sus evoluciones de administración [#33](https://github.com/JFrancoG/SmartShoppingList/issues/33) y pertenencias [#35](https://github.com/JFrancoG/SmartShoppingList/issues/35), y derivar las pruebas de implementación. Revisar ejemplos, esquemas o este documento no
+y sus evoluciones de administración [#33](https://github.com/JFrancoG/SmartShoppingList/issues/33), pertenencias [#35](https://github.com/JFrancoG/SmartShoppingList/issues/35) y cupos/archivo [#37](https://github.com/JFrancoG/SmartShoppingList/issues/37), y derivar las pruebas de implementación. Revisar ejemplos, esquemas o este documento no
 acredita llamadas reales, persistencia, concurrencia ni comportamiento de iOS. La evidencia
 de backend y cliente se conserva en los informes de validación de cada bloque.
 
@@ -87,6 +87,8 @@ juntos contrato, OpenAPI, ejemplos y los casos C05–C07.
 Referencia exacta: [group-administration.md](group-administration.md). A es el administrador
 vigente de G, B otro miembro, C ajeno a G; cada fila describe una preparación independiente
 salvo que indique una secuencia. Estos son criterios por verificar, no resultados ejecutados.
+Esta sección conserva los criterios del contrato 0.2.0; los cupos entonces inactivos se
+aplican desde 0.4.0 según Q01–Q24, sin modificar las reglas de administración.
 
 | ID | Preparación | Acción | Resultado observable | Bloque |
 |---|---|---|---|---|
@@ -116,6 +118,8 @@ salvo que indique una secuencia. Estos son criterios por verificar, no resultado
 Referencia exacta: [group-memberships.md](group-memberships.md). Los escenarios con capacidad
 superior a uno usan una política interna de prueba, nunca una suscripción o activación en
 producción. Todos son criterios por verificar; esta matriz no afirma que se hayan ejecutado.
+Se conserva la configuración histórica de 0.3.0; #37 concreta los planes gratuito/premium
+y sustituye la ausencia de cupos compartidos mediante los criterios siguientes.
 
 | ID | Preparación | Acción | Resultado observable | Bloque |
 |---|---|---|---|---|
@@ -139,6 +143,40 @@ producción. Todos son criterios por verificar; esta matriz no afirma que se hay
 | M18 | Cliente antiguo y nuevo; caché anterior sin capacidades, operación pendiente y backend aún anterior. | Actualizar servidor antes de nuevo cliente y recuperar estado. | Cliente anterior sigue en su proyección sin traslado al salir. Cliente nuevo exige capacidades/listado compatibles, conserva caché/sobre en fallo y no fabrica lista autoritativa desde `User.group`. | #35 |
 | M19 | Esquema nuevo sin pertenencias múltiples y con correspondencia bilateral exacta de proyección; también preparaciones con proyección nula, ajena o varias pertenencias. | Solicitar reversión mientras se intenta escribir. | Bloqueo+comprobación+DDL son una transacción: solo revierte correspondencia exacta; los otros casos rechazan sin perder/inventar relaciones ni dejar esquema parcial. | #35 |
 | M20 | Dos miembros en grupo; uno alcanza su límite personal de grupos. | Traspasar administración al miembro y continuar compra/gestión/salida. | Traspaso no añade pertenencia ni requiere otra plaza. Cupo de admisión no restringe uso ordinario, transferencia ni salida; límites de tienda/pendientes siguen inactivos. | #35 |
+
+## Cupos y archivo de tiendas (#37)
+
+Referencia exacta: [store-quotas.md](store-quotas.md), contrato 0.4.0. Gratuito 1/3/20;
+premium de prueba 5/10/100. Los casos premium usan el proveedor de planes confiable
+inyectado; no acreditan compra, cobro ni activación comercial. Son criterios de aceptación,
+no un registro de pruebas ejecutadas.
+
+| ID | Preparación | Acción | Resultado observable | Bloque |
+|---|---|---|---|---|
+| Q01 | Datos previos con más de tres tiendas, pendientes e historial, nombres normalizados y recibos. | Migrar y comparar filas/recibos. | Todas las tiendas previas quedan activas, sin recorte ni archivo automático; IDs, nombres, fechas, claves, referencias e historial intactos. El exceso se conserva. | #37 |
+| Q02 | Cuenta gratuita, después plan premium inyectado. | Consultar `/me`, capacidad y admitir pertenencias. | Límites personales 1/5 y compartidos 3/20 o 10/100 según administrador. Producción solo gratuito; ningún parámetro del cliente concede premium. | #37 |
+| Q03 | Administrador premium de G; miembro gratuito ya en H; enlace válido a G. | Previsualizar y aceptar. | Preview permitido; aceptar sin plaza personal da `group_limit_reached`, no consume enlace ni añade G. Plan del administrador no concede grupos al invitado. Tras salir de H puede aceptar si enlace vigente. | #37 |
+| Q04 | Tienda con 19 pendientes, historial extenso y cantidades literales. | Añadir «6 botellas» y luego otra fila, aunque tenga igual nombre. | Primera fila alcanza 20; segunda se rechaza. Historial y unidades no consumen pendientes; dos IDs cuentan dos. Borrador local no cuenta. | #37 |
+| Q05 | Una plaza de tienda; lote con nombres normalizados equivalentes y una activa reutilizada. | Confirmar el lote. | Una sola tienda nueva por clave; cada entrada cuenta por su tienda final. Se confirma todo o nada, sin deduplicar productos. | #37 |
+| Q06 | Grupo con tres activas, una vacía. | Añadir o mover hacia una tienda nueva; usar también una activa con plaza de pendientes. | Nueva tienda rechazada con `store_limit_reached`; la vacía sigue contando. La activa admite pendientes si tiene capacidad propia. Ningún rechazo deja tienda huérfana. | #37 |
+| Q07 | Lote con una tienda destino llena y otra con plaza. | Confirmar las entradas juntas; después intentar dividirlas. | Lote entero rechazado con `pending_item_limit_reached`, sin productos parciales; dividir no permite superar el uso acumulado. | #37 |
+| Q08 | Tienda excedida y destino con/sin plaza. | Editar nombre/cantidad o misma tienda; mover a otra tienda. | Corrección sin crecimiento permitida. Traslado exige plaza destino y eventualmente de tienda; decrementa origen e incrementa destino atómicamente. No archiva origen vacío. | #37 |
+| Q09 | Administrador, otro miembro y tienda con un pendiente. | Archivar; comprar/cancelar el último pendiente y confirmar otra intención. | Miembro recibe `administrator_required`; admin con pendientes recibe `store_not_empty`. Tras vaciar, nueva intención archiva sin borrar historial. | #37 |
+| Q10 | Tienda archivada y plaza activa libre; también grupo sin plaza. | Restaurar explícitamente. | Con plaza conserva ID/nombre/normalización/historial; sin plaza `store_limit_reached`, sigue archivada. Ya activa devuelve 200 sin nueva plaza; ya archivada devuelve 200 al archivar sin renovar fecha. | #37 |
+| Q11 | Tienda archivada, nombre con variantes de espacios/caso/Unicode. | Añadir o mover por ID y por nombre equivalente. | `store_archived`, sin restaurar ni crear duplicado. El administrador restaura por separado; nueva confirmación puede añadir. Un ID ajeno conserva 404. | #37 |
+| Q12 | Activas y archivadas en varias páginas. | Listar sin filtro, con ambos estados y reutilizar cursor entre estados/grupos. | Por defecto solo activas; listados explícitos conservan orden/IDs y cursor ligado al filtro. Cruces rechazados. Tienda archivada accesible tiene pendientes 200/vacío; sin pertenencia no se revela. | #37 |
+| Q13 | Plan o datos previos dejan más tiendas o pendientes que el máximo. | Consultar, comprar, cancelar, corregir y archivar vacías; intentar crecimiento. | Datos conservados y uso real publicado. Solo se bloquea crecimiento de la dimensión afectada; no se exige pago para reducir exceso ni se bloquea toda la compra. | #37 |
+| Q14 | Administrador premium y sucesor gratuito perteneciente al grupo. | Proponer y aceptar traspaso; refrescar capacidad. | UI explica consecuencias antes de ambas acciones. Traspaso permitido, pago no transferido; límites pasan al nuevo admin, datos preservados y crecimiento excedido bloqueado. | #37 |
+| Q15 | Dos miembros y una plaza de tienda o pendiente restante. | Solapar altas distintas con barrera real. | Solo la admisible confirma, la otra guarda rechazo; conteo final no excede cuota y no hay tiendas/productos parciales. | #37 |
+| Q16 | Tienda vacía y administrador que archiva mientras otro miembro añade. | Solapar ambas operaciones, comprobando ambos órdenes. | Si archiva primero, alta da `store_archived`; si añade primero, archivo da `store_not_empty`. Nunca tienda archivada con pendientes. | #37 |
+| Q17 | Tienda archivada, una plaza activa y otra alta que crea tienda. | Solapar restauración y alta. | Solo una consume la plaza; la perdedora no deja mutaciones parciales. Nuevas confirmaciones no eluden el máximo. | #37 |
+| Q18 | Traspaso de administrador mientras otro miembro confirma lote o traslado. | Solapar y verificar ambos órdenes. | Cada mutación usa un único plan efectivo del administrador bajo bloqueo de grupo. No combina máximos de titulares distintos ni supera los del orden confirmado. | #37 |
+| Q19 | Alta o restauración ya confirmada, después archivo/reducción de plan/traspaso. | Repetir el mismo sobre. | Status/body exactos sin volver a consumir plaza, restaurar ni exigir rol para la escritura confirmada. Sin pertenencia vigente se deniega; el recibo no instala estado actual de tienda. | #37 |
+| Q20 | Rechazo confirmado de cupo/archivo, después capacidad liberada o estado corregido. | Repetir misma clave y luego confirmar nueva intención. | Misma clave devuelve el 409 original; nueva clave puede tener éxito. iOS conserva borrador/corrección; no cambia clave ni destino de un resultado incierto. | #37 |
+| Q21 | Caché antigua sin campos nuevos o servidor sin `/capacity`; después respuesta válida. | Abrir app y refrescar. | Falta de campos es desconocimiento, no permiso; no habilita archivo/restauración por datos históricos. Snapshot válido verifica grupo/administrador y actualiza uso/límites. | #37 |
+| Q22 | Respuesta nueva de cada 409 comercial o de archivo. | Resolver alta/edición/archivo/restauración en iOS. | Cliente 0.4 los reconoce como definitivos y permite nueva confirmación sin perder datos. Se documenta que cliente 0.3 puede tratarlos como inciertos; no se declara compatibilidad completa. | #37 |
+| Q23 | Base con una archivada y base sin archivadas, en preparaciones separadas. | Revertir con posible escritura concurrente. | Transacción y bloqueo mantienen estable comprobación/DDL; con archivadas rechaza sin cambio, sin ellas revierte fielmente. Nunca reactiva por perder la columna. | #37 |
+| Q24 | Archivo/restauración con respuesta incierta y cambio de pantalla, grupo o reapertura. | Recuperar el sobre y completar respuestas tardías. | Misma cuenta/grupo/tienda/clave; switching bloqueado mientras pendiente. Refresco autoritativo tras recibo, sin resucitar estado antiguo ni afectar otro grupo. Listas de alta/voz excluyen archivadas. | #37 |
 
 ## Evidencia necesaria al implementar
 

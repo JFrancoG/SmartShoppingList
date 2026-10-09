@@ -25,8 +25,10 @@ extension ShoppingService {
             try await requireMembership(user, group: group, on: sql)
             try await refreshTransfers(group: group, on: sql)
             let actual = try await loadShoppingGroup(id: group, on: sql)
+            let capacity = try await storeCapacity(group: group, on: sql)
             let count = try await memberCount(group: group, on: sql)
             let pending = try await pendingTransfer(group: group, on: sql)
+            let accountMaximum = capacity.owner == user ? capacity.limits.groups : accountCapacity.maximum(for: user)
             return try APIReply(status: .ok, json: .object([
                 "group": actual.json, "memberCount": .integer(count), "pendingTransfer": pending?.json ?? .null,
                 "capabilities": GroupCapabilityPolicy.capabilities(
@@ -34,7 +36,8 @@ extension ShoppingService {
                     administrator: actual.administratorUserId,
                     memberCount: count,
                     pending: pending,
-                    accountMaximum: accountCapacity.maximum(for: user)
+                    accountMaximum: accountMaximum,
+                    groupLimits: capacity.limits
                 )
             ]))
         }

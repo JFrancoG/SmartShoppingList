@@ -60,6 +60,7 @@ struct SharedGroupManagementView: View {
                         Text("Transfer administration")
                     } footer: {
                         Text("The chosen member must accept within 7 days. You remain administrator until acceptance and then stay as a member.")
+                        Text("Group capacity follows the new administrator’s plan. Existing data is kept; if a limit is exceeded, only additions that increase usage are blocked.")
                     }
                     .listRowBackground(Color.surface)
                 }

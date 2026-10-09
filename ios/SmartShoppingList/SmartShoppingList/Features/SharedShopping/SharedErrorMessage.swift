@@ -22,6 +22,14 @@ enum SharedErrorMessage {
             case "already_in_group": return "Your account already belongs to a group. Refresh to check its status."
             case "group_limit_reached":
                 return "Your account has reached its group limit. Your current groups and draft are kept."
+            case "store_limit_reached":
+                return "This group has reached its active store limit. Archive an empty store before adding or restoring another. Your draft is kept."
+            case "pending_item_limit_reached":
+                return "The destination store has reached its pending product limit. Buy or cancel products before trying again. Your changes are kept."
+            case "store_archived":
+                return "This store is archived. Ask the group administrator to restore it or choose another active store. Your changes are kept."
+            case "store_not_empty":
+                return "This store still has pending products. Buy or cancel them before archiving it."
             case "invitation_expired": return "The invitation has expired. Ask for a new link."
             case "invitation_revoked": return "The invitation has been revoked. Ask for a new link."
             case "invitation_consumed": return "Someone else has already used this invitation. Ask for a new link."

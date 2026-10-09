@@ -17,14 +17,16 @@ extension ShoppingService {
         resource: Resource,
         store: UUID?,
         limit: Int,
-        cursor: String?
+        cursor: String?,
+        state: StoreState = .active
     ) async throws -> APIReply {
         guard (1...100).contains(limit) else { throw APIProblem.invalidRequest }
+        let cursorResource = resource == .stores ? state.cursorResource : resource.rawValue
         let position = try cursor.map {
             try ShoppingCursor(
                 token: $0,
                 key: cursorKey,
-                resource: resource.rawValue,
+                resource: cursorResource,
                 group: group,
                 store: store
             )
@@ -37,12 +39,21 @@ extension ShoppingService {
                 try await lockGroup(group, on: sql)
                 try await requireMembership(user, group: group, on: sql)
             }
+            let capacity = resource == .stores ? try await storeCapacity(group: group, on: sql) : nil
             var query: SQLQueryString
             if resource == .members {
                 query = """
                     SELECT users.* FROM users JOIN group_memberships ON group_memberships.user_id = users.id
                     WHERE group_memberships.group_id = \(bind: group)
                     """
+            } else if resource == .stores {
+                query = """
+                    SELECT stores.*, (SELECT COUNT(*) FROM items
+                        WHERE store_id = stores.id AND group_id = stores.group_id
+                            AND status = 'pending') AS pending_count
+                    FROM stores WHERE group_id = \(bind: group)
+                    """
+                query += state == .active ? " AND archived_at IS NULL" : " AND archived_at IS NOT NULL"
             } else {
                 query = "SELECT * FROM \(ident: resource.rawValue) WHERE group_id = \(bind: group)"
             }
@@ -62,18 +73,23 @@ extension ShoppingService {
             query += " ORDER BY created_at ASC,id ASC LIMIT \(bind: limit + 1)"
             let rows = try await sql.raw(query).all()
             let page = Array(rows.prefix(limit))
-            let values = try page.map { row in
+            let values = try page.map { row -> APIJSON in
                 switch resource {
-                case .stores: try Self.storeJSON(row)
-                case .invitations: try Self.invitationJSON(row)
-                case .items: try Self.itemJSON(row)
-                case .members: try Self.memberJSON(row)
+                case .stores:
+                    guard let capacity else { throw APIProblem.unavailable }
+                    return try ShoppingStore(row: row).json(user: user, capacity: capacity)
+                case .invitations:
+                    return try Self.invitationJSON(row)
+                case .items:
+                    return try Self.itemJSON(row)
+                case .members:
+                    return try Self.memberJSON(row)
                 }
             }
             let next: String?
             if rows.count > limit, let last = page.last {
                 next = try ShoppingCursor(
-                    resource: resource.rawValue,
+                    resource: cursorResource,
                     groupID: group,
                     storeID: store,
                     createdAt: last.decode(column: "created_at", as: Date.self),
@@ -86,14 +102,6 @@ extension ShoppingService {
                 (resource == .members ? "data" : resource.rawValue): .array(values), "nextCursor": .optional(next)
             ]))
         }
-    }
-
-    static func storeJSON(_ row: any SQLRow) throws -> APIJSON {
-        .object([
-            "id": .string(try row.decode(column: "id", as: UUID.self).uuidString.lowercased()),
-            "groupId": .string(try row.decode(column: "group_id", as: UUID.self).uuidString.lowercased()),
-            "name": .string(try row.decode(column: "name", as: String.self))
-        ])
     }
 
     static func memberJSON(_ row: any SQLRow) throws -> APIJSON {

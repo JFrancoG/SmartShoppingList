@@ -1,6 +1,6 @@
 # Acceso a grupos y límites comerciales
 
-Fecha: 9 de octubre de 2026.
+Fecha: 9 de octubre de 2026. Ampliación aprobada: 10 de octubre de 2026.
 
 Estado: **decisiones funcionales y plan aprobados el 9 de octubre; implementación autorizada**. El usuario confirma premium solo para grupos adicionales, límites ampliables de tiendas y productos pendientes, y capacidad compartida según el plan del administrador. Autoriza publicar este plan antes de implementar la primera unidad. Los detalles de contrato y migración se concretan durante esa unidad; este documento no acredita código, migraciones, cobros ni restricciones desplegadas.
 
@@ -8,15 +8,21 @@ Esta ampliación complementa la [decisión del 27 de septiembre](multiple-groups
 
 Seguimiento del 9 de octubre: #33 está integrada mediante PR #34. El propietario autoriza la segunda unidad, [#35: pertenencias múltiples y selección de grupo](https://github.com/JFrancoG/SmartShoppingList/issues/35). Su [contrato](../contracts/group-memberships.md) separa pertenencias, proyección compatible y selección local por cuenta/dispositivo. La política conserva una admisión inicial de un grupo; la ampliación de capacidad se inyecta en pruebas hasta disponer de derechos verificados. El selector no cambia el plan ni concede pertenencias. Cifras premium, pérdida de capacidad y activación comercial permanecen pendientes; no se presentan como resueltas por esta unidad.
 
+Decisión del 10 de octubre: tras integrar #35 mediante PR #36, el propietario aprueba las cifras siguientes, una única suscripción premium personal con alternativas mensual/anual y la tercera unidad, [#37: cupos y archivo/restauración de tiendas](https://github.com/JFrancoG/SmartShoppingList/issues/37). Autoriza issue, rama e implementación. Los pagos, derechos comerciales verificados y despliegue quedan para entregas posteriores. El estado operativo y la evidencia de esta unidad pertenecen a la issue.
+
 ## Contexto y decisiones aprobadas
 
 El modelo debe admitir varios grupos por persona y exactamente un administrador miembro por grupo, separando al creador histórico del responsable actual. La pertenencia, la administración y el derecho comercial son conceptos distintos: perder una compra o suscripción no borra automáticamente miembros, responsables ni contenido.
 
-| Dimensión comercial | Ámbito | Regla acordada |
-|---|---|---|
-| Grupos | Cuenta | Un grupo gratuito, administrado o como miembro; premium permite grupos adicionales. Cupo premium pendiente. |
-| Tiendas | Grupo | Límite configurable, ampliable mediante premium; cifras pendientes. |
-| Productos pendientes | Tienda | Límite configurable, ampliable mediante premium; cifras pendientes. Comprados y cancelados quedan fuera. |
+| Dimensión comercial | Ámbito | Gratis | Premium |
+|---|---|---:|---:|
+| Grupos, en total | Cuenta | 1 | 5 |
+| Tiendas activas | Grupo | 3 | 10 |
+| Entradas pendientes | Tienda | 20 | 100 |
+
+Las cifras son configurables y constituyen la propuesta inicial aprobada, no un compromiso de capacidad ilimitada. Un único plan premium reúne las tres ampliaciones; las modalidades mensual y anual ofrecen las mismas capacidades y no se acumulan. No se implementan compras separadas por tienda o producto. La unidad #37 aplica el plan gratuito en el servidor nuevo y comprueba el ampliado mediante una política confiable inyectada en pruebas; ningún campo o ajuste de iOS concede premium.
+
+Recibir una invitación no consume una pertenencia. Aceptarla para un grupo nuevo comprueba el cupo personal del invitado, aunque el administrador de ese grupo tenga premium. El rechazo `group_limit_reached` conserva el enlace sin consumir; se puede reintentar tras liberar capacidad o ampliar el plan mientras siga vigente. Su caducidad normal de 24 horas y su posible revocación siguen aplicándose. Una cuenta gratuita puede recibir varios enlaces, pero solo puede aceptar un grupo nuevo si aún no pertenece a ninguno. La app conserva el flujo de una invitación pendiente; no incorpora una bandeja con todos los enlaces. Aceptar una invitación al grupo del que ya se es miembro no cuenta otra vez.
 
 Administrar un grupo ya incluido entre las pertenencias no consume otro grupo ni exige un pago adicional. El traspaso conserva la aceptación explícita del sucesor y no debe convertirse en una compra obligatoria para aceptar, ceder o salir conforme a las reglas del grupo. Restringir el uso ordinario de un grupo conserva su administrador y el acceso necesario para resolver esas responsabilidades.
 
@@ -34,26 +40,27 @@ Esta opción ofrece reglas iguales a todos los colaboradores y evita introducir 
 
 Alternativas descartadas para esta iteración: un plan propio del grupo separa facturación y administración, pero añade titular de pago y ciclo de facturación independientes; usar el plan de quien añade el contenido hace que dos miembros tengan reglas diferentes sobre la misma lista. El cálculo de capacidad efectiva queda en una política pequeña para poder cambiar su origen sin rehacer las pertenencias.
 
-## Propuesta de aplicación y conservación
+## Aplicación y conservación de tiendas y productos
 
 - El servidor calcula capacidades efectivas a partir de pertenencia, rol, plan y recurso. iOS presenta acciones disponibles, uso, límite y motivo de restricción; no deduce permisos repartiendo condiciones de `isPremium` por las vistas. Las capacidades consultadas son informativas: la escritura vuelve a comprobarlas.
 - Configurar el despliegue de la funcionalidad, configurar sus cupos y verificar un derecho de compra son responsabilidades distintas. Los valores de prueba no conceden premium en producción. Se puede preparar esta frontera antes de conectar los pagos, sin publicar aún un acceso premium funcional.
 - Crear o aceptar otro grupo consume capacidad de la cuenta; un traspaso entre miembros existentes no añade pertenencias. Las restricciones comerciales no sustituyen la autorización ni habilitan acceso a un grupo ajeno.
-- Las tiendas se crean también al enviar un lote o mover un producto. Deben contarse únicamente tiendas realmente nuevas tras la normalización, reutilizando las existentes. Propuesta: una tienda vacía sigue contando mientras exista. Antes de activar ese cupo debe definirse una forma segura de liberar capacidad; el MVP no ofrece borrado ni archivo de tiendas.
+- Las tiendas se crean también al enviar un lote o mover un producto. Deben contarse únicamente tiendas activas realmente nuevas tras la normalización, reutilizando las existentes. Una tienda activa vacía sigue contando hasta archivarla expresamente. Solo el administrador actual puede archivar una tienda sin pendientes; comprado y cancelado no lo impiden. El archivo conserva ID, nombre normalizado, historial y recibos. No se archiva automáticamente al terminar una compra.
+- Restaurar es una acción explícita del administrador y exige una plaza de tienda activa. Recupera el mismo ID y la misma identidad normalizada. Un alta o movimiento hacia una tienda archivada se rechaza como `store_archived`: no la reactiva ni crea otra con el mismo nombre. El cliente conserva el producto/borrador y dirige a la gestión para restaurar. Las consultas y selectores ordinarios, incluida la resolución de Siri, solo incluyen activas; el listado de archivadas se solicita expresamente.
 - Las admisiones comprueban el efecto completo de la operación dentro de la transacción. Un lote que excede cualquier cupo se rechaza entero, sin productos parciales ni tiendas huérfanas. Dividirlo no permite eludir el cupo acumulado.
 - Como punto de partida técnico, coordinar las mutaciones por cuenta para pertenencias y por grupo para los recursos compartidos, con conteos SQL y orden uniforme de bloqueos. El bloqueo actual por usuario no basta ante dos miembros distintos. No se propone añadir contadores persistidos ni un motor genérico de reglas; el protocolo exacto se concretará con las migraciones y pruebas. Los [bloqueos de filas de PostgreSQL](https://www.postgresql.org/docs/current/explicit-locking.html#LOCKING-ROWS) ofrecen el mecanismo, pero todas las operaciones implicadas deben participar en el mismo protocolo.
 - Un éxito confirmado conserva su recibo aunque después cambie el plan: recuperarlo no consume otro cupo ni vuelve a decidir su admisión comercial. Se mantiene la autorización vigente. Una respuesta incierta conserva cuenta, grupo, ruta, payload y `operationId` originales.
-- El contrato debe distinguir rechazo de cuota confirmado de falta de permisos, rate limit y resultado incierto. El rechazo no pierde el borrador. Queda por fijar si se conserva un recibo de rechazo: si se conserva, liberar capacidad no modifica ese resultado y se necesita una nueva intención explícita. No cambiar la clave de una petición cuyo resultado siga siendo incierto.
+- El contrato distingue rechazo de cuota confirmado de falta de permisos, rate limit y resultado incierto. Los rechazos `store_limit_reached`, `pending_item_limit_reached`, `store_archived` y `store_not_empty` se conservan como recibos definitivos de la intención. Liberar capacidad o cambiar el estado no modifica ese resultado: se necesita una nueva intención explícita y otra clave. El rechazo no pierde el borrador; una respuesta incierta mantiene exactamente su clave, cuenta, grupo, ruta y payload. Un replay de éxito requiere pertenencia vigente y reproduce los bytes originales sin volver a comprobar cupo, archivo ni rol actual de administrador.
 
 ### Pérdida de capacidad
 
-**Propuesta pendiente de concretar antes de activar restricciones.** Si el acceso premium termina, se revoca o cambia el administrador, conservar datos, pertenencias y responsable. El exceso es un estado recuperable, no una orden de borrar.
+**Tiendas y productos: regla aprobada el 10 de octubre.** Si el acceso premium termina, se revoca o cambia el administrador, conservar datos, pertenencias y responsable. El exceso es un estado recuperable, no una orden de borrar ni archivar arbitrariamente tiendas. El cálculo toma el plan del administrador actual; antes de proponer o aceptar el traspaso el cliente explica ese cambio y la conservación de datos.
 
-Para tiendas y productos, bloquear el crecimiento del recurso que exceda su límite, permitiendo consultar, completar compras, cancelar y editar sin aumentar el uso, dentro de los grupos a los que se conserva acceso. Mover una entrada exige capacidad en el destino. Como el plan depende del administrador, aceptar un traspaso a alguien con menor capacidad sigue siendo posible y deja el grupo en este mismo estado de exceso.
+Para tiendas y productos, bloquear el crecimiento del recurso que exceda su límite, permitiendo consultar, completar compras, cancelar, archivar y editar sin aumentar el uso, dentro de los grupos a los que se conserva acceso. Mover una entrada exige capacidad en el destino y libera la del origen atómicamente. El exceso de tiendas no bloquea nuevas entradas en una tienda con plaza para pendientes, ni el exceso de pendientes bloquea la edición en esa misma tienda. Como el plan depende del administrador, aceptar un traspaso a alguien con menor capacidad sigue siendo posible y deja el grupo en este mismo estado de exceso.
 
 Para varias pertenencias, proponer la elección explícita de un grupo con uso gratuito completo y acceso restringido a los adicionales. Deben cerrarse el plazo, los derechos restantes y las reglas para cambiar esa elección, evitando convertir el selector en una forma de usar todos los grupos gratuitamente. Bloquear solo nuevas incorporaciones no resuelve este caso.
 
-Consultar y resolver las responsabilidades necesarias para traspasar o abandonar seguirá siendo posible en un grupo restringido. Cerrar un grupo cuando sale su último miembro y eliminar una cuenta necesitan una política de conservación y de acceso a su historial. No se activa el cobro antes de resolver estos recorridos. Precio, pago único o suscripción, períodos de gracia y cifras comerciales siguen sin decidirse.
+Consultar y resolver las responsabilidades necesarias para traspasar o abandonar seguirá siendo posible en un grupo restringido. El cierre del último miembro ya conserva el historial conforme a #33; su acceso posterior y la eliminación de cuenta siguen necesitando una política propia. No se activa el cobro antes de resolver los recorridos comerciales. Precio, periodos de gracia y elección del grupo gratuito tras perder capacidad de pertenencias siguen pendientes. Suscripción única y cifras ya están aprobadas; #37 no activa derechos pagados ni restricciones sobre pertenencias existentes.
 
 ## Secuencia y fronteras
 
@@ -79,4 +86,4 @@ La validación de cada entrega debe probar efectos observables, no solo valores 
 | Traspaso a sucesor con menor plan | No transfiere el pago ni borra datos; conserva un responsable y permite resolver el exceso según la política elegida. |
 | Rechazo de cuota o cliente antiguo | Borrador conservado; diagnóstico compatible y ninguna confirmación falsa o bloqueo por error desconocido. |
 
-Antes de implementar #33 deben cerrarse su contrato/compatibilidad, la migración, la duración y cancelación de propuestas y la política de último miembro. Antes de implementar las admisiones comerciales se decidirá el recibo de rechazo; antes de activar cuotas, las cifras, el cómputo/liberación de tiendas y el detalle de pérdida de capacidad. Estas decisiones posteriores no bloquean el trabajo independiente sobre administración y traspaso. Las comprobaciones se distribuirán entre Swift Testing, PostgreSQL aislado y recorridos iOS ES/EN; no hay pruebas ejecutadas por este documento.
+Los contratos de #33 y #35 ya concretan migración, compatibilidad, traspaso, salida y cierre. La unidad #37 concreta los cupos aprobados, archivo/restauración, exceso de tiendas/productos y recibos de rechazo antes de implementar esas escrituras. La pérdida de capacidad de pertenencias y los derechos verificados se cerrarán en la unidad de pagos. Las comprobaciones se distribuyen entre Swift Testing, PostgreSQL aislado y recorridos iOS ES/EN; este documento de decisiones no acredita su ejecución.

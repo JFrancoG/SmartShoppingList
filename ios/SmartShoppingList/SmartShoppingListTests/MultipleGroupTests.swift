@@ -430,6 +430,8 @@ private actor MembershipAPI: SharedShoppingAPI {
     private var nextItemsGate: MembershipGate?
     private var delayedItemsError: SharedAPIError?
     private var firstGroupHasItems = true
+    private var nextUserGate: MembershipGate?
+    private(set) var userLookups = 0
     private(set) var additionGroups: [UUID] = []
     private(set) var additionOperations: [UUID] = []
     private(set) var membershipMutations = 0
@@ -437,6 +439,10 @@ private actor MembershipAPI: SharedShoppingAPI {
     init(fixture: MembershipFixture) {
         self.fixture = fixture
         memberships = [fixture.first, fixture.second]
+    }
+
+    func delayNextUserLookup(_ gate: MembershipGate) {
+        nextUserGate = gate
     }
 
     func setMemberships(_ groups: [SharedGroup]) {
@@ -483,6 +489,10 @@ private actor MembershipAPI: SharedShoppingAPI {
     }
 
     func currentUser(token: String) async throws -> SharedUser {
+        userLookups += 1
+        let gate = nextUserGate
+        nextUserGate = nil
+        await gate?.pause()
         var user = fixture.session.user
         if providesCapabilities {
             user.accountCapabilities = try SharedAccountCapabilities(
@@ -501,9 +511,63 @@ private actor MembershipAPI: SharedShoppingAPI {
     }
 
     func stores(groupID: UUID, token: String) async throws -> [SharedStore] {
-        [fixture.firstStore, fixture.secondStore].filter { $0.groupId == groupID }
+        try [fixture.firstStore, fixture.secondStore].filter { $0.groupId == groupID }.map { original in
+            var store = original
+            store.state = try SharedStoreState(
+                archivedAt: nil,
+                pendingItemCount: 1,
+                capabilities: SharedStoreCapabilities(canAddItems: true, canArchive: false, canRestore: false)
+            )
+            return store
+        }
     }
 
+    private var archivedGate: MembershipGate?
+    private var archivedFails = false
+
+    func delayArchivedStores(_ gate: MembershipGate, fails: Bool) {
+        archivedGate = gate
+        archivedFails = fails
+    }
+
+    func archivedStores(groupID: UUID, token: String) async throws -> [SharedStore] {
+        let gate = archivedGate
+        let fails = archivedFails
+        archivedGate = nil
+        archivedFails = false
+        await gate?.pause()
+        if fails {
+            throw SharedAPIError.server(
+                status: 401,
+                code: "invalid_session",
+                requestID: nil,
+                retryAfter: nil
+            )
+        }
+        return []
+    }
+    func groupCapacity(groupID: UUID, token: String) async throws -> SharedGroupCapacity {
+        let count = [fixture.firstStore, fixture.secondStore].filter { $0.groupId == groupID }.count
+        return try SharedGroupCapacity(
+            groupId: groupID,
+            capacityOwnerUserId: fixture.session.user.id,
+            activeStoreCount: count,
+            limits: SharedStoreLimits(
+                storesPerGroup: SharedResourceLimit(maximum: 3, enforced: true),
+                pendingItemsPerStore: SharedResourceLimit(maximum: 20, enforced: true)
+            ),
+            canCreateStore: count < 3
+        )
+    }
+    func changeStoreState(
+        _ request: ChangeStoreStateRequest,
+        groupID: UUID,
+        storeID: UUID,
+        action: SharedStoreAction,
+        token: String
+    ) async throws -> SharedStore {
+        throw SharedAPIError.configuration
+    }
     func pendingItems(groupID: UUID, storeID: UUID, token: String) async throws -> [SharedItem] {
         let snapshot = groupID == fixture.first.id && !firstGroupHasItems
             ? []
@@ -759,5 +823,74 @@ private actor MembershipCredentialStore: SharedCredentialStoring {
     }
     func saveOperation(_ operation: PendingSharedOperation?) async throws {
         await store.saveOperation(operation)
+    }
+}
+
+
+extension MultipleGroupTests {
+    @Test(.timeLimit(.minutes(1)), arguments: [false, true])
+    func `Late store management results cannot replace another group's capacity or invalidate its session`(
+        fails: Bool
+    ) async throws {
+        let fixture = try MembershipFixture()
+        let api = MembershipAPI(fixture: fixture)
+        let model = fixture.model(api: api)
+        await model.load()
+        await model.selectGroup(id: fixture.first.id)
+        let gate = MembershipGate()
+        await api.delayArchivedStores(gate, fails: fails)
+        let management = Task {
+            await model.loadStoreManagement()
+        }
+        await gate.waitUntilReached()
+        try #require(model.canSelectGroup)
+        await model.selectGroup(id: fixture.second.id)
+        await model.loadStoreManagement()
+        try #require(model.storeManagementState == .loaded)
+
+        await gate.open()
+        await management.value
+
+        #expect(model.group?.id == fixture.second.id)
+        #expect(model.groupCapacity?.groupId == fixture.second.id)
+        #expect(model.stores.map(\.id) == [fixture.secondStore.id])
+        #expect(model.storeManagementState == .loaded)
+        #expect(model.sessionIsVerified)
+        #expect(model.notice == nil)
+    }
+}
+
+
+extension MultipleGroupTests {
+    @Test(.timeLimit(.minutes(1)))
+    func `Store management serializes access verification before allowing another refresh or group choice`(
+    ) async throws {
+        let fixture = try MembershipFixture()
+        let api = MembershipAPI(fixture: fixture)
+        let model = fixture.model(api: api)
+        await model.load()
+        await model.selectGroup(id: fixture.first.id)
+        let gate = MembershipGate()
+        await api.delayNextUserLookup(gate)
+        let firstRefresh = Task {
+            await model.loadStoreManagement()
+        }
+        await gate.waitUntilReached()
+        let lookups = await api.userLookups
+        #expect(model.isBusy)
+        #expect(!model.canSelectGroup)
+        await model.loadStoreManagement()
+        await model.selectGroup(id: fixture.second.id)
+        #expect(await api.userLookups == lookups)
+        #expect(model.group?.id == fixture.first.id)
+
+        await gate.open()
+        await firstRefresh.value
+        await model.selectGroup(id: fixture.second.id)
+        await model.loadStoreManagement()
+
+        #expect(model.group?.id == fixture.second.id)
+        #expect(model.groupCapacity?.groupId == fixture.second.id)
+        #expect(model.storeManagementState == .loaded)
     }
 }

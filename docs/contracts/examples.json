@@ -1,5 +1,5 @@
 {
-  "contractVersion": "0.3.0",
+  "contractVersion": "0.4.0",
   "cases": [
     {
       "id": "challenge-fresh",
@@ -240,7 +240,14 @@
             {
               "id": "00000000-0000-4000-8000-000000000020",
               "groupId": "00000000-0000-4000-8000-000000000010",
-              "name": "Mercadona"
+              "name": "Mercadona",
+              "archivedAt": null,
+              "pendingItemCount": 1,
+              "capabilities": {
+                "canAddItems": true,
+                "canArchive": false,
+                "canRestore": false
+              }
             }
           ],
           "nextCursor": null
@@ -1403,12 +1410,12 @@
                 "enforced": true
               },
               "storesPerGroup": {
-                "maximum": null,
-                "enforced": false
+                "maximum": 3,
+                "enforced": true
               },
               "pendingItemsPerStore": {
-                "maximum": null,
-                "enforced": false
+                "maximum": 20,
+                "enforced": true
               }
             }
           }
@@ -1460,12 +1467,12 @@
                 "enforced": true
               },
               "storesPerGroup": {
-                "maximum": null,
-                "enforced": false
+                "maximum": 3,
+                "enforced": true
               },
               "pendingItemsPerStore": {
-                "maximum": null,
-                "enforced": false
+                "maximum": 20,
+                "enforced": true
               }
             }
           }
@@ -1508,12 +1515,12 @@
                 "enforced": true
               },
               "storesPerGroup": {
-                "maximum": null,
-                "enforced": false
+                "maximum": 3,
+                "enforced": true
               },
               "pendingItemsPerStore": {
-                "maximum": null,
-                "enforced": false
+                "maximum": 20,
+                "enforced": true
               }
             }
           }
@@ -2164,7 +2171,7 @@
             "canJoinGroup": true,
             "limits": {
               "groupsPerAccount": {
-                "maximum": 3,
+                "maximum": 5,
                 "enforced": true
               }
             }
@@ -2308,6 +2315,754 @@
           "creatorUserId": "00000000-0000-4000-8000-000000000001",
           "createdAt": "2026-10-09T10:00:00Z",
           "administratorUserId": "00000000-0000-4000-8000-000000000001"
+        }
+      }
+    },
+    {
+      "id": "group-capacity-free",
+      "operationId": "getGroupCapacity",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {}
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "capacityOwnerUserId": "00000000-0000-4000-8000-000000000001",
+          "activeStoreCount": 2,
+          "limits": {
+            "storesPerGroup": {
+              "maximum": 3,
+              "enforced": true
+            },
+            "pendingItemsPerStore": {
+              "maximum": 20,
+              "enforced": true
+            }
+          },
+          "canCreateStore": true
+        }
+      }
+    },
+    {
+      "id": "group-capacity-premium-test-policy",
+      "operationId": "getGroupCapacity",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {}
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "capacityOwnerUserId": "00000000-0000-4000-8000-000000000001",
+          "activeStoreCount": 7,
+          "limits": {
+            "storesPerGroup": {
+              "maximum": 10,
+              "enforced": true
+            },
+            "pendingItemsPerStore": {
+              "maximum": 100,
+              "enforced": true
+            }
+          },
+          "canCreateStore": true
+        }
+      }
+    },
+    {
+      "id": "group-capacity-free-existing-overage",
+      "operationId": "getGroupCapacity",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {}
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "capacityOwnerUserId": "00000000-0000-4000-8000-000000000001",
+          "activeStoreCount": 5,
+          "limits": {
+            "storesPerGroup": {
+              "maximum": 3,
+              "enforced": true
+            },
+            "pendingItemsPerStore": {
+              "maximum": 20,
+              "enforced": true
+            }
+          },
+          "canCreateStore": false
+        }
+      }
+    },
+    {
+      "id": "stores-active-empty-admin",
+      "operationId": "listStores",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {
+          "state": "active"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "stores": [
+            {
+              "id": "00000000-0000-4000-8000-000000000020",
+              "groupId": "00000000-0000-4000-8000-000000000010",
+              "name": "Mercadona",
+              "archivedAt": null,
+              "pendingItemCount": 0,
+              "capabilities": {
+                "canAddItems": true,
+                "canArchive": true,
+                "canRestore": false
+              }
+            }
+          ],
+          "nextCursor": null
+        }
+      }
+    },
+    {
+      "id": "stores-active-at-pending-limit",
+      "operationId": "listStores",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {}
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "stores": [
+            {
+              "id": "00000000-0000-4000-8000-000000000020",
+              "groupId": "00000000-0000-4000-8000-000000000010",
+              "name": "Mercadona",
+              "archivedAt": null,
+              "pendingItemCount": 20,
+              "capabilities": {
+                "canAddItems": false,
+                "canArchive": false,
+                "canRestore": false
+              }
+            }
+          ],
+          "nextCursor": null
+        }
+      }
+    },
+    {
+      "id": "stores-archived-admin",
+      "operationId": "listStores",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {
+          "state": "archived"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "stores": [
+            {
+              "id": "00000000-0000-4000-8000-000000000020",
+              "groupId": "00000000-0000-4000-8000-000000000010",
+              "name": "Mercadona",
+              "archivedAt": "2026-10-10T10:00:00Z",
+              "pendingItemCount": 0,
+              "capabilities": {
+                "canAddItems": false,
+                "canArchive": false,
+                "canRestore": true
+              }
+            }
+          ],
+          "nextCursor": null
+        }
+      }
+    },
+    {
+      "id": "stores-archived-member",
+      "operationId": "listStores",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {
+          "state": "archived"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "stores": [
+            {
+              "id": "00000000-0000-4000-8000-000000000020",
+              "groupId": "00000000-0000-4000-8000-000000000010",
+              "name": "Mercadona",
+              "archivedAt": "2026-10-10T10:00:00Z",
+              "pendingItemCount": 0,
+              "capabilities": {
+                "canAddItems": false,
+                "canArchive": false,
+                "canRestore": false
+              }
+            }
+          ],
+          "nextCursor": null
+        }
+      }
+    },
+    {
+      "id": "stores-archived-no-restore-capacity",
+      "operationId": "listStores",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {
+          "state": "archived"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "stores": [
+            {
+              "id": "00000000-0000-4000-8000-000000000020",
+              "groupId": "00000000-0000-4000-8000-000000000010",
+              "name": "Mercadona",
+              "archivedAt": "2026-10-10T10:00:00Z",
+              "pendingItemCount": 0,
+              "capabilities": {
+                "canAddItems": false,
+                "canArchive": false,
+                "canRestore": false
+              }
+            }
+          ],
+          "nextCursor": null
+        }
+      }
+    },
+    {
+      "id": "archived-store-has-no-pending-items",
+      "operationId": "listPendingItems",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "storeId": "00000000-0000-4000-8000-000000000020"
+        },
+        "query": {}
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "items": [],
+          "nextCursor": null
+        }
+      }
+    },
+    {
+      "id": "archive-empty-store",
+      "operationId": "archiveStore",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "storeId": "00000000-0000-4000-8000-000000000020"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000120"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "id": "00000000-0000-4000-8000-000000000020",
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "name": "Mercadona",
+          "archivedAt": "2026-10-10T10:00:00Z",
+          "pendingItemCount": 0,
+          "capabilities": {
+            "canAddItems": false,
+            "canArchive": false,
+            "canRestore": true
+          }
+        }
+      }
+    },
+    {
+      "id": "archive-already-archived-noop",
+      "operationId": "archiveStore",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "storeId": "00000000-0000-4000-8000-000000000020"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000121"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "id": "00000000-0000-4000-8000-000000000020",
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "name": "Mercadona",
+          "archivedAt": "2026-10-10T10:00:00Z",
+          "pendingItemCount": 0,
+          "capabilities": {
+            "canAddItems": false,
+            "canArchive": false,
+            "canRestore": true
+          }
+        }
+      }
+    },
+    {
+      "id": "archive-pending-conflict",
+      "operationId": "archiveStore",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "storeId": "00000000-0000-4000-8000-000000000020"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000122"
+        }
+      },
+      "response": {
+        "status": 409,
+        "body": {
+          "code": "store_not_empty",
+          "message": "Revisa la capacidad o el estado y confirma una nueva intención.",
+          "requestId": "00000000-0000-4000-8000-000000000900"
+        }
+      }
+    },
+    {
+      "id": "archive-nonadministrator",
+      "operationId": "archiveStore",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "storeId": "00000000-0000-4000-8000-000000000020"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000123"
+        }
+      },
+      "response": {
+        "status": 403,
+        "body": {
+          "code": "administrator_required",
+          "message": "Se requiere el administrador del grupo.",
+          "requestId": "00000000-0000-4000-8000-000000000900"
+        }
+      }
+    },
+    {
+      "id": "restore-store-preserves-identity",
+      "operationId": "restoreStore",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "storeId": "00000000-0000-4000-8000-000000000020"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000124"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "id": "00000000-0000-4000-8000-000000000020",
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "name": "Mercadona",
+          "archivedAt": null,
+          "pendingItemCount": 0,
+          "capabilities": {
+            "canAddItems": true,
+            "canArchive": true,
+            "canRestore": false
+          }
+        }
+      }
+    },
+    {
+      "id": "restore-already-active-noop",
+      "operationId": "restoreStore",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "storeId": "00000000-0000-4000-8000-000000000020"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000125"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "id": "00000000-0000-4000-8000-000000000020",
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "name": "Mercadona",
+          "archivedAt": null,
+          "pendingItemCount": 20,
+          "capabilities": {
+            "canAddItems": false,
+            "canArchive": false,
+            "canRestore": false
+          }
+        }
+      }
+    },
+    {
+      "id": "restore-capacity-conflict",
+      "operationId": "restoreStore",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "storeId": "00000000-0000-4000-8000-000000000020"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000126"
+        }
+      },
+      "response": {
+        "status": 409,
+        "body": {
+          "code": "store_limit_reached",
+          "message": "Revisa la capacidad o el estado y confirma una nueva intención.",
+          "requestId": "00000000-0000-4000-8000-000000000900"
+        }
+      }
+    },
+    {
+      "id": "restore-capacity-receipt-after-freeing-slot",
+      "operationId": "restoreStore",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "storeId": "00000000-0000-4000-8000-000000000020"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000126"
+        }
+      },
+      "response": {
+        "status": 409,
+        "body": {
+          "code": "store_limit_reached",
+          "message": "Revisa la capacidad o el estado y confirma una nueva intención.",
+          "requestId": "00000000-0000-4000-8000-000000000900"
+        }
+      }
+    },
+    {
+      "id": "restore-success-receipt-after-archiving-again",
+      "operationId": "restoreStore",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "storeId": "00000000-0000-4000-8000-000000000020"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000124"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "id": "00000000-0000-4000-8000-000000000020",
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "name": "Mercadona",
+          "archivedAt": null,
+          "pendingItemCount": 0,
+          "capabilities": {
+            "canAddItems": true,
+            "canArchive": true,
+            "canRestore": false
+          }
+        }
+      }
+    },
+    {
+      "id": "add-new-store-at-store-limit",
+      "operationId": "addItems",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000127",
+          "items": [
+            {
+              "name": "Leche",
+              "quantity": "6 botellas",
+              "store": {
+                "newName": "Otra tienda"
+              }
+            }
+          ]
+        }
+      },
+      "response": {
+        "status": 409,
+        "body": {
+          "code": "store_limit_reached",
+          "message": "Revisa la capacidad o el estado y confirma una nueva intención.",
+          "requestId": "00000000-0000-4000-8000-000000000900"
+        }
+      }
+    },
+    {
+      "id": "add-at-pending-limit",
+      "operationId": "addItems",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000128",
+          "items": [
+            {
+              "name": "Leche",
+              "quantity": "6 botellas",
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            }
+          ]
+        }
+      },
+      "response": {
+        "status": 409,
+        "body": {
+          "code": "pending_item_limit_reached",
+          "message": "Revisa la capacidad o el estado y confirma una nueva intención.",
+          "requestId": "00000000-0000-4000-8000-000000000900"
+        }
+      }
+    },
+    {
+      "id": "add-to-archived-id",
+      "operationId": "addItems",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000129",
+          "items": [
+            {
+              "name": "Leche",
+              "quantity": "6 botellas",
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            }
+          ]
+        }
+      },
+      "response": {
+        "status": 409,
+        "body": {
+          "code": "store_archived",
+          "message": "Revisa la capacidad o el estado y confirma una nueva intención.",
+          "requestId": "00000000-0000-4000-8000-000000000900"
+        }
+      }
+    },
+    {
+      "id": "add-to-archived-normalized-name",
+      "operationId": "addItems",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000130",
+          "items": [
+            {
+              "name": "Leche",
+              "quantity": "6 botellas",
+              "store": {
+                "newName": " MERCADONA "
+              }
+            }
+          ]
+        }
+      },
+      "response": {
+        "status": 409,
+        "body": {
+          "code": "store_archived",
+          "message": "Revisa la capacidad o el estado y confirma una nueva intención.",
+          "requestId": "00000000-0000-4000-8000-000000000900"
+        }
+      }
+    },
+    {
+      "id": "confirmed-add-replay-after-store-archived",
+      "operationId": "addItems",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000101",
+          "items": [
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Cerveza",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Yogures sin lactosa",
+              "quantity": "4 unidades",
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            }
+          ]
+        }
+      },
+      "response": {
+        "status": 201,
+        "body": {
+          "items": [
+            {
+              "id": "00000000-0000-4000-8000-000000000030",
+              "groupId": "00000000-0000-4000-8000-000000000010",
+              "storeId": "00000000-0000-4000-8000-000000000020",
+              "name": "Jabón",
+              "quantity": null,
+              "status": "pending",
+              "version": 1,
+              "createdBy": "00000000-0000-4000-8000-000000000002",
+              "createdAt": "2026-09-19T10:10:00Z",
+              "purchasedBy": null,
+              "purchasedAt": null
+            },
+            {
+              "id": "00000000-0000-4000-8000-000000000031",
+              "groupId": "00000000-0000-4000-8000-000000000010",
+              "storeId": "00000000-0000-4000-8000-000000000020",
+              "name": "Cerveza",
+              "quantity": null,
+              "status": "pending",
+              "version": 1,
+              "createdBy": "00000000-0000-4000-8000-000000000002",
+              "createdAt": "2026-09-19T10:10:00Z",
+              "purchasedBy": null,
+              "purchasedAt": null
+            },
+            {
+              "id": "00000000-0000-4000-8000-000000000032",
+              "groupId": "00000000-0000-4000-8000-000000000010",
+              "storeId": "00000000-0000-4000-8000-000000000020",
+              "name": "Yogures sin lactosa",
+              "quantity": "4 unidades",
+              "status": "pending",
+              "version": 1,
+              "createdBy": "00000000-0000-4000-8000-000000000002",
+              "createdAt": "2026-09-19T10:10:00Z",
+              "purchasedBy": null,
+              "purchasedAt": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "move-into-full-destination",
+      "operationId": "editItem",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "itemId": "00000000-0000-4000-8000-000000000030"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000131",
+          "expectedVersion": 1,
+          "name": "Jabón de manos",
+          "quantity": "2 unidades",
+          "store": {
+            "id": "00000000-0000-4000-8000-000000000020"
+          }
+        }
+      },
+      "response": {
+        "status": 409,
+        "body": {
+          "code": "pending_item_limit_reached",
+          "message": "Revisa la capacidad o el estado y confirma una nueva intención.",
+          "requestId": "00000000-0000-4000-8000-000000000900"
+        }
+      }
+    },
+    {
+      "id": "archive-conflict-receipt-after-emptying",
+      "operationId": "archiveStore",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "storeId": "00000000-0000-4000-8000-000000000020"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000122"
+        }
+      },
+      "response": {
+        "status": 409,
+        "body": {
+          "code": "store_not_empty",
+          "message": "Revisa la capacidad o el estado y confirma una nueva intención.",
+          "requestId": "00000000-0000-4000-8000-000000000900"
         }
       }
     }
@@ -3175,6 +3930,100 @@
           "operationId": "00000000-0000-4000-8000-000000000111",
           "name": "Trabajo",
           "isPremium": true
+        }
+      }
+    },
+    {
+      "id": "stores-invalid-state",
+      "operationId": "listStores",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {
+          "state": "all"
+        }
+      }
+    },
+    {
+      "id": "archive-missing-operation",
+      "operationId": "archiveStore",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "storeId": "00000000-0000-4000-8000-000000000020"
+        },
+        "query": {},
+        "body": {}
+      }
+    },
+    {
+      "id": "restore-missing-operation",
+      "operationId": "restoreStore",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "storeId": "00000000-0000-4000-8000-000000000020"
+        },
+        "query": {},
+        "body": {}
+      }
+    },
+    {
+      "id": "archive-unknown-confirm-flag",
+      "operationId": "archiveStore",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "storeId": "00000000-0000-4000-8000-000000000020"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000140",
+          "force": true
+        }
+      }
+    },
+    {
+      "id": "restore-does-not-accept-premium",
+      "operationId": "restoreStore",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "storeId": "00000000-0000-4000-8000-000000000020"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000141",
+          "isPremium": true
+        }
+      }
+    },
+    {
+      "id": "capacity-does-not-accept-plan",
+      "operationId": "getGroupCapacity",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "body": {
+          "plan": "premium"
+        }
+      }
+    },
+    {
+      "id": "stores-filter-is-not-array",
+      "operationId": "listStores",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {
+          "state": [
+            "active",
+            "archived"
+          ]
         }
       }
     }

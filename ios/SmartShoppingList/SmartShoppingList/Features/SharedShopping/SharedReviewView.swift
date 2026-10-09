@@ -55,6 +55,9 @@ struct SharedReviewView: View {
                     .accessibilityHint("Adds all reviewed products to the group with the chosen stores.")
                 } footer: {
                     Text("Products will only be shared when you confirm this submission.")
+                    if let message = viewModel.submissionCapacityMessage {
+                        Text(message)
+                    }
                 }
             }
             .navigationTitle("Review submission")

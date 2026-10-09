@@ -41,7 +41,8 @@ enum GroupCapabilityPolicy {
         administrator: String,
         memberCount: Int64,
         pending: GroupAdministrationTransfer?,
-        accountMaximum: Int64
+        accountMaximum: Int64,
+        groupLimits: AccountResourceLimits
     ) -> APIJSON {
         let isAdministrator = administrator == user.uuidString.lowercased()
         let isRecipient = pending?.recipientID == user
@@ -55,8 +56,10 @@ enum GroupCapabilityPolicy {
             "capacityOwnerUserId": .string(administrator),
             "limits": .object([
                 "groupsPerAccount": .object(["maximum": .integer(accountMaximum), "enforced": .bool(true)]),
-                "storesPerGroup": .object(["maximum": .null, "enforced": .bool(false)]),
-                "pendingItemsPerStore": .object(["maximum": .null, "enforced": .bool(false)])
+                "storesPerGroup": .object(["maximum": .integer(groupLimits.activeStores), "enforced": .bool(true)]),
+                "pendingItemsPerStore": .object([
+                    "maximum": .integer(groupLimits.pendingItems), "enforced": .bool(true)
+                ])
             ])
         ])
     }
