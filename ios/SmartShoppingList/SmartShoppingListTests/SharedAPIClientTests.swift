@@ -596,3 +596,148 @@ extension SharedAPIClientTests {
         """
     }
 }
+
+extension SharedAPIClientTests {
+    @Test
+    func `Archived pagination retains its state filter and never leaks archived stores into active selectors`() async throws {
+        let transport = FixtureSharedTransport { request in
+            let components = URLComponents(url: try #require(request.url), resolvingAgainstBaseURL: false)
+            guard components?.queryItems?.contains(URLQueryItem(name: "state", value: "archived")) == true else {
+                throw FixtureFailure.unexpectedRequest
+            }
+            let cursor = components?.queryItems?.first { $0.name == "cursor" }?.value
+            let body = cursor == nil
+                ? "{\"stores\":[\(Self.managedStore(archived: true))],\"nextCursor\":\"archived/page+\"}"
+                : "{\"stores\":[],\"nextCursor\":null}"
+            return try Self.response(request, status: 200, body: body)
+        }
+        let stores = try await client(transport).archivedStores(groupID: Self.groupID, token: Self.token)
+        #expect(stores.map(\.id) == [Self.storeID])
+        #expect(stores.first?.capabilities?.canRestore == true)
+        #expect(await transport.requestCount == 2)
+        let mixedTransport = FixtureSharedTransport { request in
+            try Self.response(
+                request,
+                status: 200,
+                body: "{\"stores\":[\(Self.managedStore(archived: true))],\"nextCursor\":null}"
+            )
+        }
+        await #expect(throws: SharedAPIError.invalidResponse) {
+            try await client(mixedTransport).stores(groupID: Self.groupID, token: Self.token)
+        }
+    }
+
+    @Test(arguments: [SharedStoreAction.archive, .restore])
+    func `Store lifecycle requests bind the route and operation to the intended store`(
+        action: SharedStoreAction
+    ) async throws {
+        let id = UUID(uuid: (0, 0, 0, 0, 0, 0, 64, 0, 128, 0, 0, 0, 0, 0, 0, 90))
+        let transport = FixtureSharedTransport { request in
+            let path = "/v1/groups/\(Self.groupID.uuidString.lowercased())/stores/\(Self.storeID.uuidString.lowercased())"
+            guard request.url?.path == "\(path)/\(action.rawValue)", request.httpMethod == "POST",
+                  request.value(forHTTPHeaderField: "Authorization") == "Bearer \(Self.token)",
+                  request.httpBody == Data("{\"operationId\":\"\(id.uuidString.lowercased())\"}".utf8) else {
+                throw FixtureFailure.unexpectedRequest
+            }
+            return try Self.response(request, status: 200, body: Self.managedStore(archived: action == .archive))
+        }
+        let store = try await client(transport).changeStoreState(
+            ChangeStoreStateRequest(operationId: id),
+            groupID: Self.groupID,
+            storeID: Self.storeID,
+            action: action,
+            token: Self.token
+        )
+        #expect(store.id == Self.storeID)
+        #expect((store.archivedAt != nil) == (action == .archive))
+        #expect(await transport.requestCount == 1)
+    }
+
+    @Test(arguments: ["store_limit_reached", "pending_item_limit_reached", "store_archived", "store_not_empty"])
+    func `Contract quota errors establish a definitive refusal without automatic retry`(_ code: String) async throws {
+        let transport = FixtureSharedTransport { request in
+            try Self.response(
+                request,
+                status: 409,
+                body: """
+                {"code":"\(code)","message":"Refused","requestId":"00000000-0000-4000-8000-000000000900"}
+                """
+            )
+        }
+        do {
+            _ = try await client(transport).changeStoreState(
+                ChangeStoreStateRequest(operationId: UUID()),
+                groupID: Self.groupID,
+                storeID: Self.storeID,
+                action: .archive,
+                token: Self.token
+            )
+            Issue.record("A quota refusal was accepted as a successful store change")
+        } catch let error as SharedAPIError {
+            #expect(!error.isUncertain)
+        }
+        #expect(await transport.requestCount == 1)
+    }
+
+    @Test(arguments: ["negative", "partial", "archivedPending", "wrongStore"])
+    func `Malformed lifecycle receipts cannot resolve an uncertain store action`(_ fault: String) async throws {
+        let transport = FixtureSharedTransport { request in
+            var body = Self.managedStore(archived: true)
+            switch fault {
+            case "negative":
+                body = body.replacingOccurrences(of: "\"pendingItemCount\":0", with: "\"pendingItemCount\":-1")
+            case "partial":
+                body = body.replacingOccurrences(of: "\"pendingItemCount\":0,", with: "")
+            case "archivedPending":
+                body = body.replacingOccurrences(of: "\"pendingItemCount\":0", with: "\"pendingItemCount\":1")
+            default:
+                body = body.replacingOccurrences(
+                    of: Self.storeID.uuidString.lowercased(),
+                    with: Self.groupID.uuidString
+                )
+            }
+            return try Self.response(request, status: 200, body: body)
+        }
+        await #expect(throws: SharedAPIError.invalidResponse) {
+            try await client(transport).changeStoreState(
+                ChangeStoreStateRequest(operationId: UUID()),
+                groupID: Self.groupID,
+                storeID: Self.storeID,
+                action: .archive,
+                token: Self.token
+            )
+        }
+    }
+
+    @Test(arguments: ["wrongGroup", "negativeCount", "zeroMaximum", "unenforced", "contradiction"])
+    func `Invalid capacity responses cannot authorize store creation`(_ fault: String) async throws {
+        let transport = FixtureSharedTransport { request in
+            let group = fault == "wrongGroup" ? Self.storeID : Self.groupID
+            let count = fault == "negativeCount" ? -1 : 2
+            let maximum = fault == "zeroMaximum" ? 0 : 3
+            let enforced = fault == "unenforced" ? "false" : "true"
+            let canCreate = fault == "contradiction" ? "false" : "true"
+            return try Self.response(
+                request,
+                status: 200,
+                body: """
+                {"groupId":"\(group.uuidString)","capacityOwnerUserId":"00000000-0000-4000-8000-000000000002",
+                "activeStoreCount":\(count),"limits":{"storesPerGroup":{"maximum":\(maximum),"enforced":\(enforced)},
+                "pendingItemsPerStore":{"maximum":20,"enforced":true}},"canCreateStore":\(canCreate)}
+                """
+            )
+        }
+        await #expect(throws: SharedAPIError.invalidResponse) {
+            try await client(transport).groupCapacity(groupID: Self.groupID, token: Self.token)
+        }
+    }
+
+    private static func managedStore(archived: Bool) -> String {
+        let date = archived ? "\"2026-09-19T10:10:00Z\"" : "null"
+        return """
+        {"id":"\(storeID.uuidString.lowercased())","groupId":"\(groupID.uuidString.lowercased())","name":"Aldi",
+        "archivedAt":\(date),"pendingItemCount":0,"capabilities":{
+        "canAddItems":\(!archived),"canArchive":\(!archived),"canRestore":\(archived)}}
+        """
+    }
+}

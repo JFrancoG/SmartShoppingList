@@ -80,17 +80,21 @@ struct ShoppingService: Sendable {
                 return replay
             }
             try items.forEach { try $0.validateNewWriteLimits() }
-            // Resolve stores in one stable order to avoid inverted unique-index locks across members.
-            let stores = try await resolveStores(items, group: group, on: sql)
+            let plan: StoreWritePlan
+            do {
+                plan = try await planStoreWrites(items, group: group, on: sql)
+            } catch let problem as APIProblem where problem.status == .conflict {
+                return try await saveStoreConflict(
+                    problem,
+                    user: user,
+                    operation: operation,
+                    group: group,
+                    on: sql
+                )
+            }
+            try await plan.insertStores(group: group, on: sql)
             var result: [APIJSON] = []
-            for item in items {
-                let store: UUID
-                switch item.store {
-                case .existing(let id): store = id
-                case .named(_, let key):
-                    guard let id = stores[key] else { throw APIProblem.unavailable }
-                    store = id
-                }
+            for (item, store) in zip(items, plan.destinations) {
                 let id = UUID()
                 let now = try await databaseClock(sql)
                 try await sql.raw("""
@@ -338,47 +342,7 @@ extension ShoppingService {
         return reply
     }
 
-    func resolveStores(
-        _ items: [ShoppingNewItem],
-        group: UUID,
-        on sql: any SQLDatabase
-    ) async throws -> [String: UUID] {
-        var names: [String: String] = [:]
-        var existing: Set<UUID> = []
-        for item in items {
-            switch item.store {
-            case .existing(let id): existing.insert(id)
-            case .named(let name, let key):
-                if names[key] == nil {
-                    names[key] = name
-                }
-            }
-        }
-        for id in existing.sorted(by: { $0.uuidString < $1.uuidString }) {
-            guard try await sql.raw("""
-                SELECT id FROM stores WHERE id = \(bind: id) AND group_id = \(bind: group)
-                """).first() != nil
-            else {
-                throw APIProblem.notFound
-            }
-        }
-        var result: [String: UUID] = [:]
-        for key in names.keys.sorted() {
-            guard let name = names[key] else { throw APIProblem.unavailable }
-            try await sql.raw("""
-                INSERT INTO stores(id,group_id,name,normalized_key) VALUES (\(bind: UUID()),\(bind: group),\(bind: name),\(bind: key))
-                ON CONFLICT(group_id,normalized_key) DO NOTHING
-                """).run()
-            guard let row = try await sql.raw("""
-                SELECT id FROM stores WHERE group_id = \(bind: group) AND normalized_key = \(bind: key)
-                """).first()
-            else {
-                throw APIProblem.unavailable
-            }
-            result[key] = try row.decode(column: "id", as: UUID.self)
-        }
-        return result
-    }
+
 }
 
 extension ShoppingService {
@@ -514,14 +478,25 @@ extension ShoppingService {
                 guard item.expectedVersion < 9_007_199_254_740_991 else { throw APIProblem.unavailable }
                 let updated: (any SQLRow)?
                 if let replacement {
-                    let resolved = try await resolveStores([replacement], group: group, on: sql)
-                    let store: UUID
-                    switch replacement.store {
-                    case .existing(let id): store = id
-                    case .named(_, let key):
-                        guard let id = resolved[key] else { throw APIProblem.unavailable }
-                        store = id
+                    let plan: StoreWritePlan
+                    do {
+                        plan = try await planStoreWrites(
+                            [replacement],
+                            group: group,
+                            movingFrom: row.decode(column: "store_id", as: UUID.self),
+                            on: sql
+                        )
+                    } catch let problem as APIProblem where problem.status == .conflict {
+                        return try await saveStoreConflict(
+                            problem,
+                            user: user,
+                            operation: operation,
+                            group: group,
+                            on: sql
+                        )
                     }
+                    try await plan.insertStores(group: group, on: sql)
+                    guard let store = plan.destinations.first else { throw APIProblem.unavailable }
                     updated = try await sql.raw("""
                         UPDATE items SET name = \(bind: replacement.name), quantity = \(bind: replacement.quantity),
                             store_id = \(bind: store), version = version + 1

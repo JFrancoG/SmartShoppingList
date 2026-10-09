@@ -3,8 +3,8 @@
   "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
   "info": {
     "title": "SmartShoppingList · contrato MVP",
-    "version": "0.3.0",
-    "description": "Contrato de desarrollo del MVP, administración transferible (#33) y pertenencias múltiples (#35). No acredita endpoints desplegados ni pagos disponibles. Las reglas transaccionales, identidad y ejemplos están en docs/contracts/mvp-api.md, group-administration.md y group-memberships.md. Origen .example deliberadamente ficticio."
+    "version": "0.4.0",
+    "description": "Contrato de desarrollo del MVP, administración (#33), pertenencias (#35) y cuotas/archivo de tiendas (#37). No acredita despliegue ni pagos disponibles. Reglas en docs/contracts/mvp-api.md, group-administration.md, group-memberships.md y store-quotas.md. Origen .example deliberadamente ficticio."
   },
   "servers": [
     {
@@ -306,8 +306,8 @@
     "/v1/groups/{groupId}/stores": {
       "get": {
         "operationId": "listStores",
-        "summary": "Consultar tiendas reales del grupo.",
-        "description": "Consultar tiendas reales del grupo.",
+        "summary": "Consultar tiendas activas o archivadas del grupo.",
+        "description": "Pertenencia vigente. state active por defecto, archived explícito; ambos accesibles a miembros. Orden stores.created_at,id. Conteos/capacidades actuales por página, sin snapshot global. Cursor ligado a grupo, recurso y state; activas y archivadas no comparten cursor.",
         "security": [
           {
             "bearerSession": []
@@ -340,7 +340,20 @@
               "minLength": 1,
               "maxLength": 512
             },
-            "description": "Cursor opaco vinculado al grupo, recurso y filtros de la consulta; no autoriza acceso."
+            "description": "Cursor opaco vinculado a grupo, recurso y filtro state; no autoriza acceso."
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "active",
+                "archived"
+              ],
+              "default": "active"
+            },
+            "description": "Filtro ligado al cursor. Por defecto excluye archivadas; no restaura ni cambia tiendas."
           }
         ],
         "responses": {
@@ -700,7 +713,7 @@
       "post": {
         "operationId": "addItems",
         "summary": "Guardar de 1 a 50 productos revisados como lote atómico.",
-        "description": "Cualquier miembro. Solo datos confirmados, sin transcripción/audio ni reinterpretación IA. operationId preservado al reintentar; dos IDs de operación distintos son altas voluntarias distintas.",
+        "description": "Cualquier miembro. Solo datos confirmados, sin transcripción/audio ni reinterpretación IA. operationId preservado al reintentar; dos IDs de operación distintos son altas voluntarias distintas. En 0.4.0, preflight de tiendas activas realmente nuevas y pendientes proyectados por destino antes de cualquier INSERT bajo lock del grupo. Exceder cupos responde 409 store_limit_reached/pending_item_limit_reached; referencia archivada da store_archived. Rechazo íntegro persistido sin tiendas huérfanas; tras liberar capacidad hace falta nueva intención. Replay conserva éxito aunque la tienda se archive después.",
         "security": [
           {
             "bearerSession": []
@@ -765,7 +778,7 @@
       "get": {
         "operationId": "listPendingItems",
         "summary": "Consultar pendientes de una tienda del grupo.",
-        "description": "Solo status pending. Orden estable createdAt/id; páginas sin promesa de snapshot o actualización en tiempo real. Marcar checks no tiene endpoint.",
+        "description": "Solo status pending. Orden estable createdAt/id; páginas sin promesa de snapshot o actualización en tiempo real. Marcar checks no tiene endpoint. Una tienda archivada accesible devuelve 200 con página vacía; no ofrece historial ni se restaura por consultar.",
         "security": [
           {
             "bearerSession": []
@@ -842,7 +855,7 @@
       "patch": {
         "operationId": "editItem",
         "summary": "Sustituir los campos editables de un producto pendiente.",
-        "description": "Todos los campos editables son obligatorios; quantity null elimina cantidad. expectedVersion debe coincidir. Puede cambiar tienda. No puede modificar estado, autor o fechas. Incrementa versión una vez.",
+        "description": "Todos los campos editables son obligatorios; quantity null elimina cantidad. expectedVersion debe coincidir. Puede cambiar tienda. No puede modificar estado, autor o fechas. Incrementa versión una vez. En 0.4.0 editar en la misma tienda no consume capacidad aunque esté excedida. Mover comprueba destino y eventual tienda nueva, sin autoarchivar origen ni restaurar destino. Cupo/archivo produce 409 definitivo persistido; sin cambios parciales.",
         "security": [
           {
             "bearerSession": []
@@ -1239,7 +1252,7 @@
       "post": {
         "operationId": "acceptAdministrationTransfer",
         "summary": "Aceptar explícitamente la administración del grupo.",
-        "description": "Solo destinatario actual. Revalidar proponente administrador, destinatario miembro y caducidad. Cambiar administrador y resolver propuesta de forma atómica; conservar creador y dejar al anterior administrador como miembro. Una intención nueva sobre propuesta terminal o caducada responde 409 transfer_not_pending. Replay exacto requiere pertenencia vigente y devuelve el resultado original.",
+        "description": "Solo destinatario actual. Revalidar proponente administrador, destinatario miembro y caducidad. Cambiar administrador y resolver propuesta de forma atómica; conservar creador y dejar al anterior administrador como miembro. Una intención nueva sobre propuesta terminal o caducada responde 409 transfer_not_pending. Replay exacto requiere pertenencia vigente y devuelve el resultado original. No rechaza por menor capacidad del sucesor: recalcula límites compartidos, conserva datos y bloquea solo crecimiento excedido. La suscripción personal no se transfiere.",
         "security": [
           {
             "bearerSession": []
@@ -1527,6 +1540,207 @@
           }
         }
       }
+    },
+    "/v1/groups/{groupId}/capacity": {
+      "get": {
+        "operationId": "getGroupCapacity",
+        "summary": "Consultar capacidad compartida y uso de tiendas activas.",
+        "description": "Cualquier miembro del grupo abierto. Límites del administrador actual; groupId identifica la ruta. La respuesta no autoriza ni reserva plaza. El máximo personal de grupos permanece en /me.",
+        "security": [
+          {
+            "bearerSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resultado confirmado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupCapacity"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        }
+      }
+    },
+    "/v1/groups/{groupId}/stores/{storeId}/archive": {
+      "post": {
+        "operationId": "archiveStore",
+        "summary": "Archivar una tienda vacía.",
+        "description": "Nueva intención solo administrador; membership vigente antes de replay. Archivar exige cero pendientes; si no, 409 store_not_empty. Ya archivada confirma 200 sin renovar fecha. Conserva ID, nombre, clave normalizada e historial. Éxito y 409 de estado/cupo quedan en recibo exacto. Replay autorizado no reevalúa rol, estado o cupo ni aplica otra transición. Refrescar después; no instalar el Store histórico.",
+        "security": [
+          {
+            "bearerSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            }
+          },
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoreStateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Resultado confirmado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Store"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "413": {
+            "$ref": "#/components/responses/Error413"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        }
+      }
+    },
+    "/v1/groups/{groupId}/stores/{storeId}/restore": {
+      "post": {
+        "operationId": "restoreStore",
+        "summary": "Restaurar explícitamente una tienda archivada.",
+        "description": "Nueva intención solo administrador; membership vigente antes de replay. Restaurar exige plaza activa; sin plaza 409 store_limit_reached. Ya activa confirma 200 sin comprobar otra plaza. Conserva ID, nombre, clave normalizada e historial. Éxito y 409 de estado/cupo quedan en recibo exacto. Replay autorizado no reevalúa rol, estado o cupo ni aplica otra transición. Refrescar después; no instalar el Store histórico.",
+        "security": [
+          {
+            "bearerSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            }
+          },
+          {
+            "name": "storeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoreStateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Resultado confirmado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Store"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "413": {
+            "$ref": "#/components/responses/Error413"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1744,14 +1958,75 @@
             "minLength": 1,
             "maxLength": 80,
             "description": "Responses preserve existing names up to the historical 80-scalar limit without truncation. New store names are limited to 40."
+          },
+          "archivedAt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Timestamp"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pendingItemCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "capabilities": {
+            "$ref": "#/components/schemas/StoreCapabilities"
           }
         },
         "required": [
           "id",
           "groupId",
-          "name"
+          "name",
+          "archivedAt",
+          "pendingItemCount",
+          "capabilities"
         ],
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "Misma identidad y nombre en estado activo o archivado. Archivada implica cero pendientes; productos comprados/cancelados permanecen. Capacidades y conteo son snapshots, nunca autoridad para una escritura.",
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "archivedAt": {
+                  "type": "string"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "pendingItemCount": {
+                  "const": 0
+                },
+                "capabilities": {
+                  "properties": {
+                    "canAddItems": {
+                      "const": false
+                    },
+                    "canArchive": {
+                      "const": false
+                    }
+                  }
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "capabilities": {
+                  "properties": {
+                    "canRestore": {
+                      "const": false
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
       },
       "StoreReference": {
         "oneOf": [
@@ -1783,7 +2058,7 @@
             "additionalProperties": false
           }
         ],
-        "description": "Elegir un ID del grupo o confirmar explícitamente un nombre nuevo. Una clave normalizada ya existente reutiliza su tienda."
+        "description": "ID del grupo o nombre nuevo confirmado. Una clave normalizada activa reutiliza la tienda; una archivada responde 409 store_archived sin restaurar ni duplicar. La restauración explícita compete al administrador."
       },
       "Item": {
         "type": "object",
@@ -2431,7 +2706,11 @@
               "transfer_not_pending",
               "transfer_required",
               "closure_confirmation_required",
-              "group_limit_reached"
+              "group_limit_reached",
+              "store_limit_reached",
+              "pending_item_limit_reached",
+              "store_archived",
+              "store_not_empty"
             ]
           },
           "message": {
@@ -2465,7 +2744,7 @@
           "requestId"
         ],
         "additionalProperties": false,
-        "description": "already_in_group se conserva para recibos históricos de creación. Nuevas admisiones sin plaza responden group_limit_reached; no consumen invitación ni eliminan pertenencias."
+        "description": "Conflictos definitivos persistidos cuando la operación tiene operationId. Cupos y estado de archivo no eliminan datos ni crean altas parciales. Liberar capacidad requiere otra intención explícita; replay conserva status/body. already_in_group solo para recibos históricos."
       },
       "PendingItem": {
         "allOf": [
@@ -2711,10 +2990,10 @@
             "$ref": "#/components/schemas/AccountGroupLimit"
           },
           "storesPerGroup": {
-            "$ref": "#/components/schemas/CapacityLimit"
+            "$ref": "#/components/schemas/AppliedCapacityLimit"
           },
           "pendingItemsPerStore": {
-            "$ref": "#/components/schemas/CapacityLimit"
+            "$ref": "#/components/schemas/AppliedCapacityLimit"
           }
         },
         "required": [
@@ -2723,7 +3002,7 @@
           "pendingItemsPerStore"
         ],
         "additionalProperties": false,
-        "description": "groupsPerAccount refleja la capacidad de admisión personal del solicitante, producción maximum 1/enforced true. Tiendas y pendientes conservan maximum null/enforced false y corresponden al administrador como capacityOwnerUserId. Comprados y cancelados no consumirán cupo de pendientes."
+        "description": "groupsPerAccount expresa admisión personal del solicitante (free 1/premium 5). Tiendas activas y pendientes dependen del administrador (free 3/20, premium 10/100). Todos se aplican; comprado/cancelado no consume pendientes. Producción free hasta pagos verificados."
       },
       "GroupCapabilities": {
         "type": "object",
@@ -2946,7 +3225,7 @@
           "enforced"
         ],
         "additionalProperties": false,
-        "description": "Cupo de admisión por cuenta: producción máximo 1; solo pruebas pueden inyectar otro entero positivo. No concede premium ni restringe uso ordinario de pertenencias existentes."
+        "description": "Cupo de admisión personal: free1, premium5. Esta unidad solo resuelve free en producción; premium se inyecta en pruebas. No restringe uso ordinario de pertenencias existentes ni hereda el plan del administrador."
       },
       "AccountCapabilities": {
         "type": "object",
@@ -3011,6 +3290,105 @@
         "required": [
           "data",
           "nextCursor"
+        ],
+        "additionalProperties": false
+      },
+      "AppliedCapacityLimit": {
+        "type": "object",
+        "properties": {
+          "maximum": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "enforced": {
+            "const": true
+          }
+        },
+        "required": [
+          "maximum",
+          "enforced"
+        ],
+        "additionalProperties": false,
+        "description": "Cuota aplicada por el servidor. Límites compartidos del administrador: free 3 tiendas/20 pendientes, premium 10/100; premium solo inyectado en pruebas hasta integrar compras verificadas."
+      },
+      "SharedResourceLimits": {
+        "type": "object",
+        "properties": {
+          "storesPerGroup": {
+            "$ref": "#/components/schemas/AppliedCapacityLimit"
+          },
+          "pendingItemsPerStore": {
+            "$ref": "#/components/schemas/AppliedCapacityLimit"
+          }
+        },
+        "required": [
+          "storesPerGroup",
+          "pendingItemsPerStore"
+        ],
+        "additionalProperties": false
+      },
+      "GroupCapacity": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "$ref": "#/components/schemas/UUID"
+          },
+          "capacityOwnerUserId": {
+            "$ref": "#/components/schemas/UUID"
+          },
+          "activeStoreCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "limits": {
+            "$ref": "#/components/schemas/SharedResourceLimits"
+          },
+          "canCreateStore": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "groupId",
+          "capacityOwnerUserId",
+          "activeStoreCount",
+          "limits",
+          "canCreateStore"
+        ],
+        "additionalProperties": false,
+        "description": "Snapshot informativo del grupo abierto. capacityOwnerUserId es su administrador actual. canCreateStore equivale a activeStoreCount menor que el máximo de tiendas; no crea una ruta independiente de alta. Cuenta real aunque exceda el límite; cada escritura revalida."
+      },
+      "StoreCapabilities": {
+        "type": "object",
+        "properties": {
+          "canAddItems": {
+            "type": "boolean"
+          },
+          "canArchive": {
+            "type": "boolean"
+          },
+          "canRestore": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "canAddItems",
+          "canArchive",
+          "canRestore"
+        ],
+        "additionalProperties": false,
+        "description": "canAddItems: activa y pendientes menores que el máximo, sin depender del cupo de tiendas. canArchive: administrador, activa y cero pendientes. canRestore: administrador, archivada y plaza activa. No bloquea correcciones sin crecimiento, compras ni cancelaciones."
+      },
+      "StoreStateRequest": {
+        "type": "object",
+        "properties": {
+          "operationId": {
+            "$ref": "#/components/schemas/UUID"
+          }
+        },
+        "required": [
+          "operationId"
         ],
         "additionalProperties": false
       }

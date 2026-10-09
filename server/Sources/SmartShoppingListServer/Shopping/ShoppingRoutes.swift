@@ -17,6 +17,28 @@ struct ShoppingRoutes: RouteCollection {
         api.get(
             "groups",
             ":groupId",
+            "capacity",
+            use: capacity
+        )
+        api.post(
+            "groups",
+            ":groupId",
+            "stores",
+            ":storeId",
+            "archive",
+            use: archiveStore
+        )
+        api.post(
+            "groups",
+            ":groupId",
+            "stores",
+            ":storeId",
+            "restore",
+            use: restoreStore
+        )
+        api.get(
+            "groups",
+            ":groupId",
             "members",
             use: listMembers
         )
@@ -204,6 +226,31 @@ struct ShoppingRoutes: RouteCollection {
         return try await service().groups(user: user, limit: limit, cursor: cursor).response()
     }
 
+    private func capacity(_ request: Request) async throws -> Response {
+        let user = try await authentication.authenticate(request)
+        return try await service().capacity(user: user, group: parameter("groupId", request: request)).response()
+    }
+
+    private func archiveStore(_ request: Request) async throws -> Response {
+        try await changeStoreState(request, state: .archived)
+    }
+
+    private func restoreStore(_ request: Request) async throws -> Response {
+        try await changeStoreState(request, state: .active)
+    }
+
+    private func changeStoreState(_ request: Request, state: ShoppingService.StoreState) async throws -> Response {
+        let user = try await authentication.authenticate(request)
+        let body = try APIObject.body(request, allowed: ["operationId"], required: ["operationId"])
+        return try await service().changeStoreState(
+            user: user,
+            group: parameter("groupId", request: request),
+            store: parameter("storeId", request: request),
+            operation: body.uuid("operationId"),
+            state: state
+        ).response()
+    }
+
     private func listStores(_ request: Request) async throws -> Response {
         try await page(request, resource: .stores)
     }
@@ -282,20 +329,32 @@ struct ShoppingRoutes: RouteCollection {
 
     private func page(_ request: Request, resource: ShoppingService.Resource) async throws -> Response {
         let user = try await authentication.authenticate(request)
-        let (limit, cursor) = try pagination(request)
+        let (limit, cursor) = try pagination(request, allowStoreState: resource == .stores)
+        let query = URLComponents(string: request.url.string)?.queryItems ?? []
+        let state: ShoppingService.StoreState
+        if let parameter = query.first(where: { $0.name == "state" }) {
+            guard let value = parameter.value, let parsed = ShoppingService.StoreState(rawValue: value) else {
+                throw APIProblem.invalidRequest
+            }
+            state = parsed
+        } else {
+            state = .active
+        }
         return try await service().page(
             user: user,
             group: parameter("groupId", request: request),
             resource: resource,
             store: resource == .items ? parameter("storeId", request: request) : nil,
             limit: limit,
-            cursor: cursor
+            cursor: cursor,
+            state: state
         ).response()
     }
 
-    private func pagination(_ request: Request) throws -> (limit: Int, cursor: String?) {
+    private func pagination(_ request: Request, allowStoreState: Bool = false) throws -> (limit: Int, cursor: String?) {
         let query = URLComponents(string: request.url.string)?.queryItems ?? []
-        guard query.allSatisfy({ ["limit", "cursor"].contains($0.name) }),
+        let allowed = allowStoreState ? ["limit", "cursor", "state"] : ["limit", "cursor"]
+        guard query.allSatisfy({ allowed.contains($0.name) }),
             Set(query.map(\.name)).count == query.count
         else {
             throw APIProblem.invalidRequest

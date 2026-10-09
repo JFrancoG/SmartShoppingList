@@ -23,6 +23,11 @@ struct SharedSettingsView: View {
                         } label: {
                             Label("Members and administration", systemImage: "person.2")
                         }
+                        NavigationLink {
+                            SharedStoreManagementView(viewModel: viewModel)
+                        } label: {
+                            Label("Stores and capacity", systemImage: "building.2")
+                        }
                         if viewModel.canManageInvitations {
                             Button("Invitations", systemImage: "person.badge.plus") {
                                 Task {

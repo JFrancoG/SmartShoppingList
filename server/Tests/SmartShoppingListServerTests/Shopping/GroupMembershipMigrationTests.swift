@@ -35,10 +35,12 @@ extension SmartShoppingListServerTests {
         let receipt = try #require(try await sql.raw("""
             SELECT body FROM mutation_receipts WHERE user_id = \(bind: owner.id) AND operation_type = 'createGroup'
             """).first()).decode(column: "body", as: String.self)
+        try await AddStoreArchiving().revert(on: database)
         try await AddGroupMemberships().revert(on: database)
         let before = try await MembershipMigrationFixture.snapshot()
         try await AddGroupMemberships().prepare(on: database)
         #expect(try await MembershipMigrationFixture.snapshot() == before)
+        try await AddStoreArchiving().prepare(on: database)
         let memberships = try await sql.raw("SELECT user_id FROM group_memberships").all()
         #expect(Set(try memberships.map { try $0.decode(column: "user_id", as: UUID.self) }) == [owner.id, member.id])
         let own = try await ShoppingFixture.request(.GET, "/v1/groups", owner)

@@ -108,8 +108,50 @@ actor SharedHTTPAPI: SharedShoppingAPI {
 
     func stores(groupID: UUID, token: String) async throws -> [SharedStore] {
         let stores = try await pages(StorePage.self, path: "v1/groups/\(id(groupID))/stores", token: token)
-        guard stores.allSatisfy({ $0.groupId == groupID }) else { throw SharedAPIError.invalidResponse }
+        guard stores.allSatisfy({ $0.groupId == groupID && $0.archivedAt == nil }) else {
+            throw SharedAPIError.invalidResponse
+        }
         return stores
+    }
+
+    func archivedStores(groupID: UUID, token: String) async throws -> [SharedStore] {
+        let stores = try await pages(
+            StorePage.self,
+            path: "v1/groups/\(id(groupID))/stores",
+            token: token,
+            filters: [URLQueryItem(name: "state", value: "archived")]
+        )
+        guard stores.allSatisfy({ $0.groupId == groupID && $0.state != nil && $0.archivedAt != nil }) else {
+            throw SharedAPIError.invalidResponse
+        }
+        return stores
+    }
+
+    func groupCapacity(groupID: UUID, token: String) async throws -> SharedGroupCapacity {
+        let capacity: SharedGroupCapacity = try await get(path: "v1/groups/\(id(groupID))/capacity", token: token)
+        guard capacity.groupId == groupID else { throw SharedAPIError.invalidResponse }
+        return capacity
+    }
+
+    func changeStoreState(
+        _ request: ChangeStoreStateRequest,
+        groupID: UUID,
+        storeID: UUID,
+        action: SharedStoreAction,
+        token: String
+    ) async throws -> SharedStore {
+        let store: SharedStore = try await send(
+            path: "v1/groups/\(id(groupID))/stores/\(id(storeID))/\(action.rawValue)",
+            method: "POST",
+            body: request,
+            token: token,
+            status: 200
+        )
+        guard store.id == storeID, store.groupId == groupID, store.state != nil,
+              (store.archivedAt != nil) == (action == .archive) else {
+            throw SharedAPIError.invalidResponse
+        }
+        return store
     }
 
     func groupMembers(groupID: UUID, token: String) async throws -> [SharedGroupMember] {
@@ -355,7 +397,8 @@ actor SharedHTTPAPI: SharedShoppingAPI {
     private func pages<Page: SharedAPIPage>(
         _ type: Page.Type,
         path: String,
-        token: String
+        token: String,
+        filters: [URLQueryItem] = []
     ) async throws -> [Page.Element] {
         var result: [Page.Element] = []
         var indices: [UUID: Int] = [:]
@@ -363,7 +406,7 @@ actor SharedHTTPAPI: SharedShoppingAPI {
         var cursor: String?
         repeat {
             try Task.checkCancellation()
-            var query = [URLQueryItem(name: "limit", value: "100")]
+            var query = filters + [URLQueryItem(name: "limit", value: "100")]
             if let cursor {
                 guard !cursor.isEmpty, cursor.utf8.count <= 512, seenCursors.insert(cursor).inserted,
                       seenCursors.count < 100 else {

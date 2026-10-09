@@ -1,14 +1,14 @@
 # Administración transferible, salida y capacidades
 
-Introducido en contrato **0.2.0**, 9 de octubre de 2026, para [#33](https://github.com/JFrancoG/SmartShoppingList/issues/33). Complementa [mvp-api.md](mvp-api.md), [OpenAPI](openapi.json), [ejemplos](examples.json) y [aceptación](acceptance.md). La evolución [0.3.0 de pertenencias](group-memberships.md) sustituye el modelo singular, conservando estas reglas de administración. Define el comportamiento que deben implementar servidor e iOS; este documento no acredita migraciones desplegadas, pruebas ejecutadas ni una oferta de pago disponible.
+Introducido en contrato **0.2.0**, 9 de octubre de 2026, para [#33](https://github.com/JFrancoG/SmartShoppingList/issues/33). Complementa [mvp-api.md](mvp-api.md), [OpenAPI](openapi.json), [ejemplos](examples.json) y [aceptación](acceptance.md). La evolución [0.3.0 de pertenencias](group-memberships.md) sustituye el modelo singular, conservando estas reglas de administración; [0.4.0](store-quotas.md) aplica cupos de tiendas y pendientes según el administrador. Define el comportamiento que deben implementar servidor e iOS; este documento no acredita migraciones desplegadas, pruebas ejecutadas ni una oferta de pago disponible.
 
 ## Alcance y autoridad
 
 La unidad #33 mantuvo `users.group_id` como pertenencia singular; [#35](group-memberships.md) la sustituye por `group_memberships` y conserva aquel campo solo como proyección antigua. Separa `creatorUserId`, autor histórico inmutable, de `administratorUserId`, administrador vigente. Cada grupo activo tiene exactamente un administrador que pertenece a él. Un usuario que sale puede crear otro grupo; haber creado uno anteriormente no ocupa su pertenencia actual.
 
-La capacidad comercial y el rol son conceptos independientes. Recibir la administración del grupo actual, cederla y salir no requiere premium. El administrador será el titular de la capacidad compartida de tiendas y pendientes; la compra personal no se transfiere al sucesor. Los productos comprados y cancelados quedan fuera del cómputo de pendientes por tienda. El diseño comercial vive en [acceso y límites](../architecture/group-access-and-limits.md).
+La capacidad comercial y el rol son conceptos independientes. Recibir la administración del grupo actual, cederla y salir no requiere premium. El administrador es el titular de la capacidad compartida de tiendas y pendientes; la compra personal no se transfiere al sucesor. Los productos comprados y cancelados quedan fuera del cómputo de pendientes por tienda. El diseño comercial vive en [acceso y límites](../architecture/group-access-and-limits.md).
 
-La unidad #33 no activó multigrupo; #35 añade el modelo y selector con máximo de producción uno y capacidad ampliada solo en pruebas. No se activa StoreKit, precios, cobro, cupos de tiendas/productos ni reducción de acceso por caducidad. La política de capacidades del servidor es la autoridad; el cliente no deduce permisos del creador, del aspecto de una pantalla ni de un booleano local de premium.
+La unidad #33 no activó multigrupo; #35 añade el modelo y selector con máximo de producción uno y capacidad ampliada solo en pruebas. #37 aplica cupos de tiendas/productos y archivo explícito según [su contrato](store-quotas.md). No se activa StoreKit, precios, cobro ni reducción de acceso por caducidad. La política de capacidades del servidor es la autoridad; el cliente no deduce permisos del creador, del aspecto de una pantalla ni de un booleano local de premium.
 
 ## API
 
@@ -47,7 +47,7 @@ resolvedAt: null | Timestamp
 
 Solo el administrador vigente propone a otro miembro actual del mismo grupo; no puede proponerse a sí mismo. Hay como máximo una propuesta pendiente por grupo y caduca a los siete días según el reloj del servidor. Para cambiar de destinatario primero se retira la propuesta. Una propuesta no altera permisos ni administración.
 
-Solo el destinatario acepta o rechaza; solo el administrador proponente vigente retira. Al aceptar se comprueba de nuevo que ambos siguen perteneciendo al grupo y que el proponente sigue siendo su administrador. La aceptación cambia administrador y estado de propuesta en una única transacción; el creador permanece intacto. El anterior administrador sigue como miembro hasta solicitar su salida por separado.
+Solo el destinatario acepta o rechaza; solo el administrador proponente vigente retira. Al aceptar se comprueba de nuevo que ambos siguen perteneciendo al grupo y que el proponente sigue siendo su administrador. La aceptación cambia administrador y estado de propuesta en una única transacción; el creador permanece intacto. El anterior administrador sigue como miembro hasta solicitar su salida por separado. Desde 0.4.0, antes de proponer y aceptar se explica que la capacidad compartida dependerá del nuevo administrador. Una reducción conserva datos y permite el traspaso, bloqueando solo crecimiento excedido; no transfiere la suscripción. Tras confirmar se refrescan administración, capacidad y tiendas.
 
 Rechazar o retirar termina la propuesta sin cambiar la administración. La caducidad libera la posibilidad de proponer de nuevo y hace que aceptar, rechazar o retirar con una intención nueva responda `transfer_not_pending`. Salir como destinatario invalida la propuesta pendiente en la misma transacción; no se transfiere el cargo a alguien que ya salió.
 
@@ -61,7 +61,7 @@ La app advierte del cierre y de la pérdida de acceso antes de enviar. `groupClo
 
 ## Capacidades de esta entrega
 
-`capabilities` contiene obligatoriamente los siguientes campos:
+`capabilities` contiene obligatoriamente los siguientes campos; este ejemplo gratuito refleja los límites aplicados desde 0.4.0 (en 0.2.0/0.3.0 los compartidos estaban inactivos):
 
 ```json
 {
@@ -75,15 +75,15 @@ La app advierte del cierre y de la pérdida de acceso antes de enviar. `groupClo
   "capacityOwnerUserId": "00000000-0000-4000-8000-000000000001",
   "limits": {
     "groupsPerAccount": { "maximum": 1, "enforced": true },
-    "storesPerGroup": { "maximum": null, "enforced": false },
-    "pendingItemsPerStore": { "maximum": null, "enforced": false }
+    "storesPerGroup": { "maximum": 3, "enforced": true },
+    "pendingItemsPerStore": { "maximum": 20, "enforced": true }
   }
 }
 ```
 
 El ejemplo representa al administrador de un grupo con otros miembros y sin propuesta. Los booleanos dependen del solicitante y estado actuales: gestionar invitaciones requiere administrar; proponer requiere otro miembro y ausencia de propuesta utilizable; aceptar/rechazar requiere ser destinatario; retirar requiere ser administrador proponente. `canLeave` es verdadero para un miembro ordinario o para el último miembro, sujeto en este último caso a `requiresClosureConfirmation: true`. El administrador con otros miembros recibe `canLeave: false`.
 
-`capacityOwnerUserId` coincide con el administrador vigente y representa la titularidad de los futuros límites compartidos de tiendas y pendientes. `limits.groupsPerAccount` expresa el límite personal del solicitante, también disponible en `accountCapabilities`; producción conserva máximo uno. `maximum: null` junto a `enforced: false` expresa una cuota comercial aún no activada: no significa una promesa de uso ilimitado ni inventa un límite gratuito o premium. Los límites de transporte, nombre, lote y paginación existentes siguen aplicándose. La política se recalcula tras aceptar un traspaso y para cada acción del servidor; una respuesta anterior de capacidades no concede autorización permanente.
+`capacityOwnerUserId` coincide con el administrador vigente y representa la titularidad de los límites compartidos de tiendas y pendientes. `limits.groupsPerAccount` expresa el límite personal del solicitante, también disponible en `accountCapabilities`; producción conserva máximo uno. En los contratos 0.2.0/0.3.0, `maximum: null` con `enforced: false` indicaba una cuota no activada, sin prometer uso ilimitado. Desde 0.4.0 tiendas/pendientes son 3/20 para gratuito y 10/100 para premium de prueba, aplicados; producción permanece gratuita hasta verificar compras. El cupo personal premium es cinco grupos. Los límites de transporte, nombre, lote y paginación existentes siguen aplicándose. La política se recalcula tras aceptar un traspaso y para cada acción del servidor; una respuesta anterior de capacidades no concede autorización permanente.
 
 ## Errores de negocio
 

@@ -49,6 +49,7 @@ struct SharedGroupTransferSection: View {
             Text("Pending transfer")
         } footer: {
             Text("Accepting makes you responsible for invitations and group administration. The previous administrator stays as a member.")
+            Text("Group capacity follows the new administrator’s plan. Existing data is kept; if a limit is exceeded, only additions that increase usage are blocked.")
         }
         .listRowBackground(Color.surface)
     }

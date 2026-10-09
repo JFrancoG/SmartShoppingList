@@ -1,11 +1,37 @@
 import Foundation
 import FluentSQL
 
-/// Server-owned account capacity. Production keeps its free allowance until an entitlement provider exists.
-struct AccountCapacityPolicy: Sendable {
-    var maximumGroups: @Sendable (UUID) -> Int64 = { _ in 1 }
+/// Trusted server input; no request or client-provided flag can select an allowance.
+struct AccountResourceLimits: Sendable, Equatable {
+    let groups: Int64
+    let activeStores: Int64
+    let pendingItems: Int64
 
-    func maximum(for user: UUID) -> Int64 { max(1, maximumGroups(user)) }
+    static let free = Self(groups: 1, activeStores: 3, pendingItems: 20)
+    static let premium = Self(groups: 5, activeStores: 10, pendingItems: 100)
+
+    var groupResourceJSON: APIJSON {
+        .object([
+            "storesPerGroup": .object(["maximum": .integer(activeStores), "enforced": .bool(true)]),
+            "pendingItemsPerStore": .object(["maximum": .integer(pendingItems), "enforced": .bool(true)])
+        ])
+    }
+}
+
+/// Production uses the free allowance until a trusted entitlement provider is installed.
+struct AccountCapacityPolicy: Sendable {
+    var resolve: @Sendable (UUID) -> AccountResourceLimits = { _ in .free }
+
+    func limits(for user: UUID) -> AccountResourceLimits {
+        let supplied = resolve(user)
+        return AccountResourceLimits(
+            groups: max(1, supplied.groups),
+            activeStores: max(1, supplied.activeStores),
+            pendingItems: max(1, supplied.pendingItems)
+        )
+    }
+
+    func maximum(for user: UUID) -> Int64 { limits(for: user).groups }
 
     func capabilities(user: UUID, membershipCount: Int64) -> APIJSON {
         let maximum = maximum(for: user)

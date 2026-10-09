@@ -64,7 +64,11 @@ extension SmartShoppingListServerTests {
             return
         }
         try #require(storeValues.count == 1)
-        let store = try APIObject(storeValues[0], allowed: ["id", "groupId", "name"], required: ["id"])
+        let store = try APIObject(
+            storeValues[0],
+            allowed: ["id", "groupId", "name", "archivedAt", "pendingItemCount", "capabilities"],
+            required: ["id"]
+        )
         let storeID = try store.string("id")
         let pending = try await ShoppingFixture.request(.GET, "/v1/groups/\(group)/stores/\(storeID)/items", member)
         let persisted = try ShoppingFixture.object(pending)

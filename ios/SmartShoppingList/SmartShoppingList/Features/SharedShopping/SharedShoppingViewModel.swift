@@ -42,6 +42,9 @@ final class SharedShoppingViewModel {
     private var purchaseSelectionOwner: UUID?
     private var loadedStoreID: UUID?
     private(set) var stores: [SharedStore] = []
+    private(set) var archivedStores: [SharedStore] = []
+    private(set) var groupCapacity: SharedGroupCapacity?
+    private(set) var storeManagementState = GroupManagementLoadState.notLoaded
     private(set) var items: [SharedItem] = []
     private(set) var invitations: [SharedInvitation] = []
     private(set) var shareURL: URL?
@@ -175,6 +178,7 @@ final class SharedShoppingViewModel {
         canMutate && reviewOwner != nil && reviewOwner?.userID == session?.user.id
             && reviewOwner?.groupID == group?.id && !reviewedItems.isEmpty
             && storeChoices.allSatisfy { !$0.selection.isEmpty }
+            && submissionCapacityMessage == nil
     }
     var canRetryOperation: Bool {
         !isBusy && sessionIsVerified && pendingOperation?.userID == session?.user.id && !storageFailed
@@ -397,7 +401,9 @@ final class SharedShoppingViewModel {
         let matches = fetchedStores.filter {
             $0.groupId == group.id && Self.storeNameKey($0.name) == Self.storeNameKey(savedItem.store)
         }
-        guard matches.count == 1, let store = matches.first else { return keepShoppingIntentInDraft() }
+        guard matches.count == 1, let store = matches.first, store.capabilities?.canAddItems == true else {
+            return keepShoppingIntentInDraft()
+        }
         let preparedItem = try PreparedDraftItem(validating: savedItem)
         let entry = SharedNewItem(name: preparedItem.name, quantity: preparedItem.quantity, store: .existing(store.id))
         let operation = PendingSharedOperation.addItems(
@@ -734,6 +740,7 @@ final class SharedShoppingViewModel {
                     }
                     return DraftStoreChoice(id: item.store, selection: selection, needsClarification: matches.count > 1)
                 }
+                notice = submissionCapacityMessage
             } catch {
                 await handle(error)
             }
@@ -837,6 +844,8 @@ final class SharedShoppingViewModel {
             switch operation {
             case .proposeTransfer, .resolveTransfer, .leaveGroup:
                 return await performPendingGroupOperation(operation)
+            case .changeStoreState:
+                return await performPendingStoreOperation(operation)
             case .changeItem(_, let original, let request):
                 _ = try await api.changeItem(request, item: original, token: session.accessToken)
             case .purchase(_, let groupID, let request, _):
@@ -918,6 +927,11 @@ final class SharedShoppingViewModel {
                     do {
                         try await credentials.saveOperation(nil)
                         pendingOperation = nil
+                        if case .addItems = operation,
+                           ["store_limit_reached", "pending_item_limit_reached", "store_archived"].contains(code) {
+                            await refreshSessionAndLists()
+                            draft.revealRecoveryControls()
+                        }
                         if case .purchase = operation {
                             let previousSelection = purchaseSelection
                             let refreshed = await refreshSessionAndLists()
@@ -928,7 +942,9 @@ final class SharedShoppingViewModel {
                         if case .changeItem(_, let original, let request) = operation {
                             if request.replacement != nil {
                                 restoreItemEditor(original: original, request: request)
-                                editNeedsReview = true
+                                editNeedsReview = ![
+                                    "store_limit_reached", "pending_item_limit_reached", "store_archived"
+                                ].contains(code)
                             }
                             let refreshed = await refreshSessionAndLists()
                             if code == "item_conflict", request.replacement != nil, refreshed,
@@ -949,6 +965,204 @@ final class SharedShoppingViewModel {
             await handle(error)
         } catch {
             // Cancellation and local storage failures cannot establish whether the server committed.
+            notice = SharedErrorMessage.message(for: error)
+        }
+        return false
+    }
+
+    var submissionCapacityMessage: LocalizedStringResource? {
+        for choice in storeChoices where !choice.selection.isEmpty {
+            let existing: SharedStore?
+            if let id = UUID(uuidString: choice.selection) {
+                existing = stores.first { $0.id == id }
+            } else {
+                let matches = storeCandidates(for: choice.id)
+                existing = matches.count == 1 ? matches.first : nil
+            }
+            if let existing {
+                guard let capabilities = existing.capabilities else {
+                    return "Refresh to verify store availability before adding products."
+                }
+                if !capabilities.canAddItems {
+                    return "This store has reached its pending product limit. Buying or cancelling products frees capacity."
+                }
+            } else if choice.selection == "new" {
+                guard let groupCapacity else { return "Refresh to verify store availability before adding products." }
+                if !groupCapacity.canCreateStore {
+                    return "This group has reached its active store limit. Archive an empty store before adding another."
+                }
+            }
+        }
+        return nil
+    }
+
+    func canChangeStoreState(_ store: SharedStore, action: SharedStoreAction) -> Bool {
+        guard canMutate, storeManagementState == .loaded, store.groupId == group?.id else { return false }
+        switch action {
+        case .archive:
+            return stores.contains(store) && store.capabilities?.canArchive == true
+        case .restore:
+            return archivedStores.contains(store) && store.capabilities?.canRestore == true
+        }
+    }
+
+    func storeActionMessage(_ store: SharedStore, action: SharedStoreAction) -> LocalizedStringResource? {
+        guard storeManagementState == .loaded, store.state != nil, groupCapacity != nil else {
+            return "Refresh to verify store availability before making changes."
+        }
+        if !isAdministrator {
+            return "Only the current group administrator can archive or restore stores."
+        }
+        if action == .archive, store.pendingItemCount != 0 {
+            return "Buy or cancel the pending products before archiving this store."
+        }
+        if action == .restore, groupCapacity?.canCreateStore != true {
+            return "Archive an empty active store to make room before restoring this one."
+        }
+        let allowed = action == .archive ? store.capabilities?.canArchive : store.capabilities?.canRestore
+        if allowed != true {
+            return "Refresh to verify store availability before making changes."
+        }
+        return nil
+    }
+
+    var storeManagementMessage: LocalizedStringResource? {
+        switch storeManagementState {
+        case .notLoaded: "Refresh to load stores and capacity."
+        case .loading, .loaded: nil
+        case .failed: "Store availability could not be verified. Refresh before making changes."
+        }
+    }
+
+    func loadStoreManagement() async {
+        guard hasLoaded, !isBusy, session != nil else { return }
+        let context = groupContext
+        isPerformingAction = true
+        let refreshed = await refreshSessionAndLists()
+        isPerformingAction = false
+        guard refreshed else {
+            if groupContext == context, sessionIsVerified {
+                storeManagementState = .failed
+            }
+            return
+        }
+        await refreshStoreManagement()
+    }
+
+    @discardableResult
+    private func refreshStoreManagement() async -> Bool {
+        guard let api, let session, let group, let context = groupContext else { return true }
+        let loadID = UUID()
+        groupLoadID = loadID
+        storeManagementState = .loading
+        defer {
+            if groupLoadID == loadID {
+                groupLoadID = nil
+            }
+        }
+        do {
+            let capacity = try await api.groupCapacity(groupID: group.id, token: session.accessToken)
+            guard groupContext == context else { return false }
+            let active = try await api.stores(groupID: group.id, token: session.accessToken)
+            guard groupContext == context else { return false }
+            let archived = try await api.archivedStores(groupID: group.id, token: session.accessToken)
+            guard groupContext == context else { return false }
+            guard capacity.activeStoreCount == active.count,
+                  active.allSatisfy({ $0.groupId == group.id && $0.state != nil && $0.archivedAt == nil }),
+                  archived.allSatisfy({ $0.groupId == group.id && $0.state != nil && $0.archivedAt != nil }),
+                  Set(active.map(\.id)).isDisjoint(with: archived.map(\.id)),
+                  group.administratorUserId == nil || capacity.capacityOwnerUserId == group.administratorUserId else {
+                groupCapacity = nil
+                storeManagementState = .failed
+                notice = "Store availability changed while loading or could not be verified. Refresh to check it again."
+                return false
+            }
+            groupCapacity = capacity
+            stores = active
+            archivedStores = archived
+            if let selectedStoreID, !active.contains(where: { $0.id == selectedStoreID }) {
+                self.selectedStoreID = nil
+            }
+            storeManagementState = .loaded
+            return true
+        } catch {
+            guard groupContext == context else { return false }
+            groupCapacity = nil
+            storeManagementState = .failed
+            await handle(error)
+            return false
+        }
+    }
+
+    func changeStoreState(_ store: SharedStore, action: SharedStoreAction) async {
+        guard canChangeStoreState(store, action: action), let session, let group else { return }
+        await performAction {
+            do {
+                let operation = PendingSharedOperation.changeStoreState(
+                    userID: session.user.id,
+                    groupID: group.id,
+                    storeID: store.id,
+                    action: action,
+                    request: ChangeStoreStateRequest(operationId: UUID())
+                )
+                try await credentials.saveOperation(operation)
+                pendingOperation = operation
+                await performPendingOperation()
+            } catch {
+                notice = SharedErrorMessage.message(for: error)
+            }
+        }
+    }
+
+    @discardableResult
+    private func performPendingStoreOperation(_ operation: PendingSharedOperation) async -> Bool {
+        guard let api, let session,
+              case .changeStoreState(let userID, let groupID, let storeID, let action, let request) = operation,
+              userID == session.user.id else {
+            return false
+        }
+        var confirmed = false
+        do {
+            _ = try await api.changeStoreState(
+                request,
+                groupID: groupID,
+                storeID: storeID,
+                action: action,
+                token: session.accessToken
+            )
+            confirmed = true
+            // A receipt is historical. Keep recovery until current membership and store state can be read again.
+            guard await refreshSessionAndLists(), await refreshStoreManagement() else {
+                if sessionIsVerified {
+                    notice = "The store action is confirmed, but current availability could not be refreshed. Retry the saved request."
+                }
+                return false
+            }
+            try await credentials.saveOperation(nil)
+            pendingOperation = nil
+            retryNotBefore = nil
+            notice = "The store action is confirmed. Current stores and capacity have been refreshed."
+            return true
+        } catch let error as SharedAPIError {
+            storeManagementState = .failed
+            if !confirmed, case .server(let status, _, _, let retryAfter) = error {
+                if let retryAfter {
+                    retryNotBefore = Date().addingTimeInterval(Double(max(0, retryAfter)))
+                }
+                if [400, 403, 404, 409, 410, 413].contains(status), !error.isUncertain {
+                    do {
+                        try await credentials.saveOperation(nil)
+                        pendingOperation = nil
+                        await refreshStoreManagement()
+                    } catch {
+                        notice = SharedErrorMessage.message(for: error)
+                        return false
+                    }
+                }
+            }
+            await handle(error)
+        } catch {
+            storeManagementState = .failed
             notice = SharedErrorMessage.message(for: error)
         }
         return false
@@ -1142,6 +1356,8 @@ final class SharedShoppingViewModel {
         let requestedStoreID = selectedStoreID
         groupsAreVerified = false
         administration = nil
+        groupCapacity = nil
+        storeManagementState = .notLoaded
         loadedStoreID = nil
         storeItemsState = requestedStoreID == nil ? .notLoaded : .loading
         do {
@@ -1214,6 +1430,13 @@ final class SharedShoppingViewModel {
                     isInvitationsPresented = false
                 }
             }
+            let capacity = try await api.groupCapacity(groupID: group.id, token: session.accessToken)
+            guard groupContext == context else { return false }
+            guard group.administratorUserId == nil
+                || capacity.capacityOwnerUserId == self.group?.administratorUserId else {
+                throw SharedAPIError.invalidResponse
+            }
+            groupCapacity = capacity
             let fetchedStores = try await api.stores(groupID: group.id, token: session.accessToken)
             guard groupContext == context else { return false }
             stores = fetchedStores
@@ -1345,6 +1568,9 @@ final class SharedShoppingViewModel {
         purchaseSelectionOwner = nil
         loadedStoreID = nil
         stores = []
+        archivedStores = []
+        groupCapacity = nil
+        storeManagementState = .notLoaded
         items = []
         invitations = []
         invitationPreview = nil
@@ -1535,7 +1761,8 @@ extension SharedShoppingViewModel {
         let second = SharedStore(
             id: UUID(uuid: (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 34)),
             groupId: store.groupId,
-            name: store.name.uppercased()
+            name: store.name.uppercased(),
+            state: store.state
         )
         stores = [store, second]
         storeChoices = [DraftStoreChoice(id: store.name, needsClarification: true)]
@@ -1568,6 +1795,9 @@ extension SharedShoppingViewModel {
         groupManagementState = preview.groupManagementState
         selectedSuccessorID = preview.selectedSuccessorID
         stores = preview.stores
+        archivedStores = preview.archivedStores
+        groupCapacity = preview.groupCapacity
+        storeManagementState = preview.storeManagementState
         selectedStoreID = preview.selectedStoreID
         items = preview.items
         invitations = preview.invitations
@@ -1777,6 +2007,21 @@ extension SharedShoppingViewModel {
         }
         if let message = editLengthMessage(for: .name) ?? editLengthMessage(for: .quantity) ?? editLengthMessage(for: .store) {
             return message
+        }
+        let destination = editStoreID.flatMap { id in stores.first { $0.id == id } }
+            ?? storeCandidates(for: editNewStore).first
+        if let destination, destination.id != editingItem?.storeId {
+            guard let capabilities = destination.capabilities else {
+                return "Refresh to verify store availability before adding products."
+            }
+            if !capabilities.canAddItems {
+                return "This store has reached its pending product limit. Buying or cancelling products frees capacity."
+            }
+        } else if destination == nil, editStoreID == nil {
+            guard let groupCapacity else { return "Refresh to verify store availability before adding products." }
+            if !groupCapacity.canCreateStore {
+                return "This group has reached its active store limit. Archive an empty store before adding another."
+            }
         }
         return nil
     }

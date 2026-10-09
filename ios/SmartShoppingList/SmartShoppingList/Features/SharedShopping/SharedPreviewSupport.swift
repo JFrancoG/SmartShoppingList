@@ -41,6 +41,7 @@ enum SharedPreviewState: CaseIterable, Hashable {
     case invitations
     case pending
     case unconfigured
+    case storeManagement
     case groupManagementOwner
     case groupTransferRecipient
 }
@@ -63,6 +64,9 @@ struct SharedPreviewPresentation {
     let invitationPreview: InvitationPreview?
     let pendingOperation: PendingSharedOperation?
     let stores: [SharedStore]
+    let archivedStores: [SharedStore]
+    let groupCapacity: SharedGroupCapacity?
+    let storeManagementState: GroupManagementLoadState
     let items: [SharedItem]
     let invitations: [SharedInvitation]
     let shareURL: URL?
@@ -91,6 +95,9 @@ extension SharedPreviewPresentation {
         invitationPreview = model.invitationPreview
         pendingOperation = model.pendingOperation
         stores = model.stores
+        archivedStores = model.archivedStores
+        groupCapacity = model.groupCapacity
+        storeManagementState = model.storeManagementState
         items = model.items
         invitations = model.invitations
         shareURL = model.shareURL
@@ -112,6 +119,7 @@ struct SharedPreviewFixture {
     let session: SharedSession
     let group: SharedGroup
     let stores: [SharedStore]
+    let archivedStores: [SharedStore]
     let items: [SharedItem]
     let draft: ShoppingDraftSnapshot
     let invitation: SharedInvitation
@@ -137,9 +145,37 @@ struct SharedPreviewFixture {
             user: SharedUser(id: userID, displayName: "Alex", group: group)
         )
         let stores = [
-            SharedStore(id: identifier(32), groupId: groupID, name: "Mercadona Centro"),
-            SharedStore(id: identifier(33), groupId: groupID, name: "Día Norte")
+            SharedStore(
+                id: identifier(32),
+                groupId: groupID,
+                name: "Mercadona Centro",
+                state: try SharedStoreState(
+                    archivedAt: nil,
+                    pendingItemCount: 2,
+                    capabilities: SharedStoreCapabilities(canAddItems: true, canArchive: false, canRestore: false)
+                )
+            ),
+            SharedStore(
+                id: identifier(33),
+                groupId: groupID,
+                name: "Día Norte",
+                state: try SharedStoreState(
+                    archivedAt: nil,
+                    pendingItemCount: 0,
+                    capabilities: SharedStoreCapabilities(canAddItems: true, canArchive: true, canRestore: false)
+                )
+            )
         ]
+        let archivedStores = [SharedStore(
+            id: identifier(34),
+            groupId: groupID,
+            name: "Tienda del barrio anterior",
+            state: try SharedStoreState(
+                archivedAt: date,
+                pendingItemCount: 0,
+                capabilities: SharedStoreCapabilities(canAddItems: false, canArchive: false, canRestore: true)
+            )
+        )]
         let draft = ShoppingDraftSnapshot(
             text: "Leche sin lactosa y pan integral en Mercadona Centro",
             items: [
@@ -196,6 +232,7 @@ struct SharedPreviewFixture {
             session: session,
             group: group,
             stores: stores,
+            archivedStores: archivedStores,
             items: items,
             draft: draft,
             invitation: invitation,
@@ -324,6 +361,8 @@ enum SharedPreviewSupport {
         case .invitations:
             await model.openInvitations()
             await model.createInvitation()
+        case .storeManagement:
+            await model.loadStoreManagement()
         case .groupManagementOwner, .groupTransferRecipient:
             await model.loadGroupManagement()
             model.selectedSuccessorID = PreviewSharedShoppingAPI.successorID
@@ -342,6 +381,8 @@ private final class PreviewSharedShoppingAPI: SharedShoppingAPI {
     var additionalGroups: [SharedGroup] = []
     private let managementScenario: GroupManagementPreviewScenario
     private var storedStores: [SharedStore]
+    private var storedArchivedStores: [SharedStore]
+    private var storeReceipts: [UUID: PreviewStoreReceipt] = [:]
     private var storedItems: [SharedItem]
     #if DEBUG
     var permitsAdditions = false
@@ -359,6 +400,7 @@ private final class PreviewSharedShoppingAPI: SharedShoppingAPI {
         self.signInUnavailable = signInUnavailable
         self.managementScenario = managementScenario
         storedStores = fixture.stores
+        storedArchivedStores = fixture.archivedStores
         storedItems = fixture.items
     }
 
@@ -428,8 +470,8 @@ private final class PreviewSharedShoppingAPI: SharedShoppingAPI {
                 capacityOwnerUserId: fixture.session.user.id,
                 limits: SharedGroupLimits(
                     groupsPerAccount: SharedResourceLimit(maximum: 1, enforced: true),
-                    storesPerGroup: SharedResourceLimit(maximum: nil, enforced: false),
-                    pendingItemsPerStore: SharedResourceLimit(maximum: nil, enforced: false)
+                    storesPerGroup: SharedResourceLimit(maximum: 3, enforced: true),
+                    pendingItemsPerStore: SharedResourceLimit(maximum: 20, enforced: true)
                 )
             )
         )
@@ -455,7 +497,79 @@ private final class PreviewSharedShoppingAPI: SharedShoppingAPI {
     }
     @MainActor
     func stores(groupID: UUID, token: String) async throws -> [SharedStore] {
-        storedStores.filter { $0.groupId == groupID }
+        try storedStores.filter { $0.groupId == groupID }.map { try currentStore($0, archivedAt: nil) }
+    }
+    @MainActor
+    func archivedStores(groupID: UUID, token: String) async throws -> [SharedStore] {
+        try storedArchivedStores.filter { $0.groupId == groupID }.map {
+            try currentStore($0, archivedAt: $0.archivedAt)
+        }
+    }
+
+    private func currentStore(_ original: SharedStore, archivedAt: Date?) throws -> SharedStore {
+        var store = original
+        let count = storedItems.filter { $0.storeId == store.id && $0.status == "pending" }.count
+        let isAdministrator = user.id == fixture.group.administratorUserId
+        store.state = try SharedStoreState(
+            archivedAt: archivedAt,
+            pendingItemCount: count,
+            capabilities: SharedStoreCapabilities(
+                canAddItems: archivedAt == nil && count < 20,
+                canArchive: archivedAt == nil && count == 0 && isAdministrator,
+                canRestore: archivedAt != nil && storedStores.count < 3 && isAdministrator
+            )
+        )
+        return store
+    }
+    @MainActor
+    func groupCapacity(groupID: UUID, token: String) async throws -> SharedGroupCapacity {
+        let count = storedStores.filter { $0.groupId == groupID }.count
+        return try SharedGroupCapacity(
+            groupId: groupID,
+            capacityOwnerUserId: fixture.session.user.id,
+            activeStoreCount: count,
+            limits: SharedStoreLimits(
+                storesPerGroup: SharedResourceLimit(maximum: 3, enforced: true),
+                pendingItemsPerStore: SharedResourceLimit(maximum: 20, enforced: true)
+            ),
+            canCreateStore: count < 3
+        )
+    }
+    @MainActor
+    func changeStoreState(
+        _ request: ChangeStoreStateRequest,
+        groupID: UUID,
+        storeID: UUID,
+        action: SharedStoreAction,
+        token: String
+    ) async throws -> SharedStore {
+        if let receipt = storeReceipts[request.operationId] {
+            guard receipt.store.id == storeID, receipt.store.groupId == groupID, receipt.action == action else {
+                throw SharedAPIError.invalidResponse
+            }
+            return receipt.store
+        }
+        guard groupID == fixture.group.id, user.id == fixture.group.administratorUserId,
+              let store = (storedStores + storedArchivedStores).first(where: { $0.id == storeID }) else {
+            throw SharedAPIError.configuration
+        }
+        let current = try currentStore(store, archivedAt: store.archivedAt)
+        let updated: SharedStore
+        if action == .archive, current.archivedAt == nil {
+            guard current.capabilities?.canArchive == true else { throw SharedAPIError.configuration }
+            updated = try currentStore(current, archivedAt: Date.now)
+            storedStores.removeAll { $0.id == storeID }
+            storedArchivedStores.append(updated)
+        } else if action == .restore, current.archivedAt != nil {
+            guard current.capabilities?.canRestore == true else { throw SharedAPIError.configuration }
+            updated = try currentStore(current, archivedAt: nil)
+            storedArchivedStores.removeAll { $0.id == storeID }
+            storedStores.append(updated)
+        } else {
+            updated = current
+        }
+        storeReceipts[request.operationId] = PreviewStoreReceipt(action: action, store: updated)
+        return updated
     }
     func createInvitation(groupID: UUID, token: String) async throws -> CreatedInvitation {
         fixture.createdInvitation
@@ -526,6 +640,11 @@ private final class PreviewSharedShoppingAPI: SharedShoppingAPI {
     func pendingItems(groupID: UUID, storeID: UUID, token: String) async throws -> [SharedItem] {
         await MainActor.run { storedItems.filter { $0.storeId == storeID } }
     }
+}
+
+private struct PreviewStoreReceipt {
+    let action: SharedStoreAction
+    let store: SharedStore
 }
 
 private enum GroupManagementPreviewScenario {

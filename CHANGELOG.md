@@ -4,6 +4,8 @@
 
 ### Added
 
+- 2026-10-10 | ✨ feat(stores): add capacity limits and store archiving
+
 - 2026-10-09 | ✨ feat(groups): add multiple memberships and local switching
 
 - 2026-10-09 | ✨ feat(groups): add transferable administration

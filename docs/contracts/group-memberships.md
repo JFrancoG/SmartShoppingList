@@ -1,6 +1,6 @@
 # Pertenencias múltiples y selección de grupo
 
-Contrato **0.3.0**, 9 de octubre de 2026, para [#35](https://github.com/JFrancoG/SmartShoppingList/issues/35). Amplía [mvp-api.md](mvp-api.md) y [administración de grupo](group-administration.md). [OpenAPI](openapi.json), [ejemplos](examples.json) y [aceptación](acceptance.md) describen la misma API. Es una definición implementable; no acredita migración desplegada, pagos, pruebas ejecutadas ni validación física de Siri.
+Introducido en contrato **0.3.0**, 9 de octubre de 2026, para [#35](https://github.com/JFrancoG/SmartShoppingList/issues/35). Amplía [mvp-api.md](mvp-api.md) y [administración de grupo](group-administration.md). [OpenAPI](openapi.json), [ejemplos](examples.json) y [aceptación](acceptance.md) describen la misma API. La evolución [0.4.0 de cupos y archivo](store-quotas.md) añade límites compartidos y conserva estas reglas de pertenencia y selección. Es una definición implementable; no acredita migración desplegada, pagos, pruebas ejecutadas ni validación física de Siri.
 
 ## Pertenencia, selección y capacidad
 
@@ -8,7 +8,7 @@ La pertenencia es una relación entre cuenta y grupo. Una cuenta puede pertenece
 
 La selección activa pertenece al cliente, por cuenta y dispositivo. No hay un endpoint de selección ni se modifica la cuenta del servidor al cambiar de grupo. Toda lectura o escritura compartida lleva el grupo explícito de su ruta y el servidor comprueba esa pertenencia vigente, aunque sea distinto del grupo seleccionado localmente o de `User.group`.
 
-La política de producción conserva **un grupo por cuenta**, tanto para administradores como para miembros. Solo las pruebas pueden inyectar una política con capacidad ampliada para verificar el recorrido completo. No se publica una suscripción, una opción para fingir premium, una ampliación por variable de entorno ni cuotas de tiendas o productos. Downgrade, periodos de gracia y selección de un grupo gratuito siguen pendientes de una unidad comercial posterior; este contrato no restringe compras ni administración de pertenencias existentes por superar el cupo de nuevas incorporaciones.
+La política de producción conserva **un grupo por cuenta**, tanto para administradores como para miembros. Solo las pruebas pueden inyectar una política con capacidad ampliada para verificar el recorrido completo. La unidad #35 no publicó una suscripción, una opción para fingir premium, una ampliación por variable de entorno ni cuotas de tiendas o productos. #37 aplica los cupos compartidos según [store-quotas.md](store-quotas.md), conservando producción gratuita; el plan premium de prueba permite hasta cinco pertenencias personales. Downgrade, periodos de gracia y selección de un grupo gratuito siguen pendientes de una unidad comercial posterior; este contrato no restringe compras ni administración de pertenencias existentes por superar el cupo de nuevas incorporaciones.
 
 ## API de cuenta y grupos
 
@@ -27,7 +27,7 @@ La política de producción conserva **un grupo por cuenta**, tanto para adminis
 }
 ```
 
-`membershipCount` cuenta pertenencias vigentes a grupos abiertos, independientemente del rol o de la selección. Los booleanos indican capacidad para una pertenencia **nueva**, son verdaderos cuando el número es menor que el máximo y no autorizan escrituras por sí solos. `canJoinGroup: false` no impide aceptar una invitación válida a un grupo del que ya se es miembro. El máximo es un entero positivo; las pruebas pueden ampliarlo. `Group.capabilities` no existe: las capacidades de administración siguen en la respuesta de `/administration`. Su `limits.groupsPerAccount` coincide con el límite personal del solicitante, mientras `capacityOwnerUserId` identifica al administrador responsable de los futuros límites compartidos de tiendas y pendientes.
+`membershipCount` cuenta pertenencias vigentes a grupos abiertos, independientemente del rol o de la selección. Los booleanos indican capacidad para una pertenencia **nueva**, son verdaderos cuando el número es menor que el máximo y no autorizan escrituras por sí solos. `canJoinGroup: false` no impide aceptar una invitación válida a un grupo del que ya se es miembro. El máximo es un entero positivo; las pruebas pueden ampliarlo. `Group.capabilities` no existe: las capacidades de administración siguen en la respuesta de `/administration`. Su `limits.groupsPerAccount` coincide con el límite personal del solicitante, mientras `capacityOwnerUserId` identifica al administrador responsable de los límites compartidos de tiendas y pendientes, aplicados desde 0.4.0.
 
 `POST /v1/groups` conserva `{operationId, name}` y su respuesta `201 Group`. Crea grupo y pertenencia de administrador atómicamente si queda capacidad. `POST /v1/invitations/{invitationId}/accept` conserva `{token}` y `200 Group`; añade la pertenencia sin quitar ninguna anterior. No cambia la selección de otro dispositivo. Tras una creación o incorporación confirmada, el cliente nuevo relee cuenta y todas las pertenencias antes de ofrecer el destino; un recibo histórico no sustituye esos datos.
 

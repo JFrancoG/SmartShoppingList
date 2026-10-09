@@ -18,11 +18,13 @@ extension SmartShoppingListServerTests {
         let original = try #require(try await sql.raw("SELECT created_at FROM groups WHERE id = \(bind: group)::uuid").first())
         let createdAt = try original.decode(column: "created_at", as: Date.self)
         // Reconstruct the already-deployed schema around representative persisted MVP records.
+        try await AddStoreArchiving().revert(on: database)
         try await AddGroupMemberships().revert(on: database)
         try await AddGroupAdministration().revert(on: database)
         try await sql.raw("ALTER TABLE groups ADD CONSTRAINT groups_creator_user_id_key UNIQUE(creator_user_id)").run()
         try await AddGroupAdministration().prepare(on: database)
         try await AddGroupMemberships().prepare(on: database)
+        try await AddStoreArchiving().prepare(on: database)
         let migrated = try #require(try await sql.raw("SELECT * FROM groups WHERE id = \(bind: group)::uuid").first())
         #expect(try migrated.decode(column: "administrator_user_id", as: UUID.self) == owner.id)
         #expect(try migrated.decode(column: "creator_user_id", as: UUID.self) == owner.id)

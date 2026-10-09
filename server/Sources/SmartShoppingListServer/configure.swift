@@ -44,7 +44,8 @@ func configure(
         CreateSharedShopping(),
         CreateAppleAuthentication(),
         AddGroupAdministration(),
-        AddGroupMemberships()
+        AddGroupMemberships(),
+        AddStoreArchiving()
     ))
 
     app.routes.defaultMaxBodySize = "128kb"

@@ -23,6 +23,15 @@ protocol SharedShoppingAPI: Sendable {
     ) async throws -> SharedGroupTransferResult
     func leaveGroup(_ request: LeaveGroupRequest, groupID: UUID, token: String) async throws -> SharedGroupDeparture
     func stores(groupID: UUID, token: String) async throws -> [SharedStore]
+    func archivedStores(groupID: UUID, token: String) async throws -> [SharedStore]
+    func groupCapacity(groupID: UUID, token: String) async throws -> SharedGroupCapacity
+    func changeStoreState(
+        _ request: ChangeStoreStateRequest,
+        groupID: UUID,
+        storeID: UUID,
+        action: SharedStoreAction,
+        token: String
+    ) async throws -> SharedStore
     func createInvitation(groupID: UUID, token: String) async throws -> CreatedInvitation
     func invitations(groupID: UUID, token: String) async throws -> [SharedInvitation]
     func revokeInvitation(groupID: UUID, invitationID: UUID, token: String) async throws
@@ -66,7 +75,8 @@ enum SharedAPIError: Error, Equatable {
         case 409:
             ["already_in_group", "challenge_consumed", "idempotency_key_reused", "item_conflict", "invitation_consumed",
              "transfer_required", "closure_confirmation_required", "transfer_not_pending", "transfer_pending",
-             "invalid_transfer_recipient", "group_limit_reached"]
+             "invalid_transfer_recipient", "group_limit_reached", "store_limit_reached", "pending_item_limit_reached",
+             "store_archived", "store_not_empty"]
                 .contains(code)
         case 410: ["invitation_expired", "invitation_revoked", "invitation_consumed"].contains(code)
         case 413: code == "body_too_large"
@@ -135,6 +145,11 @@ struct SharedStore: Identifiable, Codable, Equatable {
     let id: UUID
     let groupId: UUID
     let name: String
+    var state: SharedStoreState? = nil
+
+    var archivedAt: Date? { state?.archivedAt }
+    var pendingItemCount: Int? { state?.pendingItemCount }
+    var capabilities: SharedStoreCapabilities? { state?.capabilities }
 }
 
 struct SharedItem: Identifiable, Codable, Equatable {
@@ -283,12 +298,20 @@ enum PendingSharedOperation: Codable, Equatable {
         request: ResolveGroupTransferRequest
     )
     case leaveGroup(userID: UUID, groupID: UUID, request: LeaveGroupRequest)
+    case changeStoreState(
+        userID: UUID,
+        groupID: UUID,
+        storeID: UUID,
+        action: SharedStoreAction,
+        request: ChangeStoreStateRequest
+    )
 
     var userID: UUID {
         switch self {
         case .createGroup(let userID, _), .addItems(let userID, _, _, _), .purchase(let userID, _, _, _),
              .changeItem(let userID, _, _), .proposeTransfer(let userID, _, _),
-             .resolveTransfer(let userID, _, _, _, _), .leaveGroup(let userID, _, _): userID
+             .resolveTransfer(let userID, _, _, _, _), .leaveGroup(let userID, _, _),
+             .changeStoreState(let userID, _, _, _, _): userID
         }
     }
 
@@ -301,6 +324,7 @@ enum PendingSharedOperation: Codable, Equatable {
         case .proposeTransfer(_, _, let request): request.operationId
         case .resolveTransfer(_, _, _, _, let request): request.operationId
         case .leaveGroup(_, _, let request): request.operationId
+        case .changeStoreState(_, _, _, _, let request): request.operationId
         }
     }
 }

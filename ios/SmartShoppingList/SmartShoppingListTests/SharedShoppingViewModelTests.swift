@@ -1484,7 +1484,42 @@ private actor SharedFlowAPI: SharedShoppingAPI {
         if hideStoresAfterPurchaseConflict, !sentPurchases.isEmpty {
             return []
         }
-        return Set(purchaseItems.map(\.storeId)).map { SharedStore(id: $0, groupId: groupID, name: storeNames[$0] ?? "Tienda") }
+        return try Set(purchaseItems.map(\.storeId)).map { id in
+            let count = purchaseItems.filter { $0.storeId == id && $0.status == "pending" }.count
+            return SharedStore(
+                id: id,
+                groupId: groupID,
+                name: storeNames[id] ?? "Tienda",
+                state: try SharedStoreState(
+                    archivedAt: nil,
+                    pendingItemCount: count,
+                    capabilities: SharedStoreCapabilities(canAddItems: count < 20, canArchive: false, canRestore: false)
+                )
+            )
+        }
+    }
+    func archivedStores(groupID: UUID, token: String) async throws -> [SharedStore] { [] }
+    func groupCapacity(groupID: UUID, token: String) async throws -> SharedGroupCapacity {
+        let count = Set(purchaseItems.map(\.storeId)).count
+        return try SharedGroupCapacity(
+            groupId: groupID,
+            capacityOwnerUserId: session.user.id,
+            activeStoreCount: count,
+            limits: SharedStoreLimits(
+                storesPerGroup: SharedResourceLimit(maximum: 3, enforced: true),
+                pendingItemsPerStore: SharedResourceLimit(maximum: 20, enforced: true)
+            ),
+            canCreateStore: count < 3
+        )
+    }
+    func changeStoreState(
+        _ request: ChangeStoreStateRequest,
+        groupID: UUID,
+        storeID: UUID,
+        action: SharedStoreAction,
+        token: String
+    ) async throws -> SharedStore {
+        throw SharedAPIError.configuration
     }
     func createInvitation(groupID: UUID, token: String) async throws -> CreatedInvitation {
         requestCount += 1

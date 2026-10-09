@@ -227,14 +227,22 @@ enum MembershipFixture {
         _ maximum: Int64,
         perform: @Sendable () async throws -> Void
     ) async throws {
+        try await withPolicy(
+            AccountCapacityPolicy(resolve: { _ in
+                AccountResourceLimits(groups: maximum, activeStores: 3, pendingItems: 20)
+            }),
+            perform: perform
+        )
+    }
+
+    static func withPolicy(
+        _ policy: AccountCapacityPolicy,
+        perform: @Sendable () async throws -> Void
+    ) async throws {
         let application = try await Application.make(.testing)
         application.middleware.use(APIErrorMiddleware(), at: .end)
         do {
-            try routes(
-                application,
-                databases: testDatabases,
-                accountCapacity: AccountCapacityPolicy(maximumGroups: { _ in maximum })
-            )
+            try routes(application, databases: testDatabases, accountCapacity: policy)
             try await application.asyncBoot()
             try await $_application.withValue(application) {
                 try await perform()

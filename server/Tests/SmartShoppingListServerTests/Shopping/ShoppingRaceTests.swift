@@ -324,7 +324,7 @@ extension ShoppingFixture {
         return try await (firstRequest.value, startedSecond.value)
     }
 
-    fileprivate static func allPending(group: String, user: User) async throws -> [[String: APIJSON]] {
+    static func allPending(group: String, user: User) async throws -> [[String: APIJSON]] {
         let stores = try await request(.GET, "/v1/groups/\(group)/stores", user)
         try #require(stores.status == .ok)
         let fields = try object(stores)
