@@ -3,8 +3,8 @@
   "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
   "info": {
     "title": "SmartShoppingList · contrato MVP",
-    "version": "0.1.1",
-    "description": "Contrato de desarrollo de la issue #2. No describe endpoints desplegados. Las reglas transaccionales, identidad y ejemplos están en docs/contracts/mvp-api.md. Origen .example deliberadamente ficticio."
+    "version": "0.2.0",
+    "description": "Contrato de desarrollo del MVP y administración transferible de la issue #33. No describe endpoints desplegados. Las reglas transaccionales, identidad y ejemplos están en docs/contracts/mvp-api.md y group-administration.md. Origen .example deliberadamente ficticio."
   },
   "servers": [
     {
@@ -188,7 +188,7 @@
       "post": {
         "operationId": "createGroup",
         "summary": "Crear grupo y asignarlo al usuario sin grupo de forma atómica.",
-        "description": "operationId persistente. Autorizar la sesión antes del replay; buscar receipt antes de rechazar que el creador ya tenga el grupo de esta misma operación.",
+        "description": "operationId persistente. Autorizar sesión y buscar receipt antes de rechazar una pertenencia resultante de esa misma operación. Si hay receipt, exigir pertenencia vigente al grupo abierto de su resultado antes del replay. Un creador que salió puede crear otro grupo con una intención nueva; límite actual una pertenencia por cuenta. Los recibos anteriores a 0.2.0 conservan el cuerpo sin administratorUserId; el cliente refresca para conocer administración vigente.",
         "security": [
           {
             "bearerSession": []
@@ -207,11 +207,18 @@
         },
         "responses": {
           "201": {
-            "description": "Resultado confirmado.",
+            "description": "Grupo recién creado o recibo exacto reproducido. Solo un recibo anterior a 0.2.0 puede carecer de administratorUserId; no concede permisos vigentes.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Group"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Group"
+                    },
+                    {
+                      "$ref": "#/components/schemas/HistoricalGroupReceipt"
+                    }
+                  ]
                 }
               }
             }
@@ -233,6 +240,9 @@
           },
           "503": {
             "$ref": "#/components/responses/Error503"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
           }
         }
       }
@@ -309,8 +319,8 @@
     "/v1/groups/{groupId}/invitations": {
       "post": {
         "operationId": "createInvitation",
-        "summary": "Crear invitación de 24 horas; solo el creador del grupo.",
-        "description": "Secreto retornado una sola vez dentro del fragmento del enlace. Creación sin garantía de idempotencia; listar metadatos permite revocar enlaces cuya respuesta se perdió.",
+        "summary": "Crear invitación de 24 horas; solo el administrador vigente del grupo.",
+        "description": "Secreto retornado una sola vez dentro del fragmento del enlace. Creación sin garantía de idempotencia; listar metadatos permite revocar enlaces cuya respuesta se perdió. El permiso se revalida con el administrador vigente; creatorUserId no concede gestión. Un miembro sin ese rol recibe 403 administrator_required.",
         "security": [
           {
             "bearerSession": []
@@ -372,8 +382,8 @@
       },
       "get": {
         "operationId": "listInvitations",
-        "summary": "Listar metadatos de invitaciones; solo el creador.",
-        "description": "Devuelve metadatos de invitaciones activas y terminales; nunca el token ni el enlace secreto.",
+        "summary": "Listar metadatos de invitaciones; solo el administrador vigente.",
+        "description": "Devuelve metadatos de invitaciones activas y terminales; nunca el token ni el enlace secreto. El permiso se revalida con el administrador vigente; creatorUserId no concede gestión. Un miembro sin ese rol recibe 403 administrator_required.",
         "security": [
           {
             "bearerSession": []
@@ -444,8 +454,8 @@
     "/v1/groups/{groupId}/invitations/{invitationId}": {
       "delete": {
         "operationId": "revokeInvitation",
-        "summary": "Revocar una invitación no consumida; solo el creador.",
-        "description": "Repetir una revocación devuelve 204. Una invitación consumida devuelve 409 invitation_consumed; no expulsa a su aceptante.",
+        "summary": "Revocar una invitación no consumida; solo el administrador vigente.",
+        "description": "Repetir una revocación devuelve 204. Una invitación consumida devuelve 409 invitation_consumed; no expulsa a su aceptante. El permiso se revalida con el administrador vigente; creatorUserId no concede gestión. Un miembro sin ese rol recibe 403 administrator_required.",
         "security": [
           {
             "bearerSession": []
@@ -501,7 +511,7 @@
       "post": {
         "operationId": "previewInvitation",
         "summary": "Mostrar grupo tras autenticarse, sin consumir el enlace.",
-        "description": "ID público + secreto en body. Sin secreto correcto responde 404; no filtra estado ni nombre del grupo. Aceptada por el mismo usuario aún miembro devuelve alreadyAccepted true.",
+        "description": "ID público + secreto en body. Sin secreto correcto responde 404; no filtra estado ni nombre del grupo. Aceptada por el mismo usuario aún miembro devuelve alreadyAccepted true. Un grupo cerrado no se revela ni admite incorporación; responder 404 not_found.",
         "security": [
           {
             "bearerSession": []
@@ -566,7 +576,7 @@
       "post": {
         "operationId": "acceptInvitation",
         "summary": "Consumir invitación y asignar grupo en una transacción.",
-        "description": "Repetir la aceptación del mismo usuario ya incorporado devuelve el mismo grupo incluso después de la caducidad. Otro usuario recibe 410; tener un grupo por otra operación devuelve 409 y no consume el enlace.",
+        "description": "Repetir la aceptación del mismo usuario ya incorporado devuelve el mismo grupo incluso después de la caducidad. Otro usuario recibe 410; tener un grupo por otra operación devuelve 409 y no consume el enlace. Grupo cerrado responde 404 not_found. Bloquear grupo, cuenta y luego invitación; verificar de nuevo secreto, estado y pertenencia tras los bloqueos.",
         "security": [
           {
             "bearerSession": []
@@ -982,6 +992,485 @@
           }
         }
       }
+    },
+    "/v1/groups/{groupId}/members": {
+      "get": {
+        "operationId": "listGroupMembers",
+        "summary": "Listar identidades mínimas de los miembros actuales.",
+        "description": "Cualquier miembro actual del grupo abierto. Orden estable (created_at, id); cursor opaco vinculado al grupo/recurso. No revela email ni sujeto Apple.",
+        "security": [
+          {
+            "bearerSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "description": "Cursor opaco vinculado al grupo, recurso y filtros de la consulta; no autoriza acceso."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resultado confirmado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupMemberPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        }
+      }
+    },
+    "/v1/groups/{groupId}/administration": {
+      "get": {
+        "operationId": "getGroupAdministration",
+        "summary": "Consultar administración, propuesta pendiente y capacidades propias.",
+        "description": "Cualquier miembro actual del grupo abierto. El servidor calcula capacidades según rol y propuesta; cuotas comerciales de tiendas y pendientes permanecen inactivas. No requiere premium.",
+        "security": [
+          {
+            "bearerSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resultado confirmado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupAdministration"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        }
+      }
+    },
+    "/v1/groups/{groupId}/administration-transfers": {
+      "post": {
+        "operationId": "proposeAdministrationTransfer",
+        "summary": "Proponer un traspaso a otro miembro actual.",
+        "description": "Solo administrador vigente; propuesta de siete días. Máximo una pendiente utilizable: retirarla antes de sustituir. Un destinatario propio o ajeno provoca 409 invalid_transfer_recipient; otra propuesta provoca 409 transfer_pending. No cambia administración.",
+        "security": [
+          {
+            "bearerSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProposeAdministrationTransferRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Resultado confirmado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdministrationTransferResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "413": {
+            "$ref": "#/components/responses/Error413"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        }
+      }
+    },
+    "/v1/groups/{groupId}/administration-transfers/{transferId}/accept": {
+      "post": {
+        "operationId": "acceptAdministrationTransfer",
+        "summary": "Aceptar explícitamente la administración del grupo.",
+        "description": "Solo destinatario actual. Revalidar proponente administrador, destinatario miembro y caducidad. Cambiar administrador y resolver propuesta de forma atómica; conservar creador y dejar al anterior administrador como miembro. Una intención nueva sobre propuesta terminal o caducada responde 409 transfer_not_pending. Replay exacto requiere pertenencia vigente y devuelve el resultado original.",
+        "security": [
+          {
+            "bearerSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            }
+          },
+          {
+            "name": "transferId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdministrationTransferActionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Resultado confirmado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdministrationTransferResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "413": {
+            "$ref": "#/components/responses/Error413"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        }
+      }
+    },
+    "/v1/groups/{groupId}/administration-transfers/{transferId}/reject": {
+      "post": {
+        "operationId": "rejectAdministrationTransfer",
+        "summary": "Rechazar la propuesta de administración.",
+        "description": "Solo destinatario actual. Resolver propuesta sin cambiar administrador. Una intención nueva sobre propuesta terminal o caducada responde 409 transfer_not_pending. Replay exacto requiere pertenencia vigente y devuelve el resultado original.",
+        "security": [
+          {
+            "bearerSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            }
+          },
+          {
+            "name": "transferId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdministrationTransferActionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Resultado confirmado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdministrationTransferResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "413": {
+            "$ref": "#/components/responses/Error413"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        }
+      }
+    },
+    "/v1/groups/{groupId}/administration-transfers/{transferId}/withdraw": {
+      "post": {
+        "operationId": "withdrawAdministrationTransfer",
+        "summary": "Retirar la propuesta de administración.",
+        "description": "Solo administrador proponente vigente. Resolver propuesta sin cambiar administrador. Una intención nueva sobre propuesta terminal o caducada responde 409 transfer_not_pending. Replay exacto requiere pertenencia vigente y devuelve el resultado original.",
+        "security": [
+          {
+            "bearerSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            }
+          },
+          {
+            "name": "transferId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdministrationTransferActionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Resultado confirmado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdministrationTransferResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "413": {
+            "$ref": "#/components/responses/Error413"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        }
+      }
+    },
+    "/v1/groups/{groupId}/departure": {
+      "post": {
+        "operationId": "leaveGroup",
+        "summary": "Salir del grupo o confirmar su cierre si es el último miembro.",
+        "description": "Administrador con otros miembros: 409 transfer_required. Último miembro sin confirmClosure: 409 closure_confirmation_required. La salida invalida la propuesta dirigida a ese miembro; cierre lógico preserva historial y revoca acceso. Solo el replay exacto del recibo de salida propia exige sesión de la misma cuenta sin exigir pertenencia. Resto de operaciones conserva autorización vigente.",
+        "security": [
+          {
+            "bearerSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GroupDepartureRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Resultado confirmado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupDepartureResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "413": {
+            "$ref": "#/components/responses/Error413"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1030,15 +1519,20 @@
           },
           "createdAt": {
             "$ref": "#/components/schemas/Timestamp"
+          },
+          "administratorUserId": {
+            "$ref": "#/components/schemas/UUID"
           }
         },
         "required": [
           "id",
           "name",
           "creatorUserId",
-          "createdAt"
+          "createdAt",
+          "administratorUserId"
         ],
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "Grupo activo. creatorUserId es histórico e inmutable; administratorUserId identifica al administrador vigente, miembro del grupo. Un grupo cerrado no es accesible como Group."
       },
       "User": {
         "type": "object",
@@ -1860,7 +2354,6 @@
               "challenge_expired",
               "challenge_consumed",
               "not_found",
-              "creator_required",
               "already_in_group",
               "invitation_expired",
               "invitation_revoked",
@@ -1869,7 +2362,14 @@
               "item_conflict",
               "body_too_large",
               "rate_limited",
-              "service_unavailable"
+              "service_unavailable",
+              "administrator_required",
+              "transfer_recipient_required",
+              "invalid_transfer_recipient",
+              "transfer_pending",
+              "transfer_not_pending",
+              "transfer_required",
+              "closure_confirmation_required"
             ]
           },
           "message": {
@@ -1957,6 +2457,414 @@
             ]
           }
         ]
+      },
+      "GroupMember": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/UUID"
+          },
+          "displayName": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "displayName"
+        ],
+        "additionalProperties": false,
+        "description": "Identidad mínima visible solo a miembros actuales del mismo grupo; sin sujeto Apple ni email."
+      },
+      "GroupMemberPage": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GroupMember"
+            },
+            "minItems": 0,
+            "maxItems": 100
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "data",
+          "nextCursor"
+        ],
+        "additionalProperties": false
+      },
+      "AdministrationTransfer": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/UUID"
+          },
+          "groupId": {
+            "$ref": "#/components/schemas/UUID"
+          },
+          "proposerUserId": {
+            "$ref": "#/components/schemas/UUID"
+          },
+          "recipientUserId": {
+            "$ref": "#/components/schemas/UUID"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "accepted",
+              "rejected",
+              "withdrawn",
+              "expired",
+              "invalidated"
+            ]
+          },
+          "createdAt": {
+            "$ref": "#/components/schemas/Timestamp"
+          },
+          "expiresAt": {
+            "$ref": "#/components/schemas/Timestamp"
+          },
+          "resolvedAt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Timestamp"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "groupId",
+          "proposerUserId",
+          "recipientUserId",
+          "status",
+          "createdAt",
+          "expiresAt",
+          "resolvedAt"
+        ],
+        "additionalProperties": false,
+        "description": "Propuesta explícita a otro miembro, válida siete días. Como máximo una propuesta pendiente por grupo. El servidor usa su reloj y vuelve a comprobar pertenencia y rol al resolver.",
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "status": {
+                  "const": "pending"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "resolvedAt": {
+                  "type": "null"
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "resolvedAt": {
+                  "$ref": "#/components/schemas/Timestamp"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "CapacityLimit": {
+        "type": "object",
+        "properties": {
+          "maximum": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "enforced": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "maximum",
+          "enforced"
+        ],
+        "additionalProperties": false,
+        "description": "maximum null con enforced false indica una cuota comercial no activada; no promete uso ilimitado. Una cuota aplicada necesita máximo positivo.",
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "enforced": {
+                  "const": true
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "maximum": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 9007199254740991
+                }
+              }
+            }
+          }
+        ]
+      },
+      "GroupLimits": {
+        "type": "object",
+        "properties": {
+          "groupsPerAccount": {
+            "$ref": "#/components/schemas/CapacityLimit"
+          },
+          "storesPerGroup": {
+            "$ref": "#/components/schemas/CapacityLimit"
+          },
+          "pendingItemsPerStore": {
+            "$ref": "#/components/schemas/CapacityLimit"
+          }
+        },
+        "required": [
+          "groupsPerAccount",
+          "storesPerGroup",
+          "pendingItemsPerStore"
+        ],
+        "additionalProperties": false,
+        "description": "En 0.2.0: groupsPerAccount maximum 1/enforced true; tiendas y pendientes maximum null/enforced false. Comprados y cancelados no consumen cupo de pendientes."
+      },
+      "GroupCapabilities": {
+        "type": "object",
+        "properties": {
+          "canManageInvitations": {
+            "type": "boolean"
+          },
+          "canProposeTransfer": {
+            "type": "boolean"
+          },
+          "canAcceptTransfer": {
+            "type": "boolean"
+          },
+          "canRejectTransfer": {
+            "type": "boolean"
+          },
+          "canWithdrawTransfer": {
+            "type": "boolean"
+          },
+          "canLeave": {
+            "type": "boolean"
+          },
+          "requiresClosureConfirmation": {
+            "type": "boolean"
+          },
+          "capacityOwnerUserId": {
+            "$ref": "#/components/schemas/UUID"
+          },
+          "limits": {
+            "$ref": "#/components/schemas/GroupLimits"
+          }
+        },
+        "required": [
+          "canManageInvitations",
+          "canProposeTransfer",
+          "canAcceptTransfer",
+          "canRejectTransfer",
+          "canWithdrawTransfer",
+          "canLeave",
+          "requiresClosureConfirmation",
+          "capacityOwnerUserId",
+          "limits"
+        ],
+        "additionalProperties": false,
+        "description": "Capacidades del solicitante calculadas por el servidor. capacityOwnerUserId es el administrador vigente. Se revalidan al ejecutar cada operación; una respuesta anterior no autoriza."
+      },
+      "GroupAdministration": {
+        "type": "object",
+        "properties": {
+          "group": {
+            "$ref": "#/components/schemas/Group"
+          },
+          "memberCount": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "pendingTransfer": {
+            "anyOf": [
+              {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/AdministrationTransfer"
+                  },
+                  {
+                    "properties": {
+                      "status": {
+                        "const": "pending"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "capabilities": {
+            "$ref": "#/components/schemas/GroupCapabilities"
+          }
+        },
+        "required": [
+          "group",
+          "memberCount",
+          "pendingTransfer",
+          "capabilities"
+        ],
+        "additionalProperties": false,
+        "description": "Estado actual del grupo abierto. pendingTransfer solo incluye una propuesta pendiente utilizable; memberCount es el total, no el tamaño de una página."
+      },
+      "ProposeAdministrationTransferRequest": {
+        "type": "object",
+        "properties": {
+          "operationId": {
+            "$ref": "#/components/schemas/UUID"
+          },
+          "recipientUserId": {
+            "$ref": "#/components/schemas/UUID"
+          }
+        },
+        "required": [
+          "operationId",
+          "recipientUserId"
+        ],
+        "additionalProperties": false
+      },
+      "AdministrationTransferActionRequest": {
+        "type": "object",
+        "properties": {
+          "operationId": {
+            "$ref": "#/components/schemas/UUID"
+          }
+        },
+        "required": [
+          "operationId"
+        ],
+        "additionalProperties": false
+      },
+      "AdministrationTransferResult": {
+        "type": "object",
+        "properties": {
+          "group": {
+            "$ref": "#/components/schemas/Group"
+          },
+          "transfer": {
+            "$ref": "#/components/schemas/AdministrationTransfer"
+          }
+        },
+        "required": [
+          "group",
+          "transfer"
+        ],
+        "additionalProperties": false,
+        "description": "Resultado de esa intención. El replay reproduce exactamente este resultado; refrescar administración para conocer el estado actual."
+      },
+      "GroupDepartureRequest": {
+        "type": "object",
+        "properties": {
+          "operationId": {
+            "$ref": "#/components/schemas/UUID"
+          },
+          "confirmClosure": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "operationId",
+          "confirmClosure"
+        ],
+        "additionalProperties": false,
+        "description": "confirmClosure obligatorio: true confirma cierre lógico solo si quien sale es el último miembro. Un administrador con otros miembros debe traspasar primero."
+      },
+      "GroupDepartureResult": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "$ref": "#/components/schemas/UUID"
+          },
+          "groupId": {
+            "$ref": "#/components/schemas/UUID"
+          },
+          "leftAt": {
+            "$ref": "#/components/schemas/Timestamp"
+          },
+          "groupClosed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "userId",
+          "groupId",
+          "leftAt",
+          "groupClosed"
+        ],
+        "additionalProperties": false,
+        "description": "Recibo mínimo de salida propia. Un replay exacto de la misma cuenta autenticada se permite sin pertenencia actual; no concede lectura del grupo cerrado o abandonado."
+      },
+      "HistoricalGroupReceipt": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/UUID"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "creatorUserId": {
+            "$ref": "#/components/schemas/UUID"
+          },
+          "createdAt": {
+            "$ref": "#/components/schemas/Timestamp"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "creatorUserId",
+          "createdAt"
+        ],
+        "additionalProperties": false,
+        "description": "Exclusivamente el cuerpo original de un recibo createGroup confirmado antes de 0.2.0. Se conserva sin reescribir. No acredita administrador vigente; el cliente debe refrescar Group/administration antes de gestionar."
       }
     },
     "responses": {
@@ -2031,7 +2939,7 @@
         }
       },
       "Error404": {
-        "description": "Recurso desconocido o ajeno al grupo; invitación con secreto incorrecto.",
+        "description": "Recurso desconocido, cerrado o ajeno al grupo; invitación con secreto incorrecto.",
         "content": {
           "application/json": {
             "schema": {
@@ -2041,7 +2949,7 @@
         }
       },
       "Error403": {
-        "description": "Miembro del grupo que no es su creador.",
+        "description": "Miembro sin administración vigente (administrator_required), o que no es destinatario de la transferencia (transfer_recipient_required).",
         "content": {
           "application/json": {
             "schema": {

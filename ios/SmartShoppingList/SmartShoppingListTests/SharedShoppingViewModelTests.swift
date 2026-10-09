@@ -1163,6 +1163,31 @@ enum ShortcutConnectionFailure: CaseIterable {
 }
 
 private actor SharedFlowAPI: SharedShoppingAPI {
+    func groupMembers(groupID: UUID, token: String) async throws -> [SharedGroupMember] {
+        throw SharedAPIError.configuration
+    }
+    func groupAdministration(groupID: UUID, token: String) async throws -> SharedGroupAdministration {
+        throw SharedAPIError.configuration
+    }
+    func proposeTransfer(
+        _ request: ProposeGroupTransferRequest,
+        groupID: UUID,
+        token: String
+    ) async throws -> SharedGroupTransferResult {
+        throw SharedAPIError.configuration
+    }
+    func resolveTransfer(
+        _ request: ResolveGroupTransferRequest,
+        groupID: UUID,
+        transferID: UUID,
+        action: SharedGroupTransferAction,
+        token: String
+    ) async throws -> SharedGroupTransferResult {
+        throw SharedAPIError.configuration
+    }
+    func leaveGroup(_ request: LeaveGroupRequest, groupID: UUID, token: String) async throws -> SharedGroupDeparture {
+        throw SharedAPIError.configuration
+    }
     let session: SharedSession
     private(set) var requestCount = 0
     private(set) var sentBatches: [AddItemsRequest] = []

@@ -56,7 +56,7 @@ extension SmartShoppingListServerTests {
     @Test
     func `terminal group conflict is replayed even after membership changes`() async throws {
         let user = try await ShoppingFixture.user()
-        _ = try await ShoppingFixture.group(user)
+        let group = try await ShoppingFixture.group(user)
         let body: APIJSON = .object([
             "operationId": .string(UUID().uuidString.lowercased()), "name": .string("Otra intención")
         ])
@@ -67,8 +67,7 @@ extension SmartShoppingListServerTests {
             body
         )
         try #require(original.status == .conflict)
-        let sql = try shoppingSQL(database)
-        try await sql.raw("UPDATE users SET group_id = NULL WHERE id = \(bind: user.id)").run()
+        try await ShoppingFixture.depart(user, group: group)
         let replay = try await ShoppingFixture.request(
             .POST,
             "/v1/groups",

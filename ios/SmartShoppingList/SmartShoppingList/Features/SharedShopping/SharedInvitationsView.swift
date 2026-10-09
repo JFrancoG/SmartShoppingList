@@ -15,7 +15,7 @@ struct SharedInvitationsView: View {
                         }
                     }
                     .buttonStyle(ShoppingActionButtonStyle())
-                    .disabled(!viewModel.canMutate || !viewModel.isCreator)
+                    .disabled(!viewModel.canMutate || !viewModel.canManageInvitations)
                     if let url = viewModel.shareURL {
                         ShareLink(item: url) {
                             Label("Share invitation", systemImage: "square.and.arrow.up")
@@ -58,7 +58,7 @@ struct SharedInvitationsView: View {
                                     }
                                 }
                                 .buttonStyle(ShoppingActionButtonStyle())
-                                .disabled(!viewModel.canMutate || !viewModel.isCreator)
+                                .disabled(!viewModel.canMutate || !viewModel.canManageInvitations)
                                 .accessibilityHint("Prevents anyone from using this invitation to join the group.")
                             }
                         }

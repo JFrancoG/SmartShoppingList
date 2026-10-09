@@ -8,6 +8,7 @@ extension ShoppingService {
         case stores
         case invitations
         case items
+        case members
     }
 
     func page(
@@ -31,11 +32,13 @@ extension ShoppingService {
         return try await database.transaction { transaction in
             let sql = try shoppingSQL(transaction)
             if resource == .invitations {
-                try await requireCreator(user, group: group, on: sql)
+                try await requireAdministrator(user, group: group, on: sql)
             } else {
+                try await lockGroup(group, on: sql)
                 guard try await lockUser(user, on: sql) == group else { throw APIProblem.notFound }
             }
-            var query: SQLQueryString = "SELECT * FROM \(ident: resource.rawValue) WHERE group_id = \(bind: group)"
+            let table = resource == .members ? "users" : resource.rawValue
+            var query: SQLQueryString = "SELECT * FROM \(ident: table) WHERE group_id = \(bind: group)"
             if resource == .items {
                 guard let store else { throw APIProblem.invalidRequest }
                 guard try await sql.raw("""
@@ -57,6 +60,7 @@ extension ShoppingService {
                 case .stores: try Self.storeJSON(row)
                 case .invitations: try Self.invitationJSON(row)
                 case .items: try Self.itemJSON(row)
+                case .members: try Self.memberJSON(row)
                 }
             }
             let next: String?
@@ -72,7 +76,7 @@ extension ShoppingService {
                 next = nil
             }
             return try APIReply(status: .ok, json: .object([
-                resource.rawValue: .array(values), "nextCursor": .optional(next)
+                (resource == .members ? "data" : resource.rawValue): .array(values), "nextCursor": .optional(next)
             ]))
         }
     }
@@ -82,6 +86,13 @@ extension ShoppingService {
             "id": .string(try row.decode(column: "id", as: UUID.self).uuidString.lowercased()),
             "groupId": .string(try row.decode(column: "group_id", as: UUID.self).uuidString.lowercased()),
             "name": .string(try row.decode(column: "name", as: String.self))
+        ])
+    }
+
+    static func memberJSON(_ row: any SQLRow) throws -> APIJSON {
+        .object([
+            "id": .string(try row.decode(column: "id", as: UUID.self).uuidString.lowercased()),
+            "displayName": .optional(try row.decode(column: "display_name", as: String?.self))
         ])
     }
 

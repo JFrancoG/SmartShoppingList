@@ -1,5 +1,5 @@
 {
-  "contractVersion": "0.1.1",
+  "contractVersion": "0.2.0",
   "cases": [
     {
       "id": "challenge-fresh",
@@ -103,7 +103,8 @@
             "id": "00000000-0000-4000-8000-000000000010",
             "name": "Casa",
             "creatorUserId": "00000000-0000-4000-8000-000000000001",
-            "createdAt": "2026-09-19T10:00:00Z"
+            "createdAt": "2026-09-19T10:00:00Z",
+            "administratorUserId": "00000000-0000-4000-8000-000000000001"
           }
         }
       }
@@ -152,7 +153,8 @@
           "id": "00000000-0000-4000-8000-000000000010",
           "name": "Casa",
           "creatorUserId": "00000000-0000-4000-8000-000000000001",
-          "createdAt": "2026-09-19T10:00:00Z"
+          "createdAt": "2026-09-19T10:00:00Z",
+          "administratorUserId": "00000000-0000-4000-8000-000000000001"
         }
       }
     },
@@ -173,7 +175,8 @@
           "id": "00000000-0000-4000-8000-000000000010",
           "name": "Casa",
           "creatorUserId": "00000000-0000-4000-8000-000000000001",
-          "createdAt": "2026-09-19T10:00:00Z"
+          "createdAt": "2026-09-19T10:00:00Z",
+          "administratorUserId": "00000000-0000-4000-8000-000000000001"
         }
       }
     },
@@ -279,8 +282,8 @@
       "response": {
         "status": 403,
         "body": {
-          "code": "creator_required",
-          "message": "Solo el creador puede gestionar invitaciones.",
+          "code": "administrator_required",
+          "message": "Solo el administrador puede gestionar las invitaciones.",
           "requestId": "00000000-0000-4000-8000-000000000900"
         }
       }
@@ -378,7 +381,8 @@
             "id": "00000000-0000-4000-8000-000000000010",
             "name": "Casa",
             "creatorUserId": "00000000-0000-4000-8000-000000000001",
-            "createdAt": "2026-09-19T10:00:00Z"
+            "createdAt": "2026-09-19T10:00:00Z",
+            "administratorUserId": "00000000-0000-4000-8000-000000000001"
           },
           "expiresAt": "2026-09-20T10:01:00Z",
           "alreadyAccepted": false
@@ -445,7 +449,8 @@
           "id": "00000000-0000-4000-8000-000000000010",
           "name": "Casa",
           "creatorUserId": "00000000-0000-4000-8000-000000000001",
-          "createdAt": "2026-09-19T10:00:00Z"
+          "createdAt": "2026-09-19T10:00:00Z",
+          "administratorUserId": "00000000-0000-4000-8000-000000000001"
         }
       }
     },
@@ -467,7 +472,8 @@
           "id": "00000000-0000-4000-8000-000000000010",
           "name": "Casa",
           "creatorUserId": "00000000-0000-4000-8000-000000000001",
-          "createdAt": "2026-09-19T10:00:00Z"
+          "createdAt": "2026-09-19T10:00:00Z",
+          "administratorUserId": "00000000-0000-4000-8000-000000000001"
         }
       }
     },
@@ -1310,6 +1316,710 @@
           ]
         }
       }
+    },
+    {
+      "id": "group-members-first-page",
+      "operationId": "listGroupMembers",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {
+          "limit": 50
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "data": [
+            {
+              "id": "00000000-0000-4000-8000-000000000001",
+              "displayName": "Alex"
+            },
+            {
+              "id": "00000000-0000-4000-8000-000000000002",
+              "displayName": null
+            }
+          ],
+          "nextCursor": null
+        }
+      }
+    },
+    {
+      "id": "group-administration-before-transfer",
+      "operationId": "getGroupAdministration",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {}
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "group": {
+            "id": "00000000-0000-4000-8000-000000000010",
+            "name": "Casa",
+            "creatorUserId": "00000000-0000-4000-8000-000000000001",
+            "createdAt": "2026-09-19T10:00:00Z",
+            "administratorUserId": "00000000-0000-4000-8000-000000000001"
+          },
+          "memberCount": 2,
+          "pendingTransfer": null,
+          "capabilities": {
+            "canManageInvitations": true,
+            "canProposeTransfer": true,
+            "canAcceptTransfer": false,
+            "canRejectTransfer": false,
+            "canWithdrawTransfer": false,
+            "canLeave": false,
+            "requiresClosureConfirmation": false,
+            "capacityOwnerUserId": "00000000-0000-4000-8000-000000000001",
+            "limits": {
+              "groupsPerAccount": {
+                "maximum": 1,
+                "enforced": true
+              },
+              "storesPerGroup": {
+                "maximum": null,
+                "enforced": false
+              },
+              "pendingItemsPerStore": {
+                "maximum": null,
+                "enforced": false
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "group-administration-recipient",
+      "operationId": "getGroupAdministration",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {}
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "group": {
+            "id": "00000000-0000-4000-8000-000000000010",
+            "name": "Casa",
+            "creatorUserId": "00000000-0000-4000-8000-000000000001",
+            "createdAt": "2026-09-19T10:00:00Z",
+            "administratorUserId": "00000000-0000-4000-8000-000000000001"
+          },
+          "memberCount": 2,
+          "pendingTransfer": {
+            "id": "00000000-0000-4000-8000-000000000060",
+            "groupId": "00000000-0000-4000-8000-000000000010",
+            "proposerUserId": "00000000-0000-4000-8000-000000000001",
+            "recipientUserId": "00000000-0000-4000-8000-000000000002",
+            "status": "pending",
+            "createdAt": "2026-10-09T10:00:00Z",
+            "expiresAt": "2026-10-16T10:00:00Z",
+            "resolvedAt": null
+          },
+          "capabilities": {
+            "canManageInvitations": false,
+            "canProposeTransfer": false,
+            "canAcceptTransfer": true,
+            "canRejectTransfer": true,
+            "canWithdrawTransfer": false,
+            "canLeave": true,
+            "requiresClosureConfirmation": false,
+            "capacityOwnerUserId": "00000000-0000-4000-8000-000000000001",
+            "limits": {
+              "groupsPerAccount": {
+                "maximum": 1,
+                "enforced": true
+              },
+              "storesPerGroup": {
+                "maximum": null,
+                "enforced": false
+              },
+              "pendingItemsPerStore": {
+                "maximum": null,
+                "enforced": false
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "group-administration-last-member",
+      "operationId": "getGroupAdministration",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {}
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "group": {
+            "id": "00000000-0000-4000-8000-000000000010",
+            "name": "Casa",
+            "creatorUserId": "00000000-0000-4000-8000-000000000001",
+            "createdAt": "2026-09-19T10:00:00Z",
+            "administratorUserId": "00000000-0000-4000-8000-000000000001"
+          },
+          "memberCount": 1,
+          "pendingTransfer": null,
+          "capabilities": {
+            "canManageInvitations": true,
+            "canProposeTransfer": false,
+            "canAcceptTransfer": false,
+            "canRejectTransfer": false,
+            "canWithdrawTransfer": false,
+            "canLeave": true,
+            "requiresClosureConfirmation": true,
+            "capacityOwnerUserId": "00000000-0000-4000-8000-000000000001",
+            "limits": {
+              "groupsPerAccount": {
+                "maximum": 1,
+                "enforced": true
+              },
+              "storesPerGroup": {
+                "maximum": null,
+                "enforced": false
+              },
+              "pendingItemsPerStore": {
+                "maximum": null,
+                "enforced": false
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "propose-administration-transfer",
+      "operationId": "proposeAdministrationTransfer",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000300",
+          "recipientUserId": "00000000-0000-4000-8000-000000000002"
+        }
+      },
+      "response": {
+        "status": 201,
+        "body": {
+          "group": {
+            "id": "00000000-0000-4000-8000-000000000010",
+            "name": "Casa",
+            "creatorUserId": "00000000-0000-4000-8000-000000000001",
+            "createdAt": "2026-09-19T10:00:00Z",
+            "administratorUserId": "00000000-0000-4000-8000-000000000001"
+          },
+          "transfer": {
+            "id": "00000000-0000-4000-8000-000000000060",
+            "groupId": "00000000-0000-4000-8000-000000000010",
+            "proposerUserId": "00000000-0000-4000-8000-000000000001",
+            "recipientUserId": "00000000-0000-4000-8000-000000000002",
+            "status": "pending",
+            "createdAt": "2026-10-09T10:00:00Z",
+            "expiresAt": "2026-10-16T10:00:00Z",
+            "resolvedAt": null
+          }
+        }
+      }
+    },
+    {
+      "id": "propose-administration-transfer-replay",
+      "operationId": "proposeAdministrationTransfer",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000300",
+          "recipientUserId": "00000000-0000-4000-8000-000000000002"
+        }
+      },
+      "response": {
+        "status": 201,
+        "body": {
+          "group": {
+            "id": "00000000-0000-4000-8000-000000000010",
+            "name": "Casa",
+            "creatorUserId": "00000000-0000-4000-8000-000000000001",
+            "createdAt": "2026-09-19T10:00:00Z",
+            "administratorUserId": "00000000-0000-4000-8000-000000000001"
+          },
+          "transfer": {
+            "id": "00000000-0000-4000-8000-000000000060",
+            "groupId": "00000000-0000-4000-8000-000000000010",
+            "proposerUserId": "00000000-0000-4000-8000-000000000001",
+            "recipientUserId": "00000000-0000-4000-8000-000000000002",
+            "status": "pending",
+            "createdAt": "2026-10-09T10:00:00Z",
+            "expiresAt": "2026-10-16T10:00:00Z",
+            "resolvedAt": null
+          }
+        }
+      }
+    },
+    {
+      "id": "cannot-propose-second-transfer",
+      "operationId": "proposeAdministrationTransfer",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000301",
+          "recipientUserId": "00000000-0000-4000-8000-000000000002"
+        }
+      },
+      "response": {
+        "status": 409,
+        "body": {
+          "code": "transfer_pending",
+          "message": "Ya hay una propuesta de administración pendiente.",
+          "requestId": "00000000-0000-4000-8000-000000000900"
+        }
+      }
+    },
+    {
+      "id": "cannot-propose-self",
+      "operationId": "proposeAdministrationTransfer",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000302",
+          "recipientUserId": "00000000-0000-4000-8000-000000000001"
+        }
+      },
+      "response": {
+        "status": 409,
+        "body": {
+          "code": "invalid_transfer_recipient",
+          "message": "Elige a otro miembro del grupo.",
+          "requestId": "00000000-0000-4000-8000-000000000900"
+        }
+      }
+    },
+    {
+      "id": "accept-administration-transfer",
+      "operationId": "acceptAdministrationTransfer",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "transferId": "00000000-0000-4000-8000-000000000060"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000303"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "group": {
+            "id": "00000000-0000-4000-8000-000000000010",
+            "name": "Casa",
+            "creatorUserId": "00000000-0000-4000-8000-000000000001",
+            "createdAt": "2026-09-19T10:00:00Z",
+            "administratorUserId": "00000000-0000-4000-8000-000000000002"
+          },
+          "transfer": {
+            "id": "00000000-0000-4000-8000-000000000060",
+            "groupId": "00000000-0000-4000-8000-000000000010",
+            "proposerUserId": "00000000-0000-4000-8000-000000000001",
+            "recipientUserId": "00000000-0000-4000-8000-000000000002",
+            "status": "accepted",
+            "createdAt": "2026-10-09T10:00:00Z",
+            "expiresAt": "2026-10-16T10:00:00Z",
+            "resolvedAt": "2026-10-09T11:00:00Z"
+          }
+        }
+      }
+    },
+    {
+      "id": "accept-administration-transfer-replay",
+      "operationId": "acceptAdministrationTransfer",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "transferId": "00000000-0000-4000-8000-000000000060"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000303"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "group": {
+            "id": "00000000-0000-4000-8000-000000000010",
+            "name": "Casa",
+            "creatorUserId": "00000000-0000-4000-8000-000000000001",
+            "createdAt": "2026-09-19T10:00:00Z",
+            "administratorUserId": "00000000-0000-4000-8000-000000000002"
+          },
+          "transfer": {
+            "id": "00000000-0000-4000-8000-000000000060",
+            "groupId": "00000000-0000-4000-8000-000000000010",
+            "proposerUserId": "00000000-0000-4000-8000-000000000001",
+            "recipientUserId": "00000000-0000-4000-8000-000000000002",
+            "status": "accepted",
+            "createdAt": "2026-10-09T10:00:00Z",
+            "expiresAt": "2026-10-16T10:00:00Z",
+            "resolvedAt": "2026-10-09T11:00:00Z"
+          }
+        }
+      }
+    },
+    {
+      "id": "reject-administration-transfer",
+      "operationId": "rejectAdministrationTransfer",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "transferId": "00000000-0000-4000-8000-000000000060"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000304"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "group": {
+            "id": "00000000-0000-4000-8000-000000000010",
+            "name": "Casa",
+            "creatorUserId": "00000000-0000-4000-8000-000000000001",
+            "createdAt": "2026-09-19T10:00:00Z",
+            "administratorUserId": "00000000-0000-4000-8000-000000000001"
+          },
+          "transfer": {
+            "id": "00000000-0000-4000-8000-000000000060",
+            "groupId": "00000000-0000-4000-8000-000000000010",
+            "proposerUserId": "00000000-0000-4000-8000-000000000001",
+            "recipientUserId": "00000000-0000-4000-8000-000000000002",
+            "status": "rejected",
+            "createdAt": "2026-10-09T10:00:00Z",
+            "expiresAt": "2026-10-16T10:00:00Z",
+            "resolvedAt": "2026-10-09T11:00:00Z"
+          }
+        }
+      }
+    },
+    {
+      "id": "withdraw-administration-transfer",
+      "operationId": "withdrawAdministrationTransfer",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "transferId": "00000000-0000-4000-8000-000000000060"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000305"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "group": {
+            "id": "00000000-0000-4000-8000-000000000010",
+            "name": "Casa",
+            "creatorUserId": "00000000-0000-4000-8000-000000000001",
+            "createdAt": "2026-09-19T10:00:00Z",
+            "administratorUserId": "00000000-0000-4000-8000-000000000001"
+          },
+          "transfer": {
+            "id": "00000000-0000-4000-8000-000000000060",
+            "groupId": "00000000-0000-4000-8000-000000000010",
+            "proposerUserId": "00000000-0000-4000-8000-000000000001",
+            "recipientUserId": "00000000-0000-4000-8000-000000000002",
+            "status": "withdrawn",
+            "createdAt": "2026-10-09T10:00:00Z",
+            "expiresAt": "2026-10-16T10:00:00Z",
+            "resolvedAt": "2026-10-09T11:00:00Z"
+          }
+        }
+      }
+    },
+    {
+      "id": "expired-administration-transfer",
+      "operationId": "acceptAdministrationTransfer",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "transferId": "00000000-0000-4000-8000-000000000060"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000306"
+        }
+      },
+      "response": {
+        "status": 409,
+        "body": {
+          "code": "transfer_not_pending",
+          "message": "La propuesta ya no está pendiente.",
+          "requestId": "00000000-0000-4000-8000-000000000900"
+        }
+      }
+    },
+    {
+      "id": "wrong-transfer-recipient",
+      "operationId": "acceptAdministrationTransfer",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "transferId": "00000000-0000-4000-8000-000000000060"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000307"
+        }
+      },
+      "response": {
+        "status": 403,
+        "body": {
+          "code": "transfer_recipient_required",
+          "message": "Solo el destinatario puede responder a la propuesta.",
+          "requestId": "00000000-0000-4000-8000-000000000900"
+        }
+      }
+    },
+    {
+      "id": "foreign-transfer",
+      "operationId": "acceptAdministrationTransfer",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "transferId": "00000000-0000-4000-8000-000000000061"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000308"
+        }
+      },
+      "response": {
+        "status": 404,
+        "body": {
+          "code": "not_found",
+          "message": "No se encuentra el recurso.",
+          "requestId": "00000000-0000-4000-8000-000000000900"
+        }
+      }
+    },
+    {
+      "id": "administrator-must-transfer-before-leaving",
+      "operationId": "leaveGroup",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000309",
+          "confirmClosure": false
+        }
+      },
+      "response": {
+        "status": 409,
+        "body": {
+          "code": "transfer_required",
+          "message": "Traspasa la administración antes de salir.",
+          "requestId": "00000000-0000-4000-8000-000000000900"
+        }
+      }
+    },
+    {
+      "id": "last-member-must-confirm-closure",
+      "operationId": "leaveGroup",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000310",
+          "confirmClosure": false
+        }
+      },
+      "response": {
+        "status": 409,
+        "body": {
+          "code": "closure_confirmation_required",
+          "message": "Confirma el cierre antes de salir.",
+          "requestId": "00000000-0000-4000-8000-000000000900"
+        }
+      }
+    },
+    {
+      "id": "member-leaves-group",
+      "operationId": "leaveGroup",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000311",
+          "confirmClosure": false
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "userId": "00000000-0000-4000-8000-000000000002",
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "leftAt": "2026-10-09T12:00:00Z",
+          "groupClosed": false
+        }
+      }
+    },
+    {
+      "id": "own-departure-replay-after-membership-ended",
+      "operationId": "leaveGroup",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000311",
+          "confirmClosure": false
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "userId": "00000000-0000-4000-8000-000000000002",
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "leftAt": "2026-10-09T12:00:00Z",
+          "groupClosed": false
+        }
+      }
+    },
+    {
+      "id": "last-member-closes-group",
+      "operationId": "leaveGroup",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000312",
+          "confirmClosure": true
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "userId": "00000000-0000-4000-8000-000000000001",
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "leftAt": "2026-10-09T12:00:00Z",
+          "groupClosed": true
+        }
+      }
+    },
+    {
+      "id": "own-closure-replay-after-group-closed",
+      "operationId": "leaveGroup",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000312",
+          "confirmClosure": true
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "userId": "00000000-0000-4000-8000-000000000001",
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "leftAt": "2026-10-09T12:00:00Z",
+          "groupClosed": true
+        }
+      }
+    },
+    {
+      "id": "departure-key-cannot-change-confirmation",
+      "operationId": "leaveGroup",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000312",
+          "confirmClosure": false
+        }
+      },
+      "response": {
+        "status": 409,
+        "body": {
+          "code": "idempotency_key_reused",
+          "message": "Este identificador corresponde a otra decisión.",
+          "requestId": "00000000-0000-4000-8000-000000000900"
+        }
+      }
+    },
+    {
+      "id": "closed-group-has-no-administration-access",
+      "operationId": "getGroupAdministration",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {}
+      },
+      "response": {
+        "status": 404,
+        "body": {
+          "code": "not_found",
+          "message": "No se encuentra el recurso.",
+          "requestId": "00000000-0000-4000-8000-000000000900"
+        }
+      }
+    },
+    {
+      "id": "create-group-historical-receipt-without-administrator",
+      "operationId": "createGroup",
+      "request": {
+        "path": {},
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000299",
+          "name": "Casa"
+        }
+      },
+      "response": {
+        "status": 201,
+        "body": {
+          "id": "00000000-0000-4000-8000-000000000010",
+          "name": "Casa",
+          "creatorUserId": "00000000-0000-4000-8000-000000000001",
+          "createdAt": "2026-09-19T10:00:00Z"
+        }
+      }
     }
   ],
   "invalidRequests": [
@@ -2031,6 +2741,97 @@
               }
             }
           ]
+        }
+      }
+    },
+    {
+      "id": "departure-missing-confirmation",
+      "operationId": "leaveGroup",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000320"
+        }
+      }
+    },
+    {
+      "id": "departure-confirmation-not-boolean",
+      "operationId": "leaveGroup",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000321",
+          "confirmClosure": "true"
+        }
+      }
+    },
+    {
+      "id": "transfer-missing-recipient",
+      "operationId": "proposeAdministrationTransfer",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000322"
+        }
+      }
+    },
+    {
+      "id": "transfer-cannot-set-administrator-directly",
+      "operationId": "proposeAdministrationTransfer",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000323",
+          "recipientUserId": "00000000-0000-4000-8000-000000000002",
+          "administratorUserId": "00000000-0000-4000-8000-000000000002"
+        }
+      }
+    },
+    {
+      "id": "transfer-action-missing-operation-id",
+      "operationId": "acceptAdministrationTransfer",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "transferId": "00000000-0000-4000-8000-000000000060"
+        },
+        "query": {},
+        "body": {}
+      }
+    },
+    {
+      "id": "members-page-too-large",
+      "operationId": "listGroupMembers",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {
+          "limit": 101
+        }
+      }
+    },
+    {
+      "id": "members-cannot-filter-other-account",
+      "operationId": "listGroupMembers",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {
+          "userId": "00000000-0000-4000-8000-000000000002"
         }
       }
     }

@@ -108,6 +108,104 @@ actor SharedHTTPAPI: SharedShoppingAPI {
         return stores
     }
 
+    func groupMembers(groupID: UUID, token: String) async throws -> [SharedGroupMember] {
+        try await pages(GroupMemberPage.self, path: "v1/groups/\(id(groupID))/members", token: token)
+    }
+
+    func groupAdministration(groupID: UUID, token: String) async throws -> SharedGroupAdministration {
+        let result: SharedGroupAdministration = try await get(
+            path: "v1/groups/\(id(groupID))/administration",
+            token: token
+        )
+        guard result.group.id == groupID, let administratorID = result.group.administratorUserId,
+              result.memberCount > 0, result.capabilities.capacityOwnerUserId == administratorID,
+              result.capabilities.limits.groupsPerAccount.maximum.map({ $0 >= 0 }) ?? true,
+              result.capabilities.limits.storesPerGroup.maximum.map({ $0 >= 0 }) ?? true,
+              result.capabilities.limits.pendingItemsPerStore.maximum.map({ $0 >= 0 }) ?? true else {
+            throw SharedAPIError.invalidResponse
+        }
+        if let transfer = result.pendingTransfer {
+            guard transfer.groupId == groupID, transfer.proposerUserId == administratorID,
+                  transfer.proposerUserId != transfer.recipientUserId,
+                  transfer.status == .pending, transfer.resolvedAt == nil,
+                  transfer.expiresAt > transfer.createdAt else {
+                throw SharedAPIError.invalidResponse
+            }
+        }
+        return result
+    }
+
+    func proposeTransfer(
+        _ request: ProposeGroupTransferRequest,
+        groupID: UUID,
+        token: String
+    ) async throws -> SharedGroupTransferResult {
+        let result: SharedGroupTransferResult = try await send(
+            path: "v1/groups/\(id(groupID))/administration-transfers",
+            method: "POST",
+            body: request,
+            token: token,
+            status: 201
+        )
+        guard validTransferResult(result, groupID: groupID), result.transfer.status == .pending,
+              result.transfer.recipientUserId == request.recipientUserId,
+              result.group.administratorUserId == result.transfer.proposerUserId else {
+            throw SharedAPIError.invalidResponse
+        }
+        return result
+    }
+
+    func resolveTransfer(
+        _ request: ResolveGroupTransferRequest,
+        groupID: UUID,
+        transferID: UUID,
+        action: SharedGroupTransferAction,
+        token: String
+    ) async throws -> SharedGroupTransferResult {
+        let result: SharedGroupTransferResult = try await send(
+            path: "v1/groups/\(id(groupID))/administration-transfers/\(id(transferID))/\(action.rawValue)",
+            method: "POST",
+            body: request,
+            token: token,
+            status: 200
+        )
+        let expectedStatus: SharedGroupTransferStatus = switch action {
+        case .accept: .accepted
+        case .reject: .rejected
+        case .withdraw: .withdrawn
+        }
+        guard validTransferResult(result, groupID: groupID), result.transfer.id == transferID,
+              result.transfer.status == expectedStatus,
+              result.group.administratorUserId == (action == .accept
+                ? result.transfer.recipientUserId : result.transfer.proposerUserId) else {
+            throw SharedAPIError.invalidResponse
+        }
+        return result
+    }
+
+    func leaveGroup(_ request: LeaveGroupRequest, groupID: UUID, token: String) async throws -> SharedGroupDeparture {
+        let result: SharedGroupDeparture = try await send(
+            path: "v1/groups/\(id(groupID))/departure",
+            method: "POST",
+            body: request,
+            token: token,
+            status: 200
+        )
+        guard result.groupId == groupID, !result.groupClosed || request.confirmClosure else {
+            throw SharedAPIError.invalidResponse
+        }
+        return result
+    }
+
+    private func validTransferResult(_ result: SharedGroupTransferResult, groupID: UUID) -> Bool {
+        let transfer = result.transfer
+        return result.group.id == groupID && transfer.groupId == groupID
+            && result.group.administratorUserId != nil && transfer.proposerUserId != transfer.recipientUserId
+            && transfer.expiresAt > transfer.createdAt
+            && ((transfer.status == .pending && transfer.resolvedAt == nil)
+                || (transfer.status != .pending && transfer.resolvedAt.map { $0 >= transfer.createdAt } == true))
+    }
+
     func createInvitation(groupID: UUID, token: String) async throws -> CreatedInvitation {
         let created: CreatedInvitation = try await send(
             path: "v1/groups/\(id(groupID))/invitations",
@@ -465,6 +563,25 @@ private struct StorePage: SharedAPIPage {
     let stores: [SharedStore]
     let nextCursor: String?
     var entries: [SharedStore] { stores }
+}
+
+private struct GroupMemberPage: SharedAPIPage {
+    let data: [SharedGroupMember]
+    let nextCursor: String?
+    var entries: [SharedGroupMember] { data }
+}
+
+extension GroupMemberPage {
+    init(from decoder: any Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        data = try values.decode([SharedGroupMember].self, forKey: .data)
+        nextCursor = try values.decode(String?.self, forKey: .nextCursor)
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case data
+        case nextCursor
+    }
 }
 
 private struct InvitationPage: SharedAPIPage {

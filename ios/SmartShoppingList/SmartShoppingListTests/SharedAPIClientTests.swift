@@ -239,6 +239,91 @@ struct SharedAPIClientTests {
     }
 }
 
+extension SharedAPIClientTests {
+    @Test
+    func `Member pagination retains distinct people with missing or duplicate names`() async throws {
+        let transport = FixtureSharedTransport { request in
+            let cursor = URLComponents(url: try #require(request.url), resolvingAgainstBaseURL: false)?
+                .queryItems?.first(where: { $0.name == "cursor" })?.value
+            let body = cursor == nil ? """
+            {"data":[{"id":"00000000-0000-4000-8000-000000000001","displayName":null},
+            {"id":"00000000-0000-4000-8000-000000000002","displayName":"Alex"}],"nextCursor":"members-next"}
+            """ : """
+            {"data":[{"id":"00000000-0000-4000-8000-000000000003","displayName":"Alex"}],"nextCursor":null}
+            """
+            return try Self.response(request, status: 200, body: body)
+        }
+        let api = try client(transport)
+
+        let members = try await api.groupMembers(groupID: Self.groupID, token: Self.token)
+
+        #expect(members.count == 3)
+        #expect(Set(members.map(\.id)).count == 3)
+        #expect(members.map(\.displayName) == [nil, "Alex", "Alex"])
+        #expect(await transport.requestCount == 2)
+    }
+
+    @Test(arguments: [true, false])
+    func `A transfer receipt from another group or with an omitted state field stays uncertain`(
+        wrongGroup: Bool
+    ) async throws {
+        let body = Self.groupTransferBody(
+            groupID: wrongGroup ? "00000000-0000-4000-8000-000000000099" : Self.groupID.uuidString.lowercased(),
+            includesResolution: wrongGroup
+        )
+        let transport = FixtureSharedTransport { request in
+            try Self.response(request, status: 201, body: body)
+        }
+        let api = try client(transport)
+        let request = ProposeGroupTransferRequest(
+            operationId: UUID(),
+            recipientUserId: UUID(uuid: (0, 0, 0, 0, 0, 0, 64, 0, 128, 0, 0, 0, 0, 0, 0, 2))
+        )
+
+        await #expect(throws: SharedAPIError.invalidResponse) {
+            try await api.proposeTransfer(request, groupID: Self.groupID, token: Self.token)
+        }
+    }
+
+    @Test(arguments: ["transfer_pending", "transfer_required", "closure_confirmation_required"])
+    func `A contract lifecycle refusal is terminal rather than a transport retry`(_ code: String) async throws {
+        let transport = FixtureSharedTransport { request in
+            try Self.response(
+                request,
+                status: 409,
+                body: """
+                {"code":"\(code)","message":"Rejected without changes",\
+                "requestId":"00000000-0000-4000-8000-000000000900"}
+                """
+            )
+        }
+        let api = try client(transport)
+        do {
+            _ = try await api.leaveGroup(
+                LeaveGroupRequest(operationId: UUID(), confirmClosure: false),
+                groupID: Self.groupID,
+                token: Self.token
+            )
+            Issue.record("The server rejection must not become a successful departure")
+        } catch let error as SharedAPIError {
+            #expect(!error.isUncertain)
+        }
+    }
+
+    private static func groupTransferBody(groupID: String, includesResolution: Bool) -> String {
+        let resolution = includesResolution ? ",\"resolvedAt\":null" : ""
+        return """
+        {"group":{"id":"\(groupID)","name":"Casa",\
+        "creatorUserId":"00000000-0000-4000-8000-000000000001",\
+        "administratorUserId":"00000000-0000-4000-8000-000000000001","createdAt":"2026-09-19T10:10:00Z"},\
+        "transfer":{"id":"00000000-0000-4000-8000-000000000080","groupId":"\(groupID)",\
+        "proposerUserId":"00000000-0000-4000-8000-000000000001",\
+        "recipientUserId":"00000000-0000-4000-8000-000000000002",\
+        "status":"pending","createdAt":"2026-10-09T12:00:00Z","expiresAt":"2026-10-16T12:00:00Z"\(resolution)}}
+        """
+    }
+}
+
 private enum FixtureFailure: Error {
     case unexpectedRequest
 }

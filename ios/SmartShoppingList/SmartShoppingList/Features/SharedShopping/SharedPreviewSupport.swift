@@ -40,6 +40,8 @@ enum SharedPreviewState: CaseIterable, Hashable {
     case invitations
     case pending
     case unconfigured
+    case groupManagementOwner
+    case groupTransferRecipient
 }
 
 /// Cached by Xcode: values only. Each preview creates its own mutable ViewModel and fake services.
@@ -50,6 +52,10 @@ struct SharedPreviewContext {
 
 struct SharedPreviewPresentation {
     let session: SharedSession?
+    let administration: SharedGroupAdministration?
+    let groupMembers: [SharedGroupMember]
+    let groupManagementState: GroupManagementLoadState
+    let selectedSuccessorID: UUID?
     let pendingInvitation: PendingInvitation?
     let invitationPreview: InvitationPreview?
     let pendingOperation: PendingSharedOperation?
@@ -72,6 +78,10 @@ extension SharedPreviewPresentation {
     @MainActor
     init(model: SharedShoppingViewModel, fixture: SharedPreviewFixture, state: SharedPreviewState) {
         session = model.session
+        administration = model.administration
+        groupMembers = model.groupMembers
+        groupManagementState = model.groupManagementState
+        selectedSuccessorID = model.selectedSuccessorID
         pendingInvitation = model.pendingInvitation
         invitationPreview = model.invitationPreview
         pendingOperation = model.pendingOperation
@@ -112,7 +122,8 @@ struct SharedPreviewFixture {
             id: groupID,
             name: "Casa",
             creatorUserId: userID,
-            createdAt: date
+            createdAt: date,
+            administratorUserId: userID
         )
         let session = SharedSession(
             accessToken: "SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSQ",
@@ -219,6 +230,12 @@ enum SharedPreviewSupport {
         var session = fixture.session
         if state == .invitation {
             session.user.group = nil
+        } else if state == .groupTransferRecipient {
+            session.user = SharedUser(
+                id: PreviewSharedShoppingAPI.successorID,
+                displayName: "Alex",
+                group: fixture.group
+            )
         }
         let pending: PendingSharedOperation? = state == .pending ? .addItems(
             userID: session.user.id,
@@ -240,8 +257,16 @@ enum SharedPreviewSupport {
             invitation: state == .invitation || state == .signedOut ? fixture.pendingInvitation : nil,
             operation: pending
         )
+        let managementScenario: GroupManagementPreviewScenario = switch state {
+        case .groupManagementOwner: .owner
+        case .groupTransferRecipient: .recipient
+        default: .solo
+        }
         let api = state == .unconfigured ? nil : PreviewSharedShoppingAPI(
-            fixture: fixture, user: session.user, signInUnavailable: state == .signInUnavailable
+            fixture: fixture,
+            user: session.user,
+            signInUnavailable: state == .signInUnavailable,
+            managementScenario: managementScenario
         )
         let configuration = state == .unconfigured ? nil : fixture.configuration
         #if DEBUG
@@ -283,6 +308,9 @@ enum SharedPreviewSupport {
         case .invitations:
             await model.openInvitations()
             await model.createInvitation()
+        case .groupManagementOwner, .groupTransferRecipient:
+            await model.loadGroupManagement()
+            model.selectedSuccessorID = PreviewSharedShoppingAPI.successorID
         case .signedOut, .signInUnavailable, .invitation, .pending, .unconfigured:
             break
         }
@@ -291,9 +319,11 @@ enum SharedPreviewSupport {
 
 @MainActor
 private final class PreviewSharedShoppingAPI: SharedShoppingAPI {
+    nonisolated static let successorID = UUID(uuid: (0, 0, 0, 0, 0, 0, 64, 0, 128, 0, 0, 0, 0, 0, 0, 2))
     let fixture: SharedPreviewFixture
     let user: SharedUser
     let signInUnavailable: Bool
+    private let managementScenario: GroupManagementPreviewScenario
     private var storedStores: [SharedStore]
     private var storedItems: [SharedItem]
     #if DEBUG
@@ -301,10 +331,16 @@ private final class PreviewSharedShoppingAPI: SharedShoppingAPI {
     private var additions: [UUID: [SharedItem]] = [:]
     #endif
 
-    init(fixture: SharedPreviewFixture, user: SharedUser, signInUnavailable: Bool = false) {
+    init(
+        fixture: SharedPreviewFixture,
+        user: SharedUser,
+        signInUnavailable: Bool = false,
+        managementScenario: GroupManagementPreviewScenario = .solo
+    ) {
         self.fixture = fixture
         self.user = user
         self.signInUnavailable = signInUnavailable
+        self.managementScenario = managementScenario
         storedStores = fixture.stores
         storedItems = fixture.items
     }
@@ -318,6 +354,68 @@ private final class PreviewSharedShoppingAPI: SharedShoppingAPI {
     func currentUser(token: String) async throws -> SharedUser { user }
     func logout(token: String) async throws {}
     func createGroup(_ request: CreateGroupRequest, token: String) async throws -> SharedGroup {
+        throw SharedAPIError.configuration
+    }
+    func groupMembers(groupID: UUID, token: String) async throws -> [SharedGroupMember] {
+        guard managementScenario != .solo else {
+            return [SharedGroupMember(id: user.id, displayName: user.displayName)]
+        }
+        return [
+            SharedGroupMember(id: fixture.session.user.id, displayName: "Alex"),
+            SharedGroupMember(id: Self.successorID, displayName: "Alex"),
+            SharedGroupMember(id: fixture.invitation.id, displayName: nil)
+        ]
+    }
+    func groupAdministration(groupID: UUID, token: String) async throws -> SharedGroupAdministration {
+        let isRecipient = managementScenario == .recipient
+        let transfer = isRecipient ? SharedGroupTransfer(
+            id: fixture.invitation.id,
+            groupId: fixture.group.id,
+            proposerUserId: fixture.session.user.id,
+            recipientUserId: Self.successorID,
+            status: .pending,
+            createdAt: fixture.group.createdAt,
+            expiresAt: fixture.group.createdAt.addingTimeInterval(604_800),
+            resolvedAt: nil
+        ) : nil
+        return SharedGroupAdministration(
+            group: fixture.group,
+            memberCount: managementScenario == .solo ? 1 : 3,
+            pendingTransfer: transfer,
+            capabilities: SharedGroupCapabilities(
+                canManageInvitations: !isRecipient,
+                canProposeTransfer: managementScenario == .owner,
+                canAcceptTransfer: isRecipient,
+                canRejectTransfer: isRecipient,
+                canWithdrawTransfer: false,
+                canLeave: managementScenario != .owner,
+                requiresClosureConfirmation: managementScenario == .solo,
+                capacityOwnerUserId: fixture.session.user.id,
+                limits: SharedGroupLimits(
+                    groupsPerAccount: SharedResourceLimit(maximum: 1, enforced: true),
+                    storesPerGroup: SharedResourceLimit(maximum: nil, enforced: false),
+                    pendingItemsPerStore: SharedResourceLimit(maximum: nil, enforced: false)
+                )
+            )
+        )
+    }
+    func proposeTransfer(
+        _ request: ProposeGroupTransferRequest,
+        groupID: UUID,
+        token: String
+    ) async throws -> SharedGroupTransferResult {
+        throw SharedAPIError.configuration
+    }
+    func resolveTransfer(
+        _ request: ResolveGroupTransferRequest,
+        groupID: UUID,
+        transferID: UUID,
+        action: SharedGroupTransferAction,
+        token: String
+    ) async throws -> SharedGroupTransferResult {
+        throw SharedAPIError.configuration
+    }
+    func leaveGroup(_ request: LeaveGroupRequest, groupID: UUID, token: String) async throws -> SharedGroupDeparture {
         throw SharedAPIError.configuration
     }
     func stores(groupID: UUID, token: String) async throws -> [SharedStore] {
@@ -392,6 +490,10 @@ private final class PreviewSharedShoppingAPI: SharedShoppingAPI {
     func pendingItems(groupID: UUID, storeID: UUID, token: String) async throws -> [SharedItem] {
         await MainActor.run { storedItems.filter { $0.storeId == storeID } }
     }
+}
+
+private enum GroupManagementPreviewScenario {
+    case solo, owner, recipient
 }
 
 private struct PreviewStoreQuerySpeech: SpeechCapturing {
