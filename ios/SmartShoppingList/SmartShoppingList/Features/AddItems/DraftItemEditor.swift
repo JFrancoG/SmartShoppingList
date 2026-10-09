@@ -58,7 +58,7 @@ struct DraftItemEditor: View {
                         }
                     } label: {
                         if addsDirectly {
-                            Text("Add product")
+                            Text("Add to \(shared?.reviewedGroupName ?? "")")
                         } else {
                             Text("Save product")
                         }

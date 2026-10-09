@@ -521,3 +521,78 @@ private extension ItemChangeWireFixture {
         hasExplicitNullQuantity = try values.contains(.quantity) && values.decodeNil(forKey: .quantity)
     }
 }
+
+extension SharedAPIClientTests {
+    @Test
+    func `Membership pagination completes before returning distinct groups`() async throws {
+        let transport = FixtureSharedTransport { request in
+            let url = try #require(request.url)
+            guard url.path == "/v1/groups" else { throw FixtureFailure.unexpectedRequest }
+            let cursor = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?
+                .first { $0.name == "cursor" }?.value
+            let body: String
+            if cursor == nil {
+                body = "{\"data\":[\(Self.membership(id: 16, name: "Casa"))],\"nextCursor\":\"second/page+\"}"
+            } else {
+                guard cursor == "second/page+" else { throw FixtureFailure.unexpectedRequest }
+                body = "{\"data\":[\(Self.membership(id: 16, name: "Casa actualizada")),\(Self.membership(id: 17, name: "Viaje"))],\"nextCursor\":null}"
+            }
+            return try Self.response(request, status: 200, body: body)
+        }
+
+        let groups = try await client(transport).groups(token: Self.token)
+        #expect(groups.map(\.name) == ["Casa actualizada", "Viaje"])
+        #expect(await transport.requestCount == 2)
+    }
+
+    @Test(arguments: ["missing", "repeated", "failure"])
+    func `An incomplete membership download is never returned as a usable group list`(_ fault: String) async throws {
+        let transport = FixtureSharedTransport { request in
+            let cursor = URLComponents(url: try #require(request.url), resolvingAgainstBaseURL: false)?.queryItems?
+                .first { $0.name == "cursor" }?.value
+            if fault == "failure", cursor != nil {
+                throw URLError(.networkConnectionLost)
+            }
+            let suffix = fault == "missing" ? "" : ",\"nextCursor\":\"loop\""
+            return try Self.response(
+                request,
+                status: 200,
+                body: "{\"data\":[\(Self.membership(id: 16, name: "Casa"))]\(suffix)}"
+            )
+        }
+        let api = try client(transport)
+        await #expect(throws: fault == "failure" ? SharedAPIError.transport : .invalidResponse) {
+            try await api.groups(token: Self.token)
+        }
+    }
+
+    @Test(arguments: ["negativeCount", "zeroMaximum", "missingMaximum", "contradictoryCapability"])
+    func `Malformed account capabilities cannot authorize a client workflow`(_ fault: String) async throws {
+        let transport = FixtureSharedTransport { request in
+            let count = fault == "negativeCount" ? -1 : 1
+            let maximum = fault == "missingMaximum" ? "null" : fault == "zeroMaximum" ? "0" : "1"
+            let canCreate = fault == "contradictoryCapability" ? "true" : "false"
+            return try Self.response(
+                request,
+                status: 200,
+                body: """
+                {"id":"00000000-0000-4000-8000-000000000002","displayName":null,"group":null,
+                "accountCapabilities":{"membershipCount":\(count),"canCreateGroup":\(canCreate),"canJoinGroup":false,
+                "limits":{"groupsPerAccount":{"maximum":\(maximum),"enforced":true}}}}
+                """
+            )
+        }
+        let api = try client(transport)
+        await #expect(throws: SharedAPIError.invalidResponse) {
+            try await api.currentUser(token: Self.token)
+        }
+    }
+
+    private static func membership(id: Int, name: String) -> String {
+        """
+        {"id":"00000000-0000-4000-8000-0000000000\(id)","name":"\(name)",
+        "creatorUserId":"00000000-0000-4000-8000-000000000002","createdAt":"2026-09-19T10:10:00Z",
+        "administratorUserId":"00000000-0000-4000-8000-000000000002"}
+        """
+    }
+}

@@ -17,6 +17,7 @@ struct ShoppingNotice: Equatable {
         let proposalID: UUID
         let userID: UUID
         let groupID: UUID
+        var groupName: String? = nil
     }
 
     let source: Source

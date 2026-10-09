@@ -27,7 +27,11 @@ struct SharedPendingInvitationSection: View {
                         }
                     }
                     .buttonStyle(ShoppingActionButtonStyle())
-                    .disabled(!viewModel.canMutate)
+                    .disabled(!viewModel.canAcceptInvitation)
+                    if !viewModel.canAcceptInvitation, let message = viewModel.groupAccessMessage {
+                        Text(message)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 } else {
                     Text("Sign in and refresh to check the group before accepting.")
                         .foregroundStyle(.textSecondary)

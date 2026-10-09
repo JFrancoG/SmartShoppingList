@@ -22,21 +22,31 @@ struct ShoppingUserDTO: Codable, Sendable {
     let id: String
     let displayName: String?
     let group: ShoppingGroupDTO?
+    let accountCapabilities: APIJSON
 
     func encode(to encoder: any Encoder) throws {
         try APIJSON.object([
-            "id": .string(id), "displayName": .optional(displayName), "group": group?.json ?? .null
+            "id": .string(id), "displayName": .optional(displayName), "group": group?.json ?? .null,
+            "accountCapabilities": accountCapabilities
         ]).encode(to: encoder)
     }
 }
 
-func loadShoppingUser(id: UUID, on database: any Database) async throws -> ShoppingUserDTO {
+func loadShoppingUser(
+    id: UUID,
+    on database: any Database,
+    capacity: AccountCapacityPolicy = .init()
+) async throws -> ShoppingUserDTO {
     let sql = try shoppingSQL(database)
     // One statement keeps membership and its group in the same snapshot during a concurrent departure.
     guard let row = try await sql.raw("""
         SELECT users.id, users.display_name, groups.id AS group_id, groups.name AS group_name,
-            groups.creator_user_id, groups.administrator_user_id, groups.created_at AS group_created_at
-        FROM users LEFT JOIN groups ON groups.id = users.group_id AND groups.closed_at IS NULL
+            groups.creator_user_id, groups.administrator_user_id, groups.created_at AS group_created_at,
+            (SELECT COUNT(*) FROM group_memberships JOIN groups AS member_group ON member_group.id = group_memberships.group_id
+                WHERE user_id = users.id AND member_group.closed_at IS NULL) AS membership_count
+        FROM users
+        LEFT JOIN group_memberships AS legacy ON legacy.user_id = users.id AND legacy.group_id = users.group_id
+        LEFT JOIN groups ON groups.id = legacy.group_id AND groups.closed_at IS NULL
         WHERE users.id = \(bind: id)
         """).first() else {
         throw APIProblem.notFound
@@ -57,7 +67,11 @@ func loadShoppingUser(id: UUID, on database: any Database) async throws -> Shopp
     return ShoppingUserDTO(
         id: id.uuidString.lowercased(),
         displayName: try row.decode(column: "display_name", as: String?.self),
-        group: group
+        group: group,
+        accountCapabilities: try capacity.capabilities(
+            user: id,
+            membershipCount: row.decode(column: "membership_count", as: Int64.self)
+        )
     )
 }
 

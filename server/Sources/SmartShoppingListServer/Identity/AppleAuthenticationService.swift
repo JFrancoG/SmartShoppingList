@@ -12,12 +12,19 @@ struct AppleAuthenticationService: SessionAuthenticating, Sendable {
     let databases: Databases
     let gateway: any AppleGateway
     let vault: RefreshTokenVault?
+    let accountCapacity: AccountCapacityPolicy
     private let validation = GrantValidationCoordinator()
 
-    init(databases: Databases, gateway: any AppleGateway, vault: RefreshTokenVault?) {
+    init(
+        databases: Databases,
+        gateway: any AppleGateway,
+        vault: RefreshTokenVault?,
+        accountCapacity: AccountCapacityPolicy = .init()
+    ) {
         self.databases = databases
         self.gateway = gateway
         self.vault = vault
+        self.accountCapacity = accountCapacity
     }
 
     func createChallenge() async throws -> APIJSON {
@@ -91,7 +98,7 @@ struct AppleAuthenticationService: SessionAuthenticating, Sendable {
                     throw APIProblem.unavailable
                 }
                 let expires = try sessionRow.decode(column: "expires_at", as: Date.self)
-                let user = try await loadShoppingUser(id: userID, on: database)
+                let user = try await loadShoppingUser(id: userID, on: database, capacity: accountCapacity)
                 let userJSON = try JSONDecoder().decode(APIJSON.self, from: APIEncoding.data(user))
                 return .object([
                     "accessToken": .string(bearer), "tokenType": .string("Bearer"),

@@ -6,11 +6,13 @@ struct ShoppingRoutes: RouteCollection {
     let databases: Databases
     let authentication: any SessionAuthenticating
     let invitationOrigin: String?
+    var accountCapacity = AccountCapacityPolicy()
     private let cursorKey = SymmetricKey(size: .bits256)
 
     func boot(routes: any RoutesBuilder) throws {
         let api = routes.grouped("v1").grouped(APIErrorMiddleware())
         api.post("groups", use: createGroup)
+        api.get("groups", use: listGroups)
         api.get("groups", ":groupId", "stores", use: listStores)
         api.get(
             "groups",
@@ -73,7 +75,12 @@ struct ShoppingRoutes: RouteCollection {
     }
 
     private func service() throws -> ShoppingService {
-        ShoppingService(database: try databases.database(), invitationOrigin: invitationOrigin, cursorKey: cursorKey)
+        ShoppingService(
+            database: try databases.database(),
+            invitationOrigin: invitationOrigin,
+            cursorKey: cursorKey,
+            accountCapacity: accountCapacity
+        )
     }
 
     private func parameter(_ name: String, request: Request) throws -> UUID {
@@ -191,6 +198,12 @@ struct ShoppingRoutes: RouteCollection {
         ).response()
     }
 
+    private func listGroups(_ request: Request) async throws -> Response {
+        let user = try await authentication.authenticate(request)
+        let (limit, cursor) = try pagination(request)
+        return try await service().groups(user: user, limit: limit, cursor: cursor).response()
+    }
+
     private func listStores(_ request: Request) async throws -> Response {
         try await page(request, resource: .stores)
     }
@@ -269,6 +282,18 @@ struct ShoppingRoutes: RouteCollection {
 
     private func page(_ request: Request, resource: ShoppingService.Resource) async throws -> Response {
         let user = try await authentication.authenticate(request)
+        let (limit, cursor) = try pagination(request)
+        return try await service().page(
+            user: user,
+            group: parameter("groupId", request: request),
+            resource: resource,
+            store: resource == .items ? parameter("storeId", request: request) : nil,
+            limit: limit,
+            cursor: cursor
+        ).response()
+    }
+
+    private func pagination(_ request: Request) throws -> (limit: Int, cursor: String?) {
         let query = URLComponents(string: request.url.string)?.queryItems ?? []
         guard query.allSatisfy({ ["limit", "cursor"].contains($0.name) }),
             Set(query.map(\.name)).count == query.count
@@ -290,13 +315,6 @@ struct ShoppingRoutes: RouteCollection {
         if let cursorParameter, cursorParameter.value?.isEmpty != false {
             throw APIProblem.invalidRequest
         }
-        return try await service().page(
-            user: user,
-            group: parameter("groupId", request: request),
-            resource: resource,
-            store: resource == .items ? parameter("storeId", request: request) : nil,
-            limit: limit,
-            cursor: cursorParameter?.value
-        ).response()
+        return (limit, cursorParameter?.value)
     }
 }

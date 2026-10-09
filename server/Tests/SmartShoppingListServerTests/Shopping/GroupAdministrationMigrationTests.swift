@@ -18,14 +18,18 @@ extension SmartShoppingListServerTests {
         let original = try #require(try await sql.raw("SELECT created_at FROM groups WHERE id = \(bind: group)::uuid").first())
         let createdAt = try original.decode(column: "created_at", as: Date.self)
         // Reconstruct the already-deployed schema around representative persisted MVP records.
+        try await AddGroupMemberships().revert(on: database)
         try await AddGroupAdministration().revert(on: database)
         try await sql.raw("ALTER TABLE groups ADD CONSTRAINT groups_creator_user_id_key UNIQUE(creator_user_id)").run()
         try await AddGroupAdministration().prepare(on: database)
+        try await AddGroupMemberships().prepare(on: database)
         let migrated = try #require(try await sql.raw("SELECT * FROM groups WHERE id = \(bind: group)::uuid").first())
         #expect(try migrated.decode(column: "administrator_user_id", as: UUID.self) == owner.id)
         #expect(try migrated.decode(column: "creator_user_id", as: UUID.self) == owner.id)
         #expect(try migrated.decode(column: "created_at", as: Date.self) == createdAt)
-        let members = try await sql.raw("SELECT id FROM users WHERE group_id = \(bind: group)::uuid").all()
+        let members = try await sql.raw(
+            "SELECT user_id AS id FROM group_memberships WHERE group_id = \(bind: group)::uuid"
+        ).all()
         #expect(Set(try members.map { try $0.decode(column: "id", as: UUID.self) }) == [owner.id, member.id])
         #expect(try await AdministrationFixture.itemSnapshot(group: group) == history)
         let retained = try await sql.raw("SELECT id FROM invitations WHERE id = \(bind: invitation.id)").all()
@@ -60,7 +64,7 @@ extension SmartShoppingListServerTests {
         await #expect {
             try await database.transaction { transaction in
                 let transactionSQL = try shoppingSQL(transaction)
-                try await transactionSQL.raw("UPDATE users SET group_id = NULL WHERE id = \(bind: owner.id)").run()
+                try await transactionSQL.raw("DELETE FROM group_memberships WHERE user_id = \(bind: owner.id)").run()
             }
         } throws: { error in
             let postgres = error as? PSQLError

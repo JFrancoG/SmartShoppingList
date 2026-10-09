@@ -220,14 +220,18 @@ extension SmartShoppingListServerTests {
     }
 }
 
-private extension ShoppingFixture {
-    static func waitForInvitationWaiters(blockedBy holder: Int32, count: Int, database: any Database) async throws {
+extension ShoppingFixture {
+    private static func waitForInvitationWaiters(
+        blockedBy holder: Int32,
+        count: Int,
+        database: any Database
+    ) async throws {
         try await waitForLockWaiters(
             blockedBy: holder, count: count, query: "%FROM invitations%FOR UPDATE%", database: database
         )
     }
 
-    static func waitForLockWaiters(
+    fileprivate static func waitForLockWaiters(
         blockedBy holder: Int32,
         count: Int,
         query: String,
@@ -320,7 +324,7 @@ private extension ShoppingFixture {
         return try await (firstRequest.value, startedSecond.value)
     }
 
-    static func allPending(group: String, user: User) async throws -> [[String: APIJSON]] {
+    fileprivate static func allPending(group: String, user: User) async throws -> [[String: APIJSON]] {
         let stores = try await request(.GET, "/v1/groups/\(group)/stores", user)
         try #require(stores.status == .ok)
         let fields = try object(stores)
@@ -471,7 +475,9 @@ extension SmartShoppingListServerTests {
         #expect(responses.0.status == .ok)
         #expect(responses.1.status == (closeFirst ? .notFound : .conflict))
         let sql = try shoppingSQL(database)
-        let members = try await sql.raw("SELECT id FROM users WHERE group_id = \(bind: group)::uuid").all()
+        let members = try await sql.raw(
+            "SELECT user_id AS id FROM group_memberships WHERE group_id = \(bind: group)::uuid"
+        ).all()
         #expect(members.count == (closeFirst ? 0 : 2))
         let stored = try #require(try await sql.raw("SELECT closed_at FROM groups WHERE id = \(bind: group)::uuid").first())
         #expect((try stored.decode(column: "closed_at", as: Date?.self) != nil) == closeFirst)

@@ -7,6 +7,7 @@ struct ShoppingService: Sendable {
     let database: any Database
     let invitationOrigin: String?
     let cursorKey: SymmetricKey
+    var accountCapacity = AccountCapacityPolicy()
 
     func createGroup(user: UUID, operation: UUID, name: String) async throws -> APIReply {
         let normalized = try ShoppingText.normalize(name, maximum: 80)
@@ -17,20 +18,19 @@ struct ShoppingService: Sendable {
         )
         return try await database.transaction { transaction in
             let sql = try shoppingSQL(transaction)
-            let current = try await lockUser(user, on: sql)
+            try await lockUser(user, on: sql)
             if let replay = try await reserve(
                 user: user,
                 operation: operation,
                 type: "createGroup",
                 group: nil,
                 fingerprint: fingerprint,
-                currentGroup: current,
                 on: sql
             ) {
                 return replay
             }
-            guard current == nil else {
-                let conflict = try APIReply(status: .conflict, json: Self.alreadyInGroup.json)
+            guard try await membershipCount(user: user, on: sql) < accountCapacity.maximum(for: user) else {
+                let conflict = try APIReply(status: .conflict, json: Self.groupLimitReached.json)
                 return try await save(
                     conflict,
                     user: user,
@@ -45,7 +45,7 @@ struct ShoppingService: Sendable {
                 INSERT INTO groups(id,name,creator_user_id,administrator_user_id,created_at)
                 VALUES (\(bind: id),\(bind: normalized),\(bind: user),\(bind: user),\(bind: now))
                 """).run()
-            try await sql.raw("UPDATE users SET group_id = \(bind: id) WHERE id = \(bind: user)").run()
+            try await insertMembership(user, group: id, on: sql)
             let group = try await loadShoppingGroup(id: id, on: sql)
             return try await save(
                 APIReply(status: .created, json: group.json),
@@ -68,15 +68,13 @@ struct ShoppingService: Sendable {
         return try await database.transaction { transaction in
             let sql = try shoppingSQL(transaction)
             try await lockGroup(group, on: sql)
-            let current = try await lockUser(user, on: sql)
-            guard current == group else { throw APIProblem.notFound }
+            try await requireMembership(user, group: group, on: sql)
             if let replay = try await reserve(
                 user: user,
                 operation: operation,
                 type: "addItems",
                 group: group,
                 fingerprint: fingerprint,
-                currentGroup: current,
                 on: sql
             ) {
                 return replay
@@ -163,7 +161,7 @@ struct ShoppingService: Sendable {
                 """).first() else { throw APIProblem.notFound }
             let expectedGroup = try preview.decode(column: "group_id", as: UUID.self)
             try await lockGroup(expectedGroup, on: sql)
-            let currentGroup = try await lockUser(user, on: sql)
+            try await lockUser(user, on: sql)
             let row: (any SQLRow)?
             if accepting {
                 row = try await sql.raw("""
@@ -179,7 +177,8 @@ struct ShoppingService: Sendable {
             guard groupID == expectedGroup else { throw APIProblem.notFound }
             let acceptedBy = try row.decode(column: "accepted_by", as: UUID?.self)
             let expires = try row.decode(column: "expires_at", as: Date.self)
-            let alreadyAccepted = acceptedBy == user && currentGroup == groupID
+            let member = try await isMember(user, group: groupID, on: sql)
+            let alreadyAccepted = acceptedBy == user && member
             if !alreadyAccepted {
                 if acceptedBy != nil {
                     throw Self.invitationProblem("invitation_consumed")
@@ -190,8 +189,12 @@ struct ShoppingService: Sendable {
                 let now = try await databaseClock(sql)
                 guard expires > now else { throw Self.invitationProblem("invitation_expired") }
                 if accepting {
-                    guard currentGroup == nil else { throw Self.alreadyInGroup }
-                    try await sql.raw("UPDATE users SET group_id = \(bind: groupID) WHERE id = \(bind: user)").run()
+                    if !member {
+                        guard try await membershipCount(user: user, on: sql) < accountCapacity.maximum(for: user) else {
+                            throw Self.groupLimitReached
+                        }
+                        try await insertMembership(user, group: groupID, on: sql)
+                    }
                     try await sql.raw("""
                         UPDATE invitations SET accepted_by = \(bind: user), accepted_at = \(bind: now) WHERE id = \(bind: id)
                         """).run()
@@ -233,19 +236,23 @@ struct ShoppingService: Sendable {
 }
 
 extension ShoppingService {
-    static var alreadyInGroup: APIProblem {
-        .init(status: .conflict, code: "already_in_group", message: "El usuario ya pertenece a un grupo.")
+    static var groupLimitReached: APIProblem {
+        .init(
+            status: .conflict,
+            code: "group_limit_reached",
+            message: "Has alcanzado el límite de grupos de tu cuenta."
+        )
     }
 
     static func invitationProblem(_ code: String) -> APIProblem {
         .init(status: .gone, code: code, message: "La invitación ya no está disponible.")
     }
 
-    func lockUser(_ id: UUID, on sql: any SQLDatabase) async throws -> UUID? {
-        guard let row = try await sql.raw("SELECT group_id FROM users WHERE id = \(bind: id) FOR UPDATE").first() else {
+    func lockUser(_ id: UUID, on sql: any SQLDatabase) async throws {
+        // Compatible with foreign-key KEY SHARE locks on recipients in other groups.
+        guard try await sql.raw("SELECT id FROM users WHERE id = \(bind: id) FOR NO KEY UPDATE").first() != nil else {
             throw APIProblem.notFound
         }
-        return try row.decode(column: "group_id", as: UUID?.self)
     }
 
     /// Every operation on an existing group locks it before any user, invitation, receipt or item.
@@ -257,7 +264,7 @@ extension ShoppingService {
 
     func requireAdministrator(_ user: UUID, group: UUID, on sql: any SQLDatabase) async throws {
         try await lockGroup(group, on: sql)
-        guard try await lockUser(user, on: sql) == group else { throw APIProblem.notFound }
+        try await requireMembership(user, group: group, on: sql)
         let actual = try await loadShoppingGroup(id: group, on: sql)
         guard actual.administratorUserId == user.uuidString.lowercased() else {
             throw APIProblem(
@@ -281,7 +288,6 @@ extension ShoppingService {
         type: String,
         group: UUID?,
         fingerprint: String,
-        currentGroup: UUID?,
         on sql: any SQLDatabase
     ) async throws -> APIReply? {
         let inserted = try await sql.raw("""
@@ -304,7 +310,9 @@ extension ShoppingService {
                 message: "La clave pertenece a otra intención."
             )
         }
-        if let receiptGroup = try row.decode(column: "group_id", as: UUID?.self), receiptGroup != currentGroup {
+        // Creation already holds the account lock: authorize its existing receipt without locking another group.
+        if let receiptGroup = try row.decode(column: "group_id", as: UUID?.self),
+           !(try await isMember(user, group: receiptGroup, on: sql)) {
             throw APIProblem.notFound
         }
         guard let status = try row.decode(column: "status", as: Int?.self),
@@ -391,8 +399,7 @@ extension ShoppingService {
         return try await database.transaction { transaction in
             let sql = try shoppingSQL(transaction)
             try await lockGroup(group, on: sql)
-            let current = try await lockUser(user, on: sql)
-            guard current == group else { throw APIProblem.notFound }
+            try await requireMembership(user, group: group, on: sql)
             guard try await sql.raw("""
                 SELECT id FROM stores WHERE id = \(bind: store) AND group_id = \(bind: group)
                 """).first() != nil else { throw APIProblem.notFound }
@@ -402,7 +409,6 @@ extension ShoppingService {
                 type: "finalizePurchase",
                 group: group,
                 fingerprint: fingerprint,
-                currentGroup: current,
                 on: sql
             ) {
                 return replay
@@ -481,15 +487,13 @@ extension ShoppingService {
         return try await database.transaction { transaction in
             let sql = try shoppingSQL(transaction)
             try await lockGroup(group, on: sql)
-            let current = try await lockUser(user, on: sql)
-            guard current == group else { throw APIProblem.notFound }
+            try await requireMembership(user, group: group, on: sql)
             if let replay = try await reserve(
                 user: user,
                 operation: operation,
                 type: type,
                 group: group,
                 fingerprint: fingerprint,
-                currentGroup: current,
                 on: sql
             ) {
                 return replay

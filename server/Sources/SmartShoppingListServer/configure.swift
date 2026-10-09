@@ -12,7 +12,8 @@ enum AppConfigurationError: Error, Equatable {
 func configure(
     _ app: Application,
     databases suppliedDatabases: Databases? = nil,
-    databaseConfiguration suppliedConfiguration: DatabaseConfigurationFactory? = nil
+    databaseConfiguration suppliedConfiguration: DatabaseConfigurationFactory? = nil,
+    accountCapacity: AccountCapacityPolicy = .init()
 ) async throws {
     // Vapor's low-level trace logs dump HTTP headers, including Authorization.
     // Preserve operational diagnostics while preventing credential dumps even with LOG_LEVEL=trace.
@@ -42,7 +43,8 @@ func configure(
         migrations: CreateTodo(),
         CreateSharedShopping(),
         CreateAppleAuthentication(),
-        AddGroupAdministration()
+        AddGroupAdministration(),
+        AddGroupMemberships()
     ))
 
     app.routes.defaultMaxBodySize = "128kb"
@@ -50,7 +52,7 @@ func configure(
     app.middleware.use(APIErrorMiddleware(), at: .end)
 
     // register routes
-    try routes(app, databases: databases)
+    try routes(app, databases: databases, accountCapacity: accountCapacity)
 }
 
 enum DatabaseTLSConfiguration {

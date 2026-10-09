@@ -97,6 +97,9 @@ extension SmartShoppingListServerTests {
                 INSERT INTO groups(id,name,creator_user_id,administrator_user_id)
                 VALUES (\(bind: group)::uuid,'Legacy group',\(bind: user.id),\(bind: user.id))
                 """).run()
+            try await fixtureSQL.raw("""
+                INSERT INTO group_memberships(group_id,user_id) VALUES (\(bind: group)::uuid,\(bind: user.id))
+                """).run()
             try await fixtureSQL.raw("UPDATE users SET group_id = \(bind: group)::uuid WHERE id = \(bind: user.id)").run()
         }
         try await sql.raw("""

@@ -23,8 +23,18 @@ final class SharedShoppingViewModel {
         let groupID: UUID
     }
 
+    private struct GroupContext: Equatable {
+        let userID: UUID
+        let groupID: UUID
+        let generation: UUID
+    }
+
     private(set) var storeItemsState = StoreItemsState.notLoaded
     private(set) var session: SharedSession?
+    private(set) var groups: [SharedGroup] = []
+    private(set) var groupsAreVerified = false
+    private var groupGeneration = UUID()
+    private var groupLoadID: UUID?
     private(set) var pendingInvitation: PendingInvitation?
     private(set) var invitationPreview: InvitationPreview?
     private(set) var pendingOperation: PendingSharedOperation?
@@ -132,9 +142,9 @@ final class SharedShoppingViewModel {
         self.appleLoginDate = appleLoginDate
     }
 
-    var group: SharedGroup? { session?.user.group }
+    var group: SharedGroup? { groups.first { $0.id == session?.activeGroupID } }
     var isConfigured: Bool { api != nil && configuration != nil }
-    var isBusy: Bool { isPerformingAction || isProcessingShoppingIntent }
+    var isBusy: Bool { isPerformingAction || isProcessingShoppingIntent || groupLoadID != nil }
     var isPreparingAppleLogin: Bool { applePreparationID != nil }
     var shouldMaintainAppleLogin: Bool {
         hasLoaded && isConfigured && session == nil && !isAuthorizingWithApple && !storageFailed
@@ -147,17 +157,18 @@ final class SharedShoppingViewModel {
         appleState != nil && (challenge?.expiresAt.timeIntervalSince(appleLoginDate()) ?? 0) > 30
     }
     var canMutate: Bool {
-        hasLoaded && sessionIsVerified && !isBusy && !storageFailed && pendingOperation == nil
+        hasLoaded && sessionIsVerified && groupsAreVerified && !isBusy && !storageFailed && pendingOperation == nil
             && storeQuery.activity == .idle && !draft.isReceivingIntent
     }
     var draftIsLocked: Bool {
         !hasLoaded || pendingOperation != nil || isBusy || isReviewPresented || draft.isReceivingIntent
     }
     var isAdministrator: Bool {
-        sessionIsVerified && group?.administratorUserId == session?.user.id && group?.administratorUserId != nil
+        sessionIsVerified && groupsAreVerified && group?.administratorUserId == session?.user.id
+            && group?.administratorUserId != nil
     }
     var canManageInvitations: Bool {
-        sessionIsVerified && administration?.group.id == group?.id
+        sessionIsVerified && groupsAreVerified && administration?.group.id == group?.id
             && administration?.capabilities.canManageInvitations == true
     }
     var canConfirmReview: Bool {
@@ -170,6 +181,75 @@ final class SharedShoppingViewModel {
     }
     var selectedStoreName: String {
         stores.first { $0.id == selectedStoreID }?.name ?? ""
+    }
+
+    var canSelectGroup: Bool {
+        hasLoaded && sessionIsVerified && groupsAreVerified && !storageFailed
+            && !isPerformingAction && !isProcessingShoppingIntent && pendingOperation == nil
+            && !isReviewPresentationActive && !isItemEditorPresentationActive && !isInvitationsPresentationActive
+            && !draft.isEditorPresentationActive && !draft.isReceivingIntent && draft.activity == .idle
+            && storeQuery.activity == .idle
+    }
+
+    var canCreateGroup: Bool { canMutate && session?.user.accountCapabilities?.canCreateGroup == true }
+
+    var canAcceptInvitation: Bool {
+        canMutate && (session?.user.accountCapabilities?.canJoinGroup == true
+            || invitationPreview.map { preview in groups.contains { $0.id == preview.group.id } } == true)
+    }
+
+    var groupAccessMessage: LocalizedStringResource? {
+        guard sessionIsVerified, groupsAreVerified else { return nil }
+        guard let capabilities = session?.user.accountCapabilities else {
+            return "Group availability could not be verified. Refresh before creating or joining a group."
+        }
+        return capabilities.canCreateGroup
+            ? nil
+            : "Your account has reached its group limit. Your current groups and draft are kept."
+    }
+
+    var reviewedGroupName: String { group?.name ?? "" }
+
+    func groupNeedsIdentifier(_ candidate: SharedGroup) -> Bool {
+        groups.contains {
+            $0.id != candidate.id && $0.name.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
+                == candidate.name.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
+        }
+    }
+
+    func selectGroup(id: UUID) async {
+        guard canSelectGroup, id != group?.id, groups.contains(where: { $0.id == id }), var current = session else {
+            return
+        }
+        isPerformingAction = true
+        // Invalidate an older read before suspending on Keychain. Its failure cannot revive or clear this selection.
+        groupGeneration = UUID()
+        groupLoadID = nil
+        let originalToken = current.accessToken
+        current.activeGroupID = id
+        do {
+            try await credentials.saveSession(current)
+            guard session?.user.id == current.user.id, session?.accessToken == originalToken,
+                  sessionIsVerified, groupsAreVerified else {
+                isPerformingAction = false
+                return
+            }
+            clearGroupPresentation()
+            session = current
+            notice = nil
+        } catch {
+            notice = SharedErrorMessage.message(for: error)
+            storeItemsState = loadedStoreID == nil ? .notLoaded : .loaded
+            isPerformingAction = false
+            return
+        }
+        isPerformingAction = false
+        await loadActiveGroup()
+    }
+
+    private var groupContext: GroupContext? {
+        guard let session, let group else { return nil }
+        return GroupContext(userID: session.user.id, groupID: group.id, generation: groupGeneration)
     }
 
     var storeItemsMessage: LocalizedStringResource? {
@@ -289,9 +369,14 @@ final class SharedShoppingViewModel {
         guard let savedItem = draft.items.first(where: { $0.id == item.id }) else {
             throw DraftIntentError.saveFailed
         }
-        await load()
+        if hasLoaded {
+            await refreshSessionAndLists()
+        } else {
+            await load()
+        }
         try Task.checkCancellation()
-        guard sessionIsVerified, !storageFailed, let api, let session, let group else {
+        guard sessionIsVerified, groupsAreVerified, groups.count == 1, !storageFailed,
+              let api, let session, let group, let context = groupContext else {
             return keepShoppingIntentInDraft()
         }
         let fetchedStores: [SharedStore]
@@ -305,7 +390,7 @@ final class SharedShoppingViewModel {
             return keepShoppingIntentInDraft()
         }
         try Task.checkCancellation()
-        guard self.session?.user.id == session.user.id, self.group?.id == group.id, sessionIsVerified else {
+        guard groupContext == context, sessionIsVerified, groupsAreVerified, groups.count == 1 else {
             return keepShoppingIntentInDraft()
         }
         stores = fetchedStores
@@ -515,15 +600,14 @@ final class SharedShoppingViewModel {
     }
 
     func acceptInvitation() async {
-        guard canMutate, let api, let session, let invitation = pendingInvitation else { return }
+        guard canAcceptInvitation, let api, let session, let invitation = pendingInvitation else { return }
         await performAction {
             do {
                 let group = try await api.acceptInvitation(invitation, token: session.accessToken)
-                try await updateGroup(group)
+                guard await refreshSessionAndLists(preferredGroupID: group.id) else { return }
                 try await credentials.saveInvitation(nil)
                 pendingInvitation = nil
                 invitationPreview = nil
-                await refreshSessionAndLists()
             } catch {
                 await handle(error)
             }
@@ -531,7 +615,7 @@ final class SharedShoppingViewModel {
     }
 
     func createGroup() async {
-        guard canMutate, let session, session.user.group == nil else { return }
+        guard canCreateGroup, let session else { return }
         guard groupName.unicodeScalars.count <= 80,
               let name = ShoppingDraftRules.normalized(groupName), !name.isEmpty,
               name.unicodeScalars.count <= 80,
@@ -547,7 +631,7 @@ final class SharedShoppingViewModel {
                 )
                 try await credentials.saveOperation(operation)
                 pendingOperation = operation
-                await performPendingOperation()
+                await performPendingOperation(selectCreatedGroup: true)
             } catch {
                 notice = SharedErrorMessage.message(for: error)
             }
@@ -580,7 +664,12 @@ final class SharedShoppingViewModel {
         return ShoppingNotice(
             source: .draftConfirmation,
             message: SharedAdditionMessage.proposed(items: proposal.snapshot.items),
-            draftConfirmation: .init(proposalID: proposal.id, userID: session.user.id, groupID: group.id)
+            draftConfirmation: .init(
+                proposalID: proposal.id,
+                userID: session.user.id,
+                groupID: group.id,
+                groupName: group.name
+            )
         )
     }
 
@@ -737,7 +826,7 @@ final class SharedShoppingViewModel {
     }
 
     @discardableResult
-    private func performPendingOperation() async -> Bool {
+    private func performPendingOperation(selectCreatedGroup: Bool = false) async -> Bool {
         guard let api, let session, let operation = pendingOperation, operation.userID == session.user.id else {
             return false
         }
@@ -757,7 +846,9 @@ final class SharedShoppingViewModel {
                 }
             case .createGroup(_, let request):
                 let group = try await api.createGroup(request, token: session.accessToken)
-                try await updateGroup(group)
+                guard await refreshSessionAndLists(preferredGroupID: selectCreatedGroup ? group.id : nil) else {
+                    return false
+                }
             case .addItems(_, let groupID, let request, let sourceDraft):
                 let addedItems = try await api.addItems(request, groupID: groupID, token: session.accessToken)
                 let storeIDs = Set(addedItems.map(\.storeId))
@@ -864,7 +955,7 @@ final class SharedShoppingViewModel {
     }
 
     var canQueryStore: Bool {
-        hasLoaded && sessionIsVerified && !isBusy && group != nil && !stores.isEmpty
+        hasLoaded && sessionIsVerified && groupsAreVerified && !isBusy && group != nil && !stores.isEmpty
     }
 
     func openStoreQuery() {
@@ -920,26 +1011,30 @@ final class SharedShoppingViewModel {
     }
 
     func loadSelectedStore() async {
-        guard !isBusy, sessionIsVerified, let api, let session, let group, let storeID = selectedStoreID else {
-            return
-        }
-        await performAction {
-            items = []
-            loadedStoreID = nil
-            storeItemsState = .loading
-            do {
-                let loaded = try await api.pendingItems(groupID: group.id, storeID: storeID, token: session.accessToken)
-                guard selectedStoreID == storeID else { return }
-                items = loaded
-                loadedStoreID = storeID
-                storeItemsState = .loaded
-                notice = nil
-                reconcilePurchaseSelection()
-            } catch {
-                guard selectedStoreID == storeID else { return }
-                storeItemsState = .failed
-                await handle(error)
+        guard !isBusy, sessionIsVerified, groupsAreVerified, let api, let session,
+              let group, let storeID = selectedStoreID, let context = groupContext else { return }
+        let loadID = UUID()
+        groupLoadID = loadID
+        defer {
+            if groupLoadID == loadID {
+                groupLoadID = nil
             }
+        }
+        items = []
+        loadedStoreID = nil
+        storeItemsState = .loading
+        do {
+            let loaded = try await api.pendingItems(groupID: group.id, storeID: storeID, token: session.accessToken)
+            guard groupContext == context, selectedStoreID == storeID else { return }
+            items = loaded
+            loadedStoreID = storeID
+            storeItemsState = .loaded
+            notice = nil
+            reconcilePurchaseSelection()
+        } catch {
+            guard groupContext == context, selectedStoreID == storeID else { return }
+            storeItemsState = .failed
+            await handle(error)
         }
     }
 
@@ -1038,64 +1133,105 @@ final class SharedShoppingViewModel {
     }
 
     @discardableResult
-    private func refreshSessionAndLists() async -> Bool {
+    private func refreshSessionAndLists(preferredGroupID: UUID? = nil) async -> Bool {
         guard let api, var current = session else { return false }
+        let accountID = current.user.id
+        let accessToken = current.accessToken
+        let generation = groupGeneration
+        let previousGroupID = group?.id
+        let requestedStoreID = selectedStoreID
+        groupsAreVerified = false
         administration = nil
-        var requestedStoreID = selectedStoreID
         loadedStoreID = nil
-        storeItemsState = selectedStoreID == nil ? .notLoaded : .loading
+        storeItemsState = requestedStoreID == nil ? .notLoaded : .loading
         do {
             current.user = try await api.currentUser(token: current.accessToken)
-            if current.user.group?.id != session?.user.group?.id {
-                clearGroupPresentation()
+            guard current.user.id == accountID, session?.user.id == accountID,
+                  session?.accessToken == accessToken else {
+                throw SharedAPIError.invalidResponse
+            }
+            let memberships = try await api.groups(token: current.accessToken)
+            guard session?.user.id == accountID, session?.accessToken == accessToken else { return false }
+            guard let capabilities = current.user.accountCapabilities,
+                  capabilities.membershipCount == memberships.count else {
+                throw SharedAPIError.invalidResponse
+            }
+            if let preferredGroupID, memberships.contains(where: { $0.id == preferredGroupID }) {
+                current.activeGroupID = preferredGroupID
+            } else if current.activeGroupID == nil, memberships.count == 1 {
+                current.activeGroupID = memberships.first?.id
             }
             try await credentials.saveSession(current)
-            session = current
-            sessionIsVerified = true
-            restorePurchaseSelection()
-            requestedStoreID = selectedStoreID
-            storeItemsState = selectedStoreID == nil ? .notLoaded : .loading
-            notice = nil
-            if let group = current.user.group {
-                if group.administratorUserId != nil {
-                    let latest = try await api.groupAdministration(groupID: group.id, token: current.accessToken)
-                    current.user.group = latest.group
-                    try await credentials.saveSession(current)
-                    session = current
-                    administration = latest
-                    if !latest.capabilities.canManageInvitations {
-                        invitations = []
-                        shareURL = nil
-                        isInvitationsPresented = false
-                    }
-                }
-                stores = try await api.stores(groupID: group.id, token: current.accessToken)
-                if let selectedStoreID, !stores.contains(where: { $0.id == selectedStoreID }) {
-                    self.selectedStoreID = nil
-                    items = []
-                }
-                if let storeID = selectedStoreID {
-                    requestedStoreID = storeID
-                    storeItemsState = .loading
-                    let loaded = try await api.pendingItems(groupID: group.id, storeID: storeID, token: current.accessToken)
-                    guard selectedStoreID == storeID else { return false }
-                    items = loaded
-                    loadedStoreID = storeID
-                    storeItemsState = .loaded
-                }
-            } else {
-                stores = []
-                selectedStoreID = nil
+            guard session?.user.id == accountID, session?.accessToken == accessToken else { return false }
+            let nextGroupID = memberships.first { $0.id == current.activeGroupID }?.id
+            if nextGroupID != previousGroupID {
+                clearGroupPresentation()
             }
+            session = current
+            groups = memberships
+            sessionIsVerified = true
+            groupsAreVerified = true
+            restorePurchaseSelection()
+            notice = nil
+            let loaded = await loadActiveGroup()
             await previewPendingInvitation()
-            reconcilePurchaseSelection()
-            return true
+            return loaded
         } catch {
+            guard session?.user.id == accountID, session?.accessToken == accessToken,
+                  groupGeneration == generation else { return false }
             if selectedStoreID == requestedStoreID {
                 storeItemsState = selectedStoreID == nil ? .notLoaded : .failed
             } else if (error as? SharedAPIError)?.isSessionInvalid != true {
                 return false
             }
+            await handle(error)
+            return false
+        }
+    }
+
+    @discardableResult
+    private func loadActiveGroup() async -> Bool {
+        guard let api, let session, let group, let context = groupContext else { return true }
+        let loadID = UUID()
+        groupLoadID = loadID
+        defer {
+            if groupLoadID == loadID {
+                groupLoadID = nil
+            }
+        }
+        administration = nil
+        loadedStoreID = nil
+        storeItemsState = selectedStoreID == nil ? .notLoaded : .loading
+        do {
+            if group.administratorUserId != nil {
+                let latest = try await api.groupAdministration(groupID: group.id, token: session.accessToken)
+                guard groupContext == context else { return false }
+                updateMembership(latest.group)
+                administration = latest
+                if !latest.capabilities.canManageInvitations {
+                    invitations = []
+                    shareURL = nil
+                    isInvitationsPresented = false
+                }
+            }
+            let fetchedStores = try await api.stores(groupID: group.id, token: session.accessToken)
+            guard groupContext == context else { return false }
+            stores = fetchedStores
+            if let selectedStoreID, !stores.contains(where: { $0.id == selectedStoreID }) {
+                self.selectedStoreID = nil
+            }
+            if let storeID = selectedStoreID {
+                let loaded = try await api.pendingItems(groupID: group.id, storeID: storeID, token: session.accessToken)
+                guard groupContext == context, selectedStoreID == storeID else { return false }
+                items = loaded
+                loadedStoreID = storeID
+                storeItemsState = .loaded
+            }
+            reconcilePurchaseSelection()
+            return true
+        } catch {
+            guard groupContext == context else { return false }
+            storeItemsState = selectedStoreID == nil ? .notLoaded : .failed
             await handle(error)
             return false
         }
@@ -1122,11 +1258,9 @@ final class SharedShoppingViewModel {
         }
     }
 
-    private func updateGroup(_ group: SharedGroup) async throws {
-        guard var session else { throw SharedAPIError.invalidResponse }
-        session.user.group = group
-        try await credentials.saveSession(session)
-        self.session = session
+    private func updateMembership(_ updated: SharedGroup) {
+        guard let index = groups.firstIndex(where: { $0.id == updated.id }) else { return }
+        groups[index] = updated
     }
 
     private func handle(_ error: any Error) async {
@@ -1187,11 +1321,17 @@ final class SharedShoppingViewModel {
 
     private func clearSessionPresentation() {
         clearGroupPresentation()
+        groups = []
+        groupsAreVerified = false
         session = nil
         sessionIsVerified = false
     }
 
     private func clearGroupPresentation() {
+        groupGeneration = UUID()
+        groupLoadID = nil
+        draft.cancelInterpretation()
+        notice = nil
         reviewedItems = []
         reviewSnapshot = nil
         reviewOwner = nil
@@ -1219,26 +1359,34 @@ final class SharedShoppingViewModel {
     }
 
     func loadGroupManagement() async {
-        guard hasLoaded, !isBusy, sessionIsVerified, let api, let session, let group else { return }
+        guard hasLoaded, !isBusy, sessionIsVerified, groupsAreVerified,
+              let api, let session, let group, let context = groupContext else { return }
+        let loadID = UUID()
+        groupLoadID = loadID
         groupManagementState = .loading
-        await performAction {
-            do {
-                let latest = try await api.groupAdministration(groupID: group.id, token: session.accessToken)
-                let members = try await api.groupMembers(groupID: group.id, token: session.accessToken)
-                guard self.session?.user.id == session.user.id, self.group?.id == group.id else { return }
-                try await updateGroup(latest.group)
-                administration = latest
-                groupMembers = members
-                if !members.contains(where: { $0.id == selectedSuccessorID && $0.id != session.user.id }) {
-                    selectedSuccessorID = nil
-                }
-                groupManagementState = .loaded
-            } catch {
-                administration = nil
-                groupMembers = []
-                groupManagementState = .failed
-                await handle(error)
+        defer {
+            if groupLoadID == loadID {
+                groupLoadID = nil
             }
+        }
+        do {
+            let latest = try await api.groupAdministration(groupID: group.id, token: session.accessToken)
+            guard groupContext == context else { return }
+            let members = try await api.groupMembers(groupID: group.id, token: session.accessToken)
+            guard groupContext == context else { return }
+            updateMembership(latest.group)
+            administration = latest
+            groupMembers = members
+            if !members.contains(where: { $0.id == selectedSuccessorID && $0.id != session.user.id }) {
+                selectedSuccessorID = nil
+            }
+            groupManagementState = .loaded
+        } catch {
+            guard groupContext == context else { return }
+            administration = nil
+            groupMembers = []
+            groupManagementState = .failed
+            await handle(error)
         }
     }
 
@@ -1336,32 +1484,14 @@ final class SharedShoppingViewModel {
                 return false
             }
             confirmed = true
-            // Receipts describe the original commit. Never overwrite a later membership or role with their snapshot.
-            var current = session
-            current.user = try await api.currentUser(token: current.accessToken)
-            guard current.user.id == session.user.id else { throw SharedAPIError.invalidResponse }
-            let latest: SharedGroupAdministration?
-            if let group = current.user.group {
-                latest = try await api.groupAdministration(groupID: group.id, token: current.accessToken)
-                current.user.group = latest?.group
-            } else {
-                latest = nil
-            }
-            try await credentials.saveSession(current)
-            if current.user.group?.id != self.group?.id {
-                clearGroupPresentation()
-            } else {
-                groupMembers = []
-                groupManagementState = .notLoaded
-                selectedSuccessorID = nil
-            }
-            self.session = current
-            sessionIsVerified = true
-            administration = latest
+            // Receipts describe the original commit. Reconcile current memberships before resolving recovery.
+            guard await refreshSessionAndLists() else { return false }
+            groupMembers = []
+            groupManagementState = .notLoaded
+            selectedSuccessorID = nil
             try await credentials.saveOperation(nil)
             pendingOperation = nil
             retryNotBefore = nil
-            await refreshSessionAndLists()
             if case .leaveGroup = operation {
                 notice = "Your departure is confirmed. Your current group access has been refreshed."
             } else {
@@ -1428,6 +1558,8 @@ extension SharedShoppingViewModel {
             storeQuery: storeQuery
         )
         session = preview.session
+        groups = preview.groups
+        groupsAreVerified = preview.groupsAreVerified
         pendingInvitation = preview.pendingInvitation
         invitationPreview = preview.invitationPreview
         pendingOperation = preview.pendingOperation
@@ -1547,14 +1679,14 @@ extension SharedShoppingViewModel {
             purchaseSelectionOwner = session.user.id
         }
         if case .changeItem(let userID, let original, let request) = pendingOperation,
-           userID == session.user.id, original.groupId == session.user.group?.id {
+           userID == session.user.id, original.groupId == group?.id {
             if editingItem == nil, request.replacement != nil {
                 restoreItemEditor(original: original, request: request)
             }
             selectedStoreID = original.storeId
         }
         if case .purchase(let userID, let groupID, let request, let selection) = pendingOperation,
-           userID == session.user.id, groupID == session.user.group?.id,
+           userID == session.user.id, groupID == group?.id,
            purchaseSelections[request.storeId] == nil {
             purchaseSelections[request.storeId] = selection
             selectedStoreID = request.storeId

@@ -20,6 +20,8 @@ enum SharedErrorMessage {
             case "invalid_apple_credentials", "challenge_expired", "challenge_consumed":
                 return "This sign-in attempt is no longer valid. Start signing in with Apple again."
             case "already_in_group": return "Your account already belongs to a group. Refresh to check its status."
+            case "group_limit_reached":
+                return "Your account has reached its group limit. Your current groups and draft are kept."
             case "invitation_expired": return "The invitation has expired. Ask for a new link."
             case "invitation_revoked": return "The invitation has been revoked. Ask for a new link."
             case "invitation_consumed": return "Someone else has already used this invitation. Ask for a new link."

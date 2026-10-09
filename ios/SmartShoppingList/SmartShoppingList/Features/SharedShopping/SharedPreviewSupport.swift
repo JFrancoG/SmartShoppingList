@@ -33,6 +33,7 @@ extension PreviewTrait where T == Preview.ViewTraits {
 
 enum SharedPreviewState: CaseIterable, Hashable {
     case group
+    case multipleGroups
     case signedOut
     case signInUnavailable
     case invitation
@@ -52,6 +53,8 @@ struct SharedPreviewContext {
 
 struct SharedPreviewPresentation {
     let session: SharedSession?
+    let groups: [SharedGroup]
+    let groupsAreVerified: Bool
     let administration: SharedGroupAdministration?
     let groupMembers: [SharedGroupMember]
     let groupManagementState: GroupManagementLoadState
@@ -78,6 +81,8 @@ extension SharedPreviewPresentation {
     @MainActor
     init(model: SharedShoppingViewModel, fixture: SharedPreviewFixture, state: SharedPreviewState) {
         session = model.session
+        groups = model.groups
+        groupsAreVerified = model.groupsAreVerified
         administration = model.administration
         groupMembers = model.groupMembers
         groupManagementState = model.groupManagementState
@@ -252,6 +257,9 @@ enum SharedPreviewSupport {
             ),
             sourceDraft: fixture.draft
         ) : nil
+        if state == .multipleGroups {
+            session.activeGroupID = fixture.group.id
+        }
         let credentials = MemorySharedCredentialStore(
             session: state == .signedOut || state == .signInUnavailable || state == .unconfigured ? nil : session,
             invitation: state == .invitation || state == .signedOut ? fixture.pendingInvitation : nil,
@@ -268,6 +276,14 @@ enum SharedPreviewSupport {
             signInUnavailable: state == .signInUnavailable,
             managementScenario: managementScenario
         )
+        if state == .multipleGroups {
+            api?.additionalGroups = [SharedGroup(
+                id: fixture.invitation.id,
+                name: fixture.group.name,
+                creatorUserId: session.user.id,
+                createdAt: fixture.group.createdAt
+            )]
+        }
         let configuration = state == .unconfigured ? nil : fixture.configuration
         #if DEBUG
         if let presentation {
@@ -297,7 +313,7 @@ enum SharedPreviewSupport {
     ) async {
         await model.load()
         switch state {
-        case .group:
+        case .group, .multipleGroups:
             model.selectedStoreID = fixture.stores.first?.id
             await model.loadSelectedStore()
             if let first = model.items.first {
@@ -323,6 +339,7 @@ private final class PreviewSharedShoppingAPI: SharedShoppingAPI {
     let fixture: SharedPreviewFixture
     let user: SharedUser
     let signInUnavailable: Bool
+    var additionalGroups: [SharedGroup] = []
     private let managementScenario: GroupManagementPreviewScenario
     private var storedStores: [SharedStore]
     private var storedItems: [SharedItem]
@@ -351,7 +368,25 @@ private final class PreviewSharedShoppingAPI: SharedShoppingAPI {
         return SharedChallenge(id: UUID(), nonce: String(repeating: "A", count: 43), expiresAt: Date().addingTimeInterval(300))
     }
     func loginWithApple(_ request: AppleLoginRequest) async throws -> SharedSession { throw SharedAPIError.configuration }
-    func currentUser(token: String) async throws -> SharedUser { user }
+    @MainActor
+    func currentUser(token: String) async throws -> SharedUser {
+        var result = user
+        let count = (user.group == nil ? 0 : 1) + additionalGroups.count
+        result.accountCapabilities = try SharedAccountCapabilities(
+            membershipCount: count,
+            canCreateGroup: count < (additionalGroups.isEmpty ? 1 : 3),
+            canJoinGroup: count < (additionalGroups.isEmpty ? 1 : 3),
+            limits: SharedAccountLimits(groupsPerAccount: SharedResourceLimit(
+                maximum: additionalGroups.isEmpty ? 1 : 3,
+                enforced: true
+            ))
+        )
+        return result
+    }
+    @MainActor
+    func groups(token: String) async throws -> [SharedGroup] {
+        (user.group.map { [$0] } ?? []) + additionalGroups
+    }
     func logout(token: String) async throws {}
     func createGroup(_ request: CreateGroupRequest, token: String) async throws -> SharedGroup {
         throw SharedAPIError.configuration
@@ -418,8 +453,9 @@ private final class PreviewSharedShoppingAPI: SharedShoppingAPI {
     func leaveGroup(_ request: LeaveGroupRequest, groupID: UUID, token: String) async throws -> SharedGroupDeparture {
         throw SharedAPIError.configuration
     }
+    @MainActor
     func stores(groupID: UUID, token: String) async throws -> [SharedStore] {
-        await MainActor.run { storedStores }
+        storedStores.filter { $0.groupId == groupID }
     }
     func createInvitation(groupID: UUID, token: String) async throws -> CreatedInvitation {
         fixture.createdInvitation

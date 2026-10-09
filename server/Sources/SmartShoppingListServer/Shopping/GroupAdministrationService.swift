@@ -22,7 +22,7 @@ extension ShoppingService {
         try await database.transaction { transaction in
             let sql = try shoppingSQL(transaction)
             try await lockGroup(group, on: sql)
-            guard try await lockUser(user, on: sql) == group else { throw APIProblem.notFound }
+            try await requireMembership(user, group: group, on: sql)
             try await refreshTransfers(group: group, on: sql)
             let actual = try await loadShoppingGroup(id: group, on: sql)
             let count = try await memberCount(group: group, on: sql)
@@ -33,7 +33,8 @@ extension ShoppingService {
                     user: user,
                     administrator: actual.administratorUserId,
                     memberCount: count,
-                    pending: pending
+                    pending: pending,
+                    accountMaximum: accountCapacity.maximum(for: user)
                 )
             ]))
         }
@@ -53,15 +54,13 @@ extension ShoppingService {
         return try await database.transaction { transaction in
             let sql = try shoppingSQL(transaction)
             try await lockGroup(group, on: sql)
-            let current = try await lockUser(user, on: sql)
-            guard current == group else { throw APIProblem.notFound }
+            try await requireMembership(user, group: group, on: sql)
             if let replay = try await reserve(
                 user: user,
                 operation: operation,
                 type: "proposeAdministrationTransfer",
                 group: group,
                 fingerprint: fingerprint,
-                currentGroup: current,
                 on: sql
             ) {
                 return replay
@@ -71,7 +70,7 @@ extension ShoppingService {
                 throw Self.administrationProblem("administrator_required", forbidden: true)
             }
             guard recipient != user, try await sql.raw("""
-                SELECT id FROM users WHERE id = \(bind: recipient) AND group_id = \(bind: group)
+                SELECT user_id FROM group_memberships WHERE user_id = \(bind: recipient) AND group_id = \(bind: group)
                 """).first() != nil else {
                 return try await saveAdministrationConflict(
                     "invalid_transfer_recipient",
@@ -124,15 +123,13 @@ extension ShoppingService {
         return try await database.transaction { transaction in
             let sql = try shoppingSQL(transaction)
             try await lockGroup(group, on: sql)
-            let current = try await lockUser(user, on: sql)
-            guard current == group else { throw APIProblem.notFound }
+            try await requireMembership(user, group: group, on: sql)
             if let replay = try await reserve(
                 user: user,
                 operation: operation,
                 type: type,
                 group: group,
                 fingerprint: fingerprint,
-                currentGroup: current,
                 on: sql
             ) {
                 return replay
@@ -200,7 +197,7 @@ extension ShoppingService {
             guard try await sql.raw("SELECT id FROM groups WHERE id = \(bind: group) FOR UPDATE").first() != nil else {
                 throw APIProblem.notFound
             }
-            let current = try await lockUser(user, on: sql)
+            try await lockUser(user, on: sql)
             if let replay = try await departureReceipt(
                 user: user,
                 operation: operation,
@@ -209,7 +206,7 @@ extension ShoppingService {
             ) {
                 return replay
             }
-            guard current == group else { throw APIProblem.notFound }
+            guard try await isMember(user, group: group, on: sql) else { throw APIProblem.notFound }
             let actual = try await loadShoppingGroup(id: group, on: sql)
             if let replay = try await reserve(
                 user: user,
@@ -217,7 +214,6 @@ extension ShoppingService {
                 type: "groupDeparture",
                 group: group,
                 fingerprint: fingerprint,
-                currentGroup: current,
                 on: sql
             ) {
                 return replay
@@ -257,7 +253,12 @@ extension ShoppingService {
                     WHERE group_id = \(bind: group) AND accepted_by IS NULL
                     """).run()
             }
-            try await sql.raw("UPDATE users SET group_id = NULL WHERE id = \(bind: user)").run()
+            try await sql.raw("""
+                DELETE FROM group_memberships WHERE user_id = \(bind: user) AND group_id = \(bind: group)
+                """).run()
+            try await sql.raw("""
+                UPDATE users SET group_id = NULL WHERE id = \(bind: user) AND group_id = \(bind: group)
+                """).run()
             return try await save(
                 APIReply(status: .ok, json: .object([
                     "userId": .string(user.uuidString.lowercased()), "groupId": .string(group.uuidString.lowercased()),
@@ -281,15 +282,17 @@ extension ShoppingService {
         try await sql.raw("""
             UPDATE group_administration_transfers AS transfer SET status = 'invalidated', resolved_at = clock_timestamp()
             WHERE transfer.group_id = \(bind: group) AND transfer.status = 'pending'
-                AND (NOT EXISTS (SELECT 1 FROM users WHERE id = transfer.recipient_user_id AND group_id = transfer.group_id)
+                AND (NOT EXISTS (SELECT 1 FROM group_memberships
+                    WHERE user_id = transfer.recipient_user_id AND group_id = transfer.group_id)
                     OR NOT EXISTS (SELECT 1 FROM groups WHERE id = transfer.group_id
                         AND administrator_user_id = transfer.proposer_user_id AND closed_at IS NULL))
             """).run()
     }
 
     private func memberCount(group: UUID, on sql: any SQLDatabase) async throws -> Int64 {
-        guard let row = try await sql.raw("SELECT COUNT(*) AS count FROM users WHERE group_id = \(bind: group)").first()
-        else { throw APIProblem.unavailable }
+        guard let row = try await sql.raw("""
+            SELECT COUNT(*) AS count FROM group_memberships WHERE group_id = \(bind: group)
+            """).first() else { throw APIProblem.unavailable }
         return try row.decode(column: "count", as: Int64.self)
     }
 

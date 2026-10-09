@@ -1433,13 +1433,24 @@ private actor SharedFlowAPI: SharedShoppingAPI {
         return session
     }
 
+    func groups(token: String) async throws -> [SharedGroup] {
+        session.user.group.map { [$0] } ?? []
+    }
+
     func currentUser(token: String) async throws -> SharedUser {
         requestCount += 1
         await currentUserGate?.pause()
         if failCurrentUser || (changeRefreshFails && !sentItemChanges.isEmpty) || (failRefreshAfterPurchase && !sentPurchases.isEmpty) {
             throw SharedAPIError.transport
         }
-        return session.user
+        var user = session.user
+        user.accountCapabilities = try SharedAccountCapabilities(
+            membershipCount: user.group == nil ? 0 : 1,
+            canCreateGroup: true,
+            canJoinGroup: true,
+            limits: SharedAccountLimits(groupsPerAccount: SharedResourceLimit(maximum: 3, enforced: true))
+        )
+        return user
     }
     func logout(token: String) async throws {
         requestCount += 1

@@ -15,7 +15,11 @@ struct AppleAuthenticationRoutes: RouteCollection, Sendable {
         }
         version.get("me") { request async throws -> Response in
             let id = try await service.authenticate(request)
-            return try await APIEncoding.response(loadShoppingUser(id: id, on: service.databases.database()))
+            return try await APIEncoding.response(loadShoppingUser(
+                id: id,
+                on: service.databases.database(),
+                capacity: service.accountCapacity
+            ))
         }
         version.delete("session") { request async throws -> Response in
             try await service.logout(request)

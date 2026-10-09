@@ -1,5 +1,5 @@
 {
-  "contractVersion": "0.2.0",
+  "contractVersion": "0.3.0",
   "cases": [
     {
       "id": "challenge-fresh",
@@ -40,7 +40,18 @@
           "user": {
             "id": "00000000-0000-4000-8000-000000000001",
             "displayName": "Alex",
-            "group": null
+            "group": null,
+            "accountCapabilities": {
+              "membershipCount": 0,
+              "canCreateGroup": true,
+              "canJoinGroup": true,
+              "limits": {
+                "groupsPerAccount": {
+                  "maximum": 1,
+                  "enforced": true
+                }
+              }
+            }
           }
         }
       }
@@ -105,6 +116,17 @@
             "creatorUserId": "00000000-0000-4000-8000-000000000001",
             "createdAt": "2026-09-19T10:00:00Z",
             "administratorUserId": "00000000-0000-4000-8000-000000000001"
+          },
+          "accountCapabilities": {
+            "membershipCount": 1,
+            "canCreateGroup": false,
+            "canJoinGroup": false,
+            "limits": {
+              "groupsPerAccount": {
+                "maximum": 1,
+                "enforced": true
+              }
+            }
           }
         }
       }
@@ -181,7 +203,7 @@
       }
     },
     {
-      "id": "already-grouped",
+      "id": "create-group-historical-already-in-group-receipt",
       "operationId": "createGroup",
       "request": {
         "path": {},
@@ -520,7 +542,7 @@
       }
     },
     {
-      "id": "invite-no-silent-group-transfer",
+      "id": "invite-capacity-rejection-preserves-memberships",
       "operationId": "acceptInvitation",
       "request": {
         "path": {
@@ -534,8 +556,8 @@
       "response": {
         "status": 409,
         "body": {
-          "code": "already_in_group",
-          "message": "Ya perteneces a un grupo.",
+          "code": "group_limit_reached",
+          "message": "Se ha alcanzado el límite de grupos de la cuenta.",
           "requestId": "00000000-0000-4000-8000-000000000900"
         }
       }
@@ -2020,6 +2042,274 @@
           "createdAt": "2026-09-19T10:00:00Z"
         }
       }
+    },
+    {
+      "id": "list-groups-empty",
+      "operationId": "listGroups",
+      "request": {
+        "path": {},
+        "query": {}
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "data": [],
+          "nextCursor": null
+        }
+      }
+    },
+    {
+      "id": "list-groups-multiple-test-policy",
+      "operationId": "listGroups",
+      "request": {
+        "path": {},
+        "query": {}
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "data": [
+            {
+              "id": "00000000-0000-4000-8000-000000000010",
+              "name": "Casa",
+              "creatorUserId": "00000000-0000-4000-8000-000000000001",
+              "createdAt": "2026-09-19T10:00:00Z",
+              "administratorUserId": "00000000-0000-4000-8000-000000000001"
+            },
+            {
+              "id": "00000000-0000-4000-8000-000000000011",
+              "name": "Trabajo",
+              "creatorUserId": "00000000-0000-4000-8000-000000000002",
+              "createdAt": "2026-10-09T10:00:00Z",
+              "administratorUserId": "00000000-0000-4000-8000-000000000002"
+            }
+          ],
+          "nextCursor": null
+        }
+      }
+    },
+    {
+      "id": "list-groups-page",
+      "operationId": "listGroups",
+      "request": {
+        "path": {},
+        "query": {
+          "limit": 1
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "data": [
+            {
+              "id": "00000000-0000-4000-8000-000000000010",
+              "name": "Casa",
+              "creatorUserId": "00000000-0000-4000-8000-000000000001",
+              "createdAt": "2026-09-19T10:00:00Z",
+              "administratorUserId": "00000000-0000-4000-8000-000000000001"
+            }
+          ],
+          "nextCursor": "opaque-account-groups-cursor"
+        }
+      }
+    },
+    {
+      "id": "list-groups-last-page",
+      "operationId": "listGroups",
+      "request": {
+        "path": {},
+        "query": {
+          "limit": 1,
+          "cursor": "opaque-account-groups-cursor"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "data": [
+            {
+              "id": "00000000-0000-4000-8000-000000000011",
+              "name": "Trabajo",
+              "creatorUserId": "00000000-0000-4000-8000-000000000002",
+              "createdAt": "2026-10-09T10:00:00Z",
+              "administratorUserId": "00000000-0000-4000-8000-000000000002"
+            }
+          ],
+          "nextCursor": null
+        }
+      }
+    },
+    {
+      "id": "current-user-multiple-test-policy",
+      "operationId": "getCurrentUser",
+      "request": {
+        "path": {},
+        "query": {}
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "displayName": "Alex",
+          "group": {
+            "id": "00000000-0000-4000-8000-000000000010",
+            "name": "Casa",
+            "creatorUserId": "00000000-0000-4000-8000-000000000001",
+            "createdAt": "2026-09-19T10:00:00Z",
+            "administratorUserId": "00000000-0000-4000-8000-000000000001"
+          },
+          "accountCapabilities": {
+            "membershipCount": 2,
+            "canCreateGroup": true,
+            "canJoinGroup": true,
+            "limits": {
+              "groupsPerAccount": {
+                "maximum": 3,
+                "enforced": true
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "current-user-legacy-null-with-membership",
+      "operationId": "getCurrentUser",
+      "request": {
+        "path": {},
+        "query": {}
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "displayName": "Alex",
+          "group": null,
+          "accountCapabilities": {
+            "membershipCount": 1,
+            "canCreateGroup": false,
+            "canJoinGroup": false,
+            "limits": {
+              "groupsPerAccount": {
+                "maximum": 1,
+                "enforced": true
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "current-user-no-memberships",
+      "operationId": "getCurrentUser",
+      "request": {
+        "path": {},
+        "query": {}
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "displayName": "Alex",
+          "group": null,
+          "accountCapabilities": {
+            "membershipCount": 0,
+            "canCreateGroup": true,
+            "canJoinGroup": true,
+            "limits": {
+              "groupsPerAccount": {
+                "maximum": 1,
+                "enforced": true
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "create-group-capacity-reached",
+      "operationId": "createGroup",
+      "request": {
+        "path": {},
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000109",
+          "name": "Otro grupo"
+        }
+      },
+      "response": {
+        "status": 409,
+        "body": {
+          "code": "group_limit_reached",
+          "message": "Se ha alcanzado el límite de grupos de la cuenta.",
+          "requestId": "00000000-0000-4000-8000-000000000900"
+        }
+      }
+    },
+    {
+      "id": "create-group-capacity-receipt-after-capacity-change",
+      "operationId": "createGroup",
+      "request": {
+        "path": {},
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000109",
+          "name": "Otro grupo"
+        }
+      },
+      "response": {
+        "status": 409,
+        "body": {
+          "code": "group_limit_reached",
+          "message": "Se ha alcanzado el límite de grupos de la cuenta.",
+          "requestId": "00000000-0000-4000-8000-000000000900"
+        }
+      }
+    },
+    {
+      "id": "accept-unused-invite-as-existing-member-at-capacity",
+      "operationId": "acceptInvitation",
+      "request": {
+        "path": {
+          "invitationId": "00000000-0000-4000-8000-000000000040"
+        },
+        "query": {},
+        "body": {
+          "token": "IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "id": "00000000-0000-4000-8000-000000000010",
+          "name": "Casa",
+          "creatorUserId": "00000000-0000-4000-8000-000000000001",
+          "createdAt": "2026-09-19T10:00:00Z",
+          "administratorUserId": "00000000-0000-4000-8000-000000000001"
+        }
+      }
+    },
+    {
+      "id": "create-additional-group-test-policy",
+      "operationId": "createGroup",
+      "request": {
+        "path": {},
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000110",
+          "name": "Trabajo"
+        }
+      },
+      "response": {
+        "status": 201,
+        "body": {
+          "id": "00000000-0000-4000-8000-000000000011",
+          "name": "Trabajo",
+          "creatorUserId": "00000000-0000-4000-8000-000000000001",
+          "createdAt": "2026-10-09T10:00:00Z",
+          "administratorUserId": "00000000-0000-4000-8000-000000000001"
+        }
+      }
     }
   ],
   "invalidRequests": [
@@ -2832,6 +3122,59 @@
         },
         "query": {
           "userId": "00000000-0000-4000-8000-000000000002"
+        }
+      }
+    },
+    {
+      "id": "groups-page-limit-zero",
+      "operationId": "listGroups",
+      "request": {
+        "path": {},
+        "query": {
+          "limit": 0
+        }
+      }
+    },
+    {
+      "id": "groups-page-limit-over-maximum",
+      "operationId": "listGroups",
+      "request": {
+        "path": {},
+        "query": {
+          "limit": 101
+        }
+      }
+    },
+    {
+      "id": "groups-empty-cursor",
+      "operationId": "listGroups",
+      "request": {
+        "path": {},
+        "query": {
+          "cursor": ""
+        }
+      }
+    },
+    {
+      "id": "groups-no-server-selection",
+      "operationId": "listGroups",
+      "request": {
+        "path": {},
+        "query": {
+          "activeGroupId": "00000000-0000-4000-8000-000000000010"
+        }
+      }
+    },
+    {
+      "id": "create-does-not-accept-premium-flag",
+      "operationId": "createGroup",
+      "request": {
+        "path": {},
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000111",
+          "name": "Trabajo",
+          "isPremium": true
         }
       }
     }

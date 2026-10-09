@@ -19,6 +19,7 @@ struct SharedGroupView: View {
         NavigationStack {
             Form {
                 SharedOperationSection(viewModel: viewModel)
+                SharedGroupSelector(viewModel: viewModel)
 
                 if viewModel.group != nil {
                     Section("Shopping list") {
@@ -55,7 +56,7 @@ struct SharedGroupView: View {
                             confirmsCancellation = true
                         }
                     }
-                } else if viewModel.hasLoaded && !viewModel.isBusy {
+                } else if viewModel.hasLoaded && !viewModel.isBusy && viewModel.groups.isEmpty {
                     Section {
                         Text("Set up your group in Settings to share a shopping list.")
                             .foregroundStyle(.textSecondary)
