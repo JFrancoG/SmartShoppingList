@@ -1,6 +1,6 @@
 # Plan de implementación
 
-Fecha de creación: 18 de septiembre de 2026. Última revisión: 27 de septiembre de 2026.
+Fecha de creación: 18 de septiembre de 2026. Última revisión: 9 de octubre de 2026.
 
 Especificación de referencia: [MVP aprobado](mvp-spec.md). Este documento conserva las fases, dependencias y condiciones para avanzar; no amplía el contrato funcional ni registra el progreso de cada tarea.
 
@@ -194,4 +194,8 @@ La validación focalizada comprueba geometría y continuidad de estado en abiert
 
 Decisión del 27 de septiembre: preparar para una iteración posterior la pertenencia a varios grupos y el traspaso de administración, con un administrador por grupo y sin limitar a uno los grupos administrados por persona. El [documento de diseño futuro](architecture/multiple-groups.md) conserva las reglas aprobadas, el motivo de descartar ese límite, los impactos de migración y los casos que deberán validarse.
 
-Se retomará después de la entrega, sin fecha cerrada ni implementación activa. El primer paso será resolver las decisiones abiertas sobre traspaso, salida/cierre, selección de grupo, Siri y compatibilidad; después se concretarán contrato, migración y unidad de ejecución en GitHub. Como secuencia propuesta, separar creador y administrador e incorporar el traspaso antes de ampliar pertenencias y selección de grupo. El diseño técnico queda pendiente de revisión; esta anotación no amplía el MVP ni crea un segundo seguimiento operativo.
+El 9 de octubre el usuario autoriza retomar la evolución, con un primer grupo gratuito y premium para grupos adicionales, más futuros cupos ampliables de tiendas por grupo y productos pendientes por tienda. La [ampliación de acceso y límites](architecture/group-access-and-limits.md) conserva las decisiones aprobadas, las alternativas de plan compartido y los efectos sobre concurrencia, reintentos y pérdida de capacidad.
+
+La primera unidad es [#33: administración transferible y acceso según el plan](https://github.com/JFrancoG/SmartShoppingList/issues/33). Su descripción contiene el plan vigente, estado, decisiones abiertas y evidencia. Antes de implementar se concretarán contrato y migración, propuestas de traspaso, salida/último miembro y compatibilidad. Se separa primero creador y administrador y se prepara una política central de capacidades, contemplando desde ahora las tres dimensiones comerciales.
+
+Después se amplían pertenencias y selección de grupo, aislando cargas, compras, borradores y Siri por destino; a continuación se aplican las cuotas de tiendas/productos cuando sus valores, liberación de capacidad y pérdida de acceso estén definidos. La integración de compras verificadas y activación de la oferta comercial constituyen una entrega posterior. No se crean aún issues de esos bloques ni se incorpora este trabajo al hito del MVP del 27. No hay una fecha de entrega acordada.

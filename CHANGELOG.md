@@ -27,6 +27,8 @@
 
 ### Documentation
 
+- 2026-10-09 | 📝 docs: plan group access and premium quotas
+
 - 2026-09-27 | 📝 docs: simplify demo links
 
 - 2026-09-27 | 📝 docs: record hackathon submission
