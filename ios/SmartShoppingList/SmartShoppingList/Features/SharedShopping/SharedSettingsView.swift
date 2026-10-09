@@ -9,6 +9,7 @@ struct SharedSettingsView: View {
         NavigationStack {
             Form {
                 SharedOperationSection(viewModel: viewModel)
+                SharedGroupSelector(viewModel: viewModel)
                 SharedPendingInvitationSection(viewModel: viewModel)
 
                 if let group = viewModel.group {
@@ -33,13 +34,14 @@ struct SharedSettingsView: View {
                         }
                     }
                     .listRowBackground(Color.surface)
-                } else if viewModel.session != nil {
+                }
+                if viewModel.session != nil {
                     Section {
                         LabeledContent {
                             TextField("Group name", text: $viewModel.groupName)
                                 .labelsHidden()
                                 .textInputAutocapitalization(.sentences)
-                                .disabled(!viewModel.canMutate)
+                                .disabled(!viewModel.canCreateGroup)
                         } label: {
                             Text("Group name")
                         }
@@ -49,11 +51,15 @@ struct SharedSettingsView: View {
                             }
                         }
                         .buttonStyle(ShoppingActionButtonStyle())
-                        .disabled(!viewModel.canMutate)
+                        .disabled(!viewModel.canCreateGroup)
                     } header: {
                         Text("Create a group")
                     } footer: {
-                        Text("You can also open an invitation to join another group. Each account belongs to one group only.")
+                        if let message = viewModel.groupAccessMessage {
+                            Text(message)
+                        } else {
+                            Text("You can also open an invitation to join another group.")
+                        }
                     }
                     .listRowBackground(Color.surface)
                 }

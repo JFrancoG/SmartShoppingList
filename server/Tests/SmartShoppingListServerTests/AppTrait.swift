@@ -3,6 +3,7 @@ import Testing
 import Vapor
 import FluentKit
 import FluentPostgresDriver
+import FluentSQL
 
 @TaskLocal var _application: Application?
 
@@ -54,11 +55,16 @@ struct AppTrait: TestTrait, SuiteTrait, TestScoping {
 
         if configured {
             do {
+                // Only the database accepted by TestDatabaseConfiguration is used here.
+                // Empty test data permits safe schema reversion even after a multigroup scenario.
+                let sql = try shoppingSQL(databases.database())
+                try await sql.raw("TRUNCATE TABLE users CASCADE").run()
                 try await databases.revert(
                     migrations: CreateTodo(),
                     CreateSharedShopping(),
                     CreateAppleAuthentication(),
                     AddGroupAdministration(),
+                    AddGroupMemberships(),
                     on: app
                 )
             } catch {

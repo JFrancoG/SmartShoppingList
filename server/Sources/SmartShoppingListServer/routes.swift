@@ -1,7 +1,7 @@
 import FluentKit
 import Vapor
 
-func routes(_ app: Application, databases: Databases) throws {
+func routes(_ app: Application, databases: Databases, accountCapacity: AccountCapacityPolicy = .init()) throws {
     app.get { req async in
         "It works!"
     }
@@ -24,13 +24,15 @@ func routes(_ app: Application, databases: Databases) throws {
     let authentication = AppleAuthenticationService(
         databases: databases,
         gateway: gateway,
-        vault: try RefreshTokenVault.load()
+        vault: try RefreshTokenVault.load(),
+        accountCapacity: accountCapacity
     )
     try app.register(collection: AppleAuthenticationRoutes(service: authentication))
     try app.register(collection: ShoppingRoutes(
         databases: databases,
         authentication: authentication,
-        invitationOrigin: app.environment == .testing ? "https://links.test" : Environment.get("INVITATION_ORIGIN")
+        invitationOrigin: app.environment == .testing ? "https://links.test" : Environment.get("INVITATION_ORIGIN"),
+        accountCapacity: accountCapacity
     ))
     try app.register(collection: InvitationWebsite(
         teamID: app.environment == .testing ? "NWN8JUE438" : Environment.get("APPLE_TEAM_ID"),

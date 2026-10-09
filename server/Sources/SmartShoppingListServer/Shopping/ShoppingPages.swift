@@ -35,10 +35,17 @@ extension ShoppingService {
                 try await requireAdministrator(user, group: group, on: sql)
             } else {
                 try await lockGroup(group, on: sql)
-                guard try await lockUser(user, on: sql) == group else { throw APIProblem.notFound }
+                try await requireMembership(user, group: group, on: sql)
             }
-            let table = resource == .members ? "users" : resource.rawValue
-            var query: SQLQueryString = "SELECT * FROM \(ident: table) WHERE group_id = \(bind: group)"
+            var query: SQLQueryString
+            if resource == .members {
+                query = """
+                    SELECT users.* FROM users JOIN group_memberships ON group_memberships.user_id = users.id
+                    WHERE group_memberships.group_id = \(bind: group)
+                    """
+            } else {
+                query = "SELECT * FROM \(ident: resource.rawValue) WHERE group_id = \(bind: group)"
+            }
             if resource == .items {
                 guard let store else { throw APIProblem.invalidRequest }
                 guard try await sql.raw("""
@@ -122,5 +129,58 @@ extension ShoppingService {
             "acceptedAt": .optional(try row.decode(column: "accepted_at", as: Date?.self).map(APIEncoding.timestamp)),
             "acceptedBy": .optional(try row.decode(column: "accepted_by", as: UUID?.self)?.uuidString.lowercased())
         ])
+    }
+}
+
+
+extension ShoppingService {
+    func groups(user: UUID, limit: Int, cursor: String?) async throws -> APIReply {
+        guard (1...100).contains(limit) else { throw APIProblem.invalidRequest }
+        // This resource binds the signed scope to the account, not to its legacy or locally selected group.
+        let position = try cursor.map {
+            try ShoppingCursor(
+                token: $0,
+                key: cursorKey,
+                resource: "groups",
+                group: user,
+                store: nil
+            )
+        }
+        let sql = try shoppingSQL(database)
+        var query: SQLQueryString = """
+            SELECT groups.* FROM group_memberships JOIN groups ON groups.id = group_memberships.group_id
+            WHERE group_memberships.user_id = \(bind: user) AND groups.closed_at IS NULL
+            """
+        if let position {
+            query += " AND (groups.created_at,groups.id) > (\(bind: position.createdAt),\(bind: position.id))"
+        }
+        query += " ORDER BY groups.created_at ASC,groups.id ASC LIMIT \(bind: limit + 1)"
+        let rows = try await sql.raw(query).all()
+        let page = Array(rows.prefix(limit))
+        let values = try page.map { row in
+            ShoppingGroupDTO(
+                id: try row.decode(column: "id", as: UUID.self).uuidString.lowercased(),
+                name: try row.decode(column: "name", as: String.self),
+                creatorUserId: try row.decode(column: "creator_user_id", as: UUID.self).uuidString.lowercased(),
+                administratorUserId: try row.decode(
+                    column: "administrator_user_id",
+                    as: UUID.self
+                ).uuidString.lowercased(),
+                createdAt: APIEncoding.timestamp(try row.decode(column: "created_at", as: Date.self))
+            ).json
+        }
+        let next: String?
+        if rows.count > limit, let last = page.last {
+            next = try ShoppingCursor(
+                resource: "groups",
+                groupID: user,
+                storeID: nil,
+                createdAt: last.decode(column: "created_at", as: Date.self),
+                id: last.decode(column: "id", as: UUID.self)
+            ).encoded(key: cursorKey)
+        } else {
+            next = nil
+        }
+        return try APIReply(status: .ok, json: .object(["data": .array(values), "nextCursor": .optional(next)]))
     }
 }

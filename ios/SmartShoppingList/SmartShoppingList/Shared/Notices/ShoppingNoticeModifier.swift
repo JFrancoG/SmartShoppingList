@@ -25,10 +25,16 @@ struct ShoppingNoticeModifier: ViewModifier {
                             presenting: snapshot
                         ) { shownNotice in
                             if shownNotice.draftConfirmation != nil, let confirmDraft, let editDraft {
-                                Button("Confirm") {
+                                Button {
                                     guard currentPresentationID == presentationID else { return }
                                     acknowledgedNotice = shownNotice
                                     confirmDraft(shownNotice)
+                                } label: {
+                                    if let groupName = shownNotice.draftConfirmation?.groupName {
+                                        Text("Add to \(groupName)")
+                                    } else {
+                                        Text("Confirm")
+                                    }
                                 }
                                 .keyboardShortcut(.defaultAction)
                                 Button("Edit", role: .cancel) {

@@ -4,6 +4,7 @@ protocol SharedShoppingAPI: Sendable {
     func createChallenge() async throws -> SharedChallenge
     func loginWithApple(_ request: AppleLoginRequest) async throws -> SharedSession
     func currentUser(token: String) async throws -> SharedUser
+    func groups(token: String) async throws -> [SharedGroup]
     func logout(token: String) async throws
     func createGroup(_ request: CreateGroupRequest, token: String) async throws -> SharedGroup
     func groupMembers(groupID: UUID, token: String) async throws -> [SharedGroupMember]
@@ -65,7 +66,7 @@ enum SharedAPIError: Error, Equatable {
         case 409:
             ["already_in_group", "challenge_consumed", "idempotency_key_reused", "item_conflict", "invitation_consumed",
              "transfer_required", "closure_confirmation_required", "transfer_not_pending", "transfer_pending",
-             "invalid_transfer_recipient"]
+             "invalid_transfer_recipient", "group_limit_reached"]
                 .contains(code)
         case 410: ["invitation_expired", "invitation_revoked", "invitation_consumed"].contains(code)
         case 413: code == "body_too_large"
@@ -93,6 +94,7 @@ struct SharedUser: Identifiable, Codable, Equatable {
     let id: UUID
     let displayName: String?
     var group: SharedGroup?
+    var accountCapabilities: SharedAccountCapabilities? = nil
 }
 
 extension SharedUser {
@@ -101,6 +103,7 @@ extension SharedUser {
         id = try values.decode(UUID.self, forKey: .id)
         displayName = try values.decode(String?.self, forKey: .displayName)
         group = try values.decode(SharedGroup?.self, forKey: .group)
+        accountCapabilities = try values.decodeIfPresent(SharedAccountCapabilities.self, forKey: .accountCapabilities)
     }
 
     func encode(to encoder: any Encoder) throws {
@@ -108,12 +111,14 @@ extension SharedUser {
         try values.encode(id, forKey: .id)
         try values.encode(displayName, forKey: .displayName)
         try values.encode(group, forKey: .group)
+        try values.encodeIfPresent(accountCapabilities, forKey: .accountCapabilities)
     }
 
     private enum CodingKeys: String, CodingKey {
         case id
         case displayName
         case group
+        case accountCapabilities
     }
 }
 
@@ -122,6 +127,8 @@ struct SharedSession: Codable, Equatable {
     let tokenType: String
     let expiresAt: Date
     var user: SharedUser
+    // Device-local selection. Never sent to the server or inferred from its legacy group projection.
+    var activeGroupID: UUID? = nil
 }
 
 struct SharedStore: Identifiable, Codable, Equatable {

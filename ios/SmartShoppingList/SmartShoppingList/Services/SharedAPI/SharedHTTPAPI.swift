@@ -82,6 +82,10 @@ actor SharedHTTPAPI: SharedShoppingAPI {
         try await get(path: "v1/me", token: token)
     }
 
+    func groups(token: String) async throws -> [SharedGroup] {
+        try await pages(GroupPage.self, path: "v1/groups", token: token)
+    }
+
     func logout(token: String) async throws {
         _ = try await exchange(
             path: "v1/session",
@@ -569,6 +573,24 @@ private struct GroupMemberPage: SharedAPIPage {
     let data: [SharedGroupMember]
     let nextCursor: String?
     var entries: [SharedGroupMember] { data }
+}
+
+private struct GroupPage: SharedAPIPage {
+    let data: [SharedGroup]
+    let nextCursor: String?
+    var entries: [SharedGroup] { data }
+}
+
+extension GroupPage {
+    init(from decoder: any Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        data = try values.decode([SharedGroup].self, forKey: .data)
+        nextCursor = try values.decode(String?.self, forKey: .nextCursor)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case data, nextCursor
+    }
 }
 
 extension GroupMemberPage {

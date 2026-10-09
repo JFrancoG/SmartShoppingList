@@ -105,7 +105,7 @@ extension SmartShoppingListServerTests {
             body
         )
         #expect(denied.status == .conflict)
-        #expect(try ShoppingFixture.object(denied)["code"] == .string("already_in_group"))
+        #expect(try ShoppingFixture.object(denied)["code"] == .string("group_limit_reached"))
         let accepted = try await ShoppingFixture.request(
             .POST,
             path,

@@ -2,7 +2,11 @@
 
 Servidor del MVP configurado con Vapor 4.122.2, Fluent/PostgreSQL y Swift 6.4. Se utiliza la alternativa Vapor 4 autorizada después de que la combinación evaluada con Vapor 5.0.0-beta.2 fallara al compilar PostgresNIO en Linux. Implementa identidad Apple, sesiones, grupos, invitaciones, incorporación por lotes, consulta por tienda, compra atómica de los productos seleccionados, edición y cancelación. Conserva los registros comprados y cancelados como historial mínimo, sin una pantalla de historial. La plantilla Todo permanece como prueba local de infraestructura y no se registra en producción.
 
-La unidad #33 añade administración transferible, consulta de miembros y salida con cierre explícito del último miembro. Su [contrato 0.2.0](../docs/contracts/group-administration.md) mantiene un grupo por cuenta y prepara las capacidades sin activar cuotas comerciales ni pagos. La migración `AddGroupAdministration` debe aplicarse antes de distribuir el cliente que usa esas rutas; el arranque la ejecuta junto con las anteriores. No ejecutar esta versión contra producción como parte de una prueba local.
+La unidad #33 incorporó administración transferible, consulta de miembros y salida con cierre explícito del último miembro. La unidad #35 añade pertenencias múltiples, listado paginado de los grupos de la cuenta y capacidades para crear o incorporarse conforme al [contrato 0.3.0](../docs/contracts/group-memberships.md). La autorización comprueba cada pertenencia; una cuenta puede administrar varios de sus grupos sin consumir plazas adicionales. La selección activa pertenece al cliente y no cambia permisos ni recibos.
+
+La política de producción conserva **una pertenencia gratuita por cuenta**. Una capacidad ampliada se inyecta en las pruebas; esta unidad no activa premium, pagos ni cuotas de tiendas/productos. Alcanzar el límite impide nuevas pertenencias y conserva las existentes. El arranque aplica `AddGroupMemberships` después de `AddGroupAdministration`, copia las pertenencias previas y mantiene los recibos exactos. `users.group_id` queda como proyección legacy sin autoridad.
+
+La migración requiere detener las escrituras del backend anterior y reanudar únicamente con la versión nueva; no hay sincronización para escritores antiguos durante un despliegue mixto. Su reversión rechaza los estados que no pueden representarse fielmente mediante una sola pertenencia legacy, sin borrar datos. No ejecutar esta versión contra producción como parte de una prueba local.
 
 El arranque inicial se entregó en [#1](https://github.com/JFrancoG/SmartShoppingList/issues/1); su [informe de validación](../docs/validation/issue-1-server-bootstrap.md) conserva los resultados por versión y entorno. El alcance del producto permanece en [la especificación](../docs/mvp-spec.md).
 
@@ -28,7 +32,7 @@ swift build --build-tests --force-resolved-versions
 swift test --skip-build
 ```
 
-`db` conserva los datos de desarrollo en el volumen `db_data`. `db-test` usa otro usuario, otra base, el puerto 5433 y almacenamiento temporal que se pierde al detenerlo. El test harness prepara y revierte sus migraciones por caso; los tests de base de datos se ejecutan en serie.
+`db` conserva los datos de desarrollo en el volumen `db_data`. `db-test` usa otro usuario, otra base, el puerto 5433 y almacenamiento temporal que se pierde al detenerlo. El test harness prepara sus migraciones por caso y vacía los datos de esa base exclusiva antes de revertirlas; así la limpieza no requiere una reversión con pérdida de pertenencias. Los tests de base de datos se ejecutan en serie.
 
 | Variable | Desarrollo nativo | Pruebas |
 |---|---|---|

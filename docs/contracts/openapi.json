@@ -3,8 +3,8 @@
   "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
   "info": {
     "title": "SmartShoppingList · contrato MVP",
-    "version": "0.2.0",
-    "description": "Contrato de desarrollo del MVP y administración transferible de la issue #33. No describe endpoints desplegados. Las reglas transaccionales, identidad y ejemplos están en docs/contracts/mvp-api.md y group-administration.md. Origen .example deliberadamente ficticio."
+    "version": "0.3.0",
+    "description": "Contrato de desarrollo del MVP, administración transferible (#33) y pertenencias múltiples (#35). No acredita endpoints desplegados ni pagos disponibles. Las reglas transaccionales, identidad y ejemplos están en docs/contracts/mvp-api.md, group-administration.md y group-memberships.md. Origen .example deliberadamente ficticio."
   },
   "servers": [
     {
@@ -113,8 +113,8 @@
     "/v1/me": {
       "get": {
         "operationId": "getCurrentUser",
-        "summary": "Leer identidad propia y grupo actual.",
-        "description": "Leer identidad propia y grupo actual.",
+        "summary": "Leer identidad, proyección de grupo anterior y capacidades de cuenta.",
+        "description": "accountCapabilities cuenta las pertenencias vigentes y expresa capacidad de nueva admisión. group conserva compatibilidad singular y puede ser null con varias pertenencias. La selección del cliente es local; usar listGroups para consultar pertenencias.",
         "security": [
           {
             "bearerSession": []
@@ -187,8 +187,8 @@
     "/v1/groups": {
       "post": {
         "operationId": "createGroup",
-        "summary": "Crear grupo y asignarlo al usuario sin grupo de forma atómica.",
-        "description": "operationId persistente. Autorizar sesión y buscar receipt antes de rechazar una pertenencia resultante de esa misma operación. Si hay receipt, exigir pertenencia vigente al grupo abierto de su resultado antes del replay. Un creador que salió puede crear otro grupo con una intención nueva; límite actual una pertenencia por cuenta. Los recibos anteriores a 0.2.0 conservan el cuerpo sin administratorUserId; el cliente refresca para conocer administración vigente.",
+        "summary": "Crear grupo y pertenencia de administrador si queda capacidad de cuenta.",
+        "description": "operationId persistente. Bajo bloqueo de cuenta, buscar recibo antes de comprobar cupo de nueva admisión. Un replay exige pertenencia vigente al grupo abierto del resultado, conserva status/body y no consume plaza ni cambia la proyección anterior. Nueva creación sin cupo devuelve 409 group_limit_reached persistido; una decisión nueva usa otra clave. Éxito crea grupo/pertenencia atómicamente, conservando las anteriores. Solo rellena users.group_id si es null. Los recibos anteriores a 0.2.0 pueden omitir administratorUserId; no autorizan gestión.",
         "security": [
           {
             "bearerSession": []
@@ -243,6 +243,62 @@
           },
           "404": {
             "$ref": "#/components/responses/Error404"
+          }
+        }
+      },
+      "get": {
+        "operationId": "listGroups",
+        "summary": "Listar los grupos abiertos a los que pertenece la cuenta.",
+        "description": "Orden (groups.created_at, groups.id) ascendente. Cursor opaco ligado a cuenta y recurso, nunca selección de grupo. Cada página comprueba acceso vigente; no hay snapshot global. El cliente reúne todas las páginas antes de decidir la selección local. No devuelve grupos cerrados ni ajenos.",
+        "security": [
+          {
+            "bearerSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "description": "Cursor opaco ligado a la cuenta y al recurso groups; no autoriza acceso."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resultado confirmado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
           }
         }
       }
@@ -511,7 +567,7 @@
       "post": {
         "operationId": "previewInvitation",
         "summary": "Mostrar grupo tras autenticarse, sin consumir el enlace.",
-        "description": "ID público + secreto en body. Sin secreto correcto responde 404; no filtra estado ni nombre del grupo. Aceptada por el mismo usuario aún miembro devuelve alreadyAccepted true. Un grupo cerrado no se revela ni admite incorporación; responder 404 not_found.",
+        "description": "No consume ni incorpora. Con secreto correcto muestra grupo y caducidad; alreadyAccepted solo es true si este enlace fue consumido por el solicitante y mantiene la pertenencia. La falta de capacidad adicional no impide preview. Grupo cerrado y secreto incorrecto dan 404.",
         "security": [
           {
             "bearerSession": []
@@ -575,8 +631,8 @@
     "/v1/invitations/{invitationId}/accept": {
       "post": {
         "operationId": "acceptInvitation",
-        "summary": "Consumir invitación y asignar grupo en una transacción.",
-        "description": "Repetir la aceptación del mismo usuario ya incorporado devuelve el mismo grupo incluso después de la caducidad. Otro usuario recibe 410; tener un grupo por otra operación devuelve 409 y no consume el enlace. Grupo cerrado responde 404 not_found. Bloquear grupo, cuenta y luego invitación; verificar de nuevo secreto, estado y pertenencia tras los bloqueos.",
+        "summary": "Aceptar una invitación sin sustituir otras pertenencias.",
+        "description": "Añade pertenencia y consume enlace atómicamente tras revalidar grupo, secreto, estado, caducidad y capacidad bajo bloqueo grupo→cuenta→invitación. Sin plaza devuelve 409 group_limit_reached sin consumir. Un miembro actual puede consumir un enlace libre válido sin otra plaza ni cambiar la proyección antigua. El mismo aceptante que sigue perteneciendo puede repetir con 200 sin consumo adicional, incluso tras caducar; si salió, invitation_consumed impide reingreso. Un grupo cerrado no es accesible.",
         "security": [
           {
             "bearerSession": []
@@ -997,7 +1053,7 @@
       "get": {
         "operationId": "listGroupMembers",
         "summary": "Listar identidades mínimas de los miembros actuales.",
-        "description": "Cualquier miembro actual del grupo abierto. Orden estable (created_at, id); cursor opaco vinculado al grupo/recurso. No revela email ni sujeto Apple.",
+        "description": "Cualquier miembro actual del grupo abierto mediante group_memberships. Orden estable (users.created_at, users.id); cursor opaco vinculado al grupo/recurso. No revela email, sujeto Apple ni pertenencias a otros grupos.",
         "security": [
           {
             "bearerSession": []
@@ -1561,14 +1617,19 @@
                 "type": "null"
               }
             ]
+          },
+          "accountCapabilities": {
+            "$ref": "#/components/schemas/AccountCapabilities"
           }
         },
         "required": [
           "id",
           "displayName",
-          "group"
+          "group",
+          "accountCapabilities"
         ],
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "Identidad y capacidades de cuenta. group es la proyección singular para clientes anteriores, no la lista de pertenencias ni la selección activa local; puede ser null aunque membershipCount sea mayor que cero. Consultar GET /v1/groups."
       },
       "Challenge": {
         "type": "object",
@@ -2369,7 +2430,8 @@
               "transfer_pending",
               "transfer_not_pending",
               "transfer_required",
-              "closure_confirmation_required"
+              "closure_confirmation_required",
+              "group_limit_reached"
             ]
           },
           "message": {
@@ -2402,7 +2464,8 @@
           "message",
           "requestId"
         ],
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "already_in_group se conserva para recibos históricos de creación. Nuevas admisiones sin plaza responden group_limit_reached; no consumen invitación ni eliminan pertenencias."
       },
       "PendingItem": {
         "allOf": [
@@ -2645,7 +2708,7 @@
         "type": "object",
         "properties": {
           "groupsPerAccount": {
-            "$ref": "#/components/schemas/CapacityLimit"
+            "$ref": "#/components/schemas/AccountGroupLimit"
           },
           "storesPerGroup": {
             "$ref": "#/components/schemas/CapacityLimit"
@@ -2660,7 +2723,7 @@
           "pendingItemsPerStore"
         ],
         "additionalProperties": false,
-        "description": "En 0.2.0: groupsPerAccount maximum 1/enforced true; tiendas y pendientes maximum null/enforced false. Comprados y cancelados no consumen cupo de pendientes."
+        "description": "groupsPerAccount refleja la capacidad de admisión personal del solicitante, producción maximum 1/enforced true. Tiendas y pendientes conservan maximum null/enforced false y corresponden al administrador como capacityOwnerUserId. Comprados y cancelados no consumirán cupo de pendientes."
       },
       "GroupCapabilities": {
         "type": "object",
@@ -2865,6 +2928,91 @@
         ],
         "additionalProperties": false,
         "description": "Exclusivamente el cuerpo original de un recibo createGroup confirmado antes de 0.2.0. Se conserva sin reescribir. No acredita administrador vigente; el cliente debe refrescar Group/administration antes de gestionar."
+      },
+      "AccountGroupLimit": {
+        "type": "object",
+        "properties": {
+          "maximum": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "enforced": {
+            "const": true
+          }
+        },
+        "required": [
+          "maximum",
+          "enforced"
+        ],
+        "additionalProperties": false,
+        "description": "Cupo de admisión por cuenta: producción máximo 1; solo pruebas pueden inyectar otro entero positivo. No concede premium ni restringe uso ordinario de pertenencias existentes."
+      },
+      "AccountCapabilities": {
+        "type": "object",
+        "properties": {
+          "membershipCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "canCreateGroup": {
+            "type": "boolean"
+          },
+          "canJoinGroup": {
+            "type": "boolean"
+          },
+          "limits": {
+            "type": "object",
+            "properties": {
+              "groupsPerAccount": {
+                "$ref": "#/components/schemas/AccountGroupLimit"
+              }
+            },
+            "required": [
+              "groupsPerAccount"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "membershipCount",
+          "canCreateGroup",
+          "canJoinGroup",
+          "limits"
+        ],
+        "additionalProperties": false,
+        "description": "Pertenencias vigentes a grupos abiertos y capacidad para crear o incorporarse a uno adicional. Ambas acciones son posibles si membershipCount es menor que maximum. Aceptar una invitación al propio grupo no consume plaza aunque canJoinGroup sea false. Se reevalúa cada admisión en el servidor."
+      },
+      "GroupPage": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Group"
+            },
+            "minItems": 0,
+            "maxItems": 100
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "data",
+          "nextCursor"
+        ],
+        "additionalProperties": false
       }
     },
     "responses": {

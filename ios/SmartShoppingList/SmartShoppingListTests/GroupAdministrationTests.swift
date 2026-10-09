@@ -259,11 +259,22 @@ private actor GroupAdministrationAPI: SharedShoppingAPI {
         )
     }
 
+    func groups(token: String) async throws -> [SharedGroup] {
+        user.group.map { [$0] } ?? []
+    }
+
     func currentUser(token: String) async throws -> SharedUser {
         if failRefreshAfterCommit, receipt != nil {
             throw SharedAPIError.transport
         }
-        return user
+        var current = user
+        current.accountCapabilities = try SharedAccountCapabilities(
+            membershipCount: user.group == nil ? 0 : 1,
+            canCreateGroup: user.group == nil,
+            canJoinGroup: user.group == nil,
+            limits: SharedAccountLimits(groupsPerAccount: SharedResourceLimit(maximum: 1, enforced: true))
+        )
+        return current
     }
 
     func groupMembers(groupID: UUID, token: String) async throws -> [SharedGroupMember] {

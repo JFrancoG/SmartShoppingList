@@ -22,6 +22,7 @@ struct AddItemsView: View {
 
                     if let shared {
                         SharedOperationSection(viewModel: shared)
+                        SharedGroupSelector(viewModel: shared)
                     }
 
                     if viewModel.availability == .available || viewModel.activity != .idle {
@@ -89,7 +90,10 @@ struct AddItemsView: View {
                         if let shared {
                             DraftStoreClarificationSection(viewModel: shared)
                             Section {
-                                Button("Add \(viewModel.items.count) products", systemImage: "plus") {
+                                Button(
+                                    "Add \(viewModel.items.count) products to \(shared.reviewedGroupName)",
+                                    systemImage: "plus"
+                                ) {
                                     Task {
                                         await shared.addDraftItems()
                                     }
@@ -102,7 +106,7 @@ struct AddItemsView: View {
                         }
                     }
 
-                    if let shared, shared.group == nil {
+                    if let shared, shared.group == nil, shared.groups.isEmpty {
                         Section {
                             Button("Open Settings to join or create a group.", action: onOpenSettings)
                         } footer: {
@@ -206,4 +210,24 @@ struct AddItemsView: View {
 #Preview("Missing store", traits: .shoppingDraft(.missingStore)) {
     @Previewable @Environment(ShoppingDraftViewModel.self) var viewModel
     AddItemsView(viewModel: viewModel)
+}
+
+#Preview("Multiple groups · ES", traits: .sharedShopping(.multipleGroups)) {
+    @Previewable @Environment(SharedShoppingViewModel.self) var shared
+    AddItemsView(viewModel: shared.draft, shared: shared)
+        .environment(\.locale, Locale(identifier: "es"))
+}
+
+#Preview("Multiple groups · EN XXXL", traits: .sharedShopping(.multipleGroups)) {
+    @Previewable @Environment(SharedShoppingViewModel.self) var shared
+    AddItemsView(viewModel: shared.draft, shared: shared)
+        .environment(\.locale, Locale(identifier: "en"))
+        .environment(\.dynamicTypeSize, .xxxLarge)
+}
+
+#Preview("Multiple groups · ES AX5", traits: .sharedShopping(.multipleGroups)) {
+    @Previewable @Environment(SharedShoppingViewModel.self) var shared
+    AddItemsView(viewModel: shared.draft, shared: shared)
+        .environment(\.locale, Locale(identifier: "es"))
+        .environment(\.dynamicTypeSize, .accessibility5)
 }

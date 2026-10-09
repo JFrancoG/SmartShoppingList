@@ -6,6 +6,8 @@ Estado: **reglas funcionales aprobadas para después del MVP; diseño técnico p
 
 Actualización del 9 de octubre: el usuario autoriza retomar el trabajo y preparar límites comerciales. La [ampliación sobre acceso y cupos](group-access-and-limits.md) distingue el modelo de varios grupos de su disponibilidad por plan, confirma un grupo gratuito y el conteo de productos pendientes, y conserva las propuestas aún abiertas. Las secciones siguientes registran la decisión original; el seguimiento de la primera unidad está en [#33](https://github.com/JFrancoG/SmartShoppingList/issues/33).
 
+Continuación del mismo día: #33 está integrada mediante PR #34 y el propietario autoriza [#35](https://github.com/JFrancoG/SmartShoppingList/issues/35), pertenencias múltiples y selector local por cuenta/dispositivo. El [contrato de pertenencias](../contracts/group-memberships.md) concreta esas decisiones sin reescribir el acuerdo histórico siguiente. La implementación y sus comprobaciones se registran en #35; pagos y activación comercial siguen separados.
+
 ## Decisión aprobada
 
 - Una persona puede pertenecer a varios grupos.

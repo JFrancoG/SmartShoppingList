@@ -46,7 +46,7 @@ struct SharedReviewView: View {
                     Text("Confirm an option for each name. If that name already exists in the group, the same store will be used.")
                 }
                 Section {
-                    Button("Confirm adding to group", systemImage: "plus.circle") {
+                    Button("Add to \(viewModel.reviewedGroupName)", systemImage: "plus.circle") {
                         Task {
                             await viewModel.confirmReviewedBatch()
                         }

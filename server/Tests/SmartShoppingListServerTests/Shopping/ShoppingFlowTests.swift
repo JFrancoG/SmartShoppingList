@@ -239,7 +239,12 @@ struct ShoppingFixture {
 
     static func join(_ user: User, group: String) async throws {
         let sql = try shoppingSQL(database)
-        try await sql.raw("UPDATE users SET group_id = \(bind: group)::uuid WHERE id = \(bind: user.id)").run()
+        try await sql.raw("""
+            INSERT INTO group_memberships(group_id,user_id) VALUES (\(bind: group)::uuid,\(bind: user.id))
+            """).run()
+        try await sql.raw("""
+            UPDATE users SET group_id = \(bind: group)::uuid WHERE id = \(bind: user.id) AND group_id IS NULL
+            """).run()
     }
 
     static func batch(names: [String], stores: [String]) -> APIJSON {
@@ -719,7 +724,7 @@ extension SmartShoppingListServerTests {
         let reused = try await ShoppingFixture.request(method, path, member, .object(fields))
         #expect(reused.status == .conflict)
         #expect(try ShoppingFixture.object(reused)["code"] == .string("idempotency_key_reused"))
-        try await sql.raw("UPDATE users SET group_id = NULL WHERE id = \(bind: member.id)").run()
+        try await ShoppingFixture.depart(member, group: group)
         let denied = try await ShoppingFixture.request(method, path, member, .object(fields))
         #expect(denied.status == .notFound)
     }

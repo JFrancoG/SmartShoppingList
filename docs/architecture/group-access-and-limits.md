@@ -6,6 +6,8 @@ Estado: **decisiones funcionales y plan aprobados el 9 de octubre; implementaci�
 
 Esta ampliación complementa la [decisión del 27 de septiembre](multiple-groups.md). Su ausencia de un máximo estructural de grupos administrados se conserva; el acceso efectivo sí podrá limitarse según el plan. La [issue #33](https://github.com/JFrancoG/SmartShoppingList/issues/33) contiene el plan operativo de la primera unidad. El [contrato del MVP](../contracts/mvp-api.md) sigue describiendo la API entregada.
 
+Seguimiento del 9 de octubre: #33 está integrada mediante PR #34. El propietario autoriza la segunda unidad, [#35: pertenencias múltiples y selección de grupo](https://github.com/JFrancoG/SmartShoppingList/issues/35). Su [contrato](../contracts/group-memberships.md) separa pertenencias, proyección compatible y selección local por cuenta/dispositivo. La política conserva una admisión inicial de un grupo; la ampliación de capacidad se inyecta en pruebas hasta disponer de derechos verificados. El selector no cambia el plan ni concede pertenencias. Cifras premium, pérdida de capacidad y activación comercial permanecen pendientes; no se presentan como resueltas por esta unidad.
+
 ## Contexto y decisiones aprobadas
 
 El modelo debe admitir varios grupos por persona y exactamente un administrador miembro por grupo, separando al creador histórico del responsable actual. La pertenencia, la administración y el derecho comercial son conceptos distintos: perder una compra o suscripción no borra automáticamente miembros, responsables ni contenido.
