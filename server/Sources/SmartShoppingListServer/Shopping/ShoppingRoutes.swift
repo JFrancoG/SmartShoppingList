@@ -12,6 +12,54 @@ struct ShoppingRoutes: RouteCollection {
         let api = routes.grouped("v1").grouped(APIErrorMiddleware())
         api.post("groups", use: createGroup)
         api.get("groups", ":groupId", "stores", use: listStores)
+        api.get(
+            "groups",
+            ":groupId",
+            "members",
+            use: listMembers
+        )
+        api.get(
+            "groups",
+            ":groupId",
+            "administration",
+            use: administration
+        )
+        api.post(
+            "groups",
+            ":groupId",
+            "administration-transfers",
+            use: proposeTransfer
+        )
+        api.post(
+            "groups",
+            ":groupId",
+            "administration-transfers",
+            ":transferId",
+            "accept",
+            use: acceptTransfer
+        )
+        api.post(
+            "groups",
+            ":groupId",
+            "administration-transfers",
+            ":transferId",
+            "reject",
+            use: rejectTransfer
+        )
+        api.post(
+            "groups",
+            ":groupId",
+            "administration-transfers",
+            ":transferId",
+            "withdraw",
+            use: withdrawTransfer
+        )
+        api.post(
+            "groups",
+            ":groupId",
+            "departure",
+            use: departGroup
+        )
         api.post("groups", ":groupId", "invitations", use: createInvitation)
         api.get("groups", ":groupId", "invitations", use: listInvitations)
         api.delete("groups", ":groupId", "invitations", ":invitationId", use: revokeInvitation)
@@ -145,6 +193,70 @@ struct ShoppingRoutes: RouteCollection {
 
     private func listStores(_ request: Request) async throws -> Response {
         try await page(request, resource: .stores)
+    }
+
+    private func listMembers(_ request: Request) async throws -> Response {
+        try await page(request, resource: .members)
+    }
+
+    private func administration(_ request: Request) async throws -> Response {
+        let user = try await authentication.authenticate(request)
+        return try await service().administration(user: user, group: parameter("groupId", request: request)).response()
+    }
+
+    private func proposeTransfer(_ request: Request) async throws -> Response {
+        let user = try await authentication.authenticate(request)
+        let body = try APIObject.body(
+            request,
+            allowed: ["operationId", "recipientUserId"],
+            required: ["operationId", "recipientUserId"]
+        )
+        return try await service().proposeTransfer(
+            user: user,
+            group: parameter("groupId", request: request),
+            operation: body.uuid("operationId"),
+            recipient: body.uuid("recipientUserId")
+        ).response()
+    }
+
+    private func acceptTransfer(_ request: Request) async throws -> Response {
+        try await resolveTransfer(request, action: .accept)
+    }
+
+    private func rejectTransfer(_ request: Request) async throws -> Response {
+        try await resolveTransfer(request, action: .reject)
+    }
+
+    private func withdrawTransfer(_ request: Request) async throws -> Response {
+        try await resolveTransfer(request, action: .withdraw)
+    }
+
+    private func resolveTransfer(_ request: Request, action: ShoppingService.TransferAction) async throws -> Response {
+        let user = try await authentication.authenticate(request)
+        let body = try APIObject.body(request, allowed: ["operationId"], required: ["operationId"])
+        return try await service().resolveTransfer(
+            user: user,
+            group: parameter("groupId", request: request),
+            operation: body.uuid("operationId"),
+            transferID: parameter("transferId", request: request),
+            action: action
+        ).response()
+    }
+
+    private func departGroup(_ request: Request) async throws -> Response {
+        let user = try await authentication.authenticate(request)
+        let body = try APIObject.body(
+            request,
+            allowed: ["operationId", "confirmClosure"],
+            required: ["operationId", "confirmClosure"]
+        )
+        guard case .bool(let confirmed) = body.values["confirmClosure"] else { throw APIProblem.invalidRequest }
+        return try await service().departGroup(
+            user: user,
+            group: parameter("groupId", request: request),
+            operation: body.uuid("operationId"),
+            confirmClosure: confirmed
+        ).response()
     }
 
     private func listInvitations(_ request: Request) async throws -> Response {

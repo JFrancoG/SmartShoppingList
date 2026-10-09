@@ -8,7 +8,7 @@ import VaporTesting
 
 extension SmartShoppingListServerTests {
     @Test(.timeLimit(.minutes(1)))
-    func `two acceptances blocked on the same invitation commit only one membership`() async throws {
+    func `two acceptances blocked on the same group commit only one membership`() async throws {
         let owner = try await ShoppingFixture.user()
         let first = try await ShoppingFixture.user()
         let second = try await ShoppingFixture.user()
@@ -20,9 +20,7 @@ extension SmartShoppingListServerTests {
             do {
                 try await testDatabase.transaction { transaction in
                     let sql = try shoppingSQL(transaction)
-                    _ = try await sql.raw(
-                    "SELECT id FROM invitations WHERE id = \(bind: invitation.id) FOR UPDATE"
-                ).first()
+                    _ = try await sql.raw("SELECT id FROM groups WHERE id = \(bind: group)::uuid FOR UPDATE").first()
                     let row = try #require(try await sql.raw("SELECT pg_backend_pid() AS pid").first())
                     await gate.locked(try row.decode(column: "pid", as: Int32.self))
                     await gate.waitForRelease()
@@ -59,7 +57,12 @@ extension SmartShoppingListServerTests {
             )
         }
         do {
-            try await ShoppingFixture.waitForInvitationWaiters(blockedBy: pid, count: 2, database: testDatabase)
+            try await ShoppingFixture.waitForLockWaiters(
+                blockedBy: pid,
+                count: 2,
+                query: "%FROM groups%FOR UPDATE%",
+                database: testDatabase
+            )
         } catch {
             await gate.release()
             _ = try? await holder.value
@@ -100,8 +103,8 @@ extension SmartShoppingListServerTests {
             try await ShoppingFixture.request(.DELETE, "/v1/groups/\(group)/invitations/\(identifier)", owner)
         }
         let responses = try await ShoppingFixture.overlappingRequests(
-            lockedBy: "SELECT id FROM invitations WHERE id = \(bind: invitation.id) FOR UPDATE",
-            waitingQuery: "%FROM invitations%FOR UPDATE%",
+            lockedBy: "SELECT id FROM groups WHERE id = \(bind: group)::uuid FOR UPDATE",
+            waitingQuery: "%FROM groups%FOR UPDATE%",
             first: acceptFirst ? accept : revoke,
             second: acceptFirst ? revoke : accept
         )
@@ -148,8 +151,8 @@ extension SmartShoppingListServerTests {
             )
         }
         let responses = try await ShoppingFixture.overlappingRequests(
-            lockedBy: "SELECT id FROM users WHERE id = \(bind: owner.id) FOR UPDATE",
-            waitingQuery: "%FROM users%FOR UPDATE%",
+            lockedBy: "SELECT id FROM groups WHERE id = \(bind: group)::uuid FOR UPDATE",
+            waitingQuery: "%FROM groups%FOR UPDATE%",
             first: request,
             second: request
         )
@@ -177,8 +180,8 @@ extension SmartShoppingListServerTests {
         let first = ShoppingFixture.batch(names: ["Pan", "Arroz"], stores: ["Alfa", "Beta"])
         let second = ShoppingFixture.batch(names: ["Café", "Leche"], stores: ["BETA", "ALFA"])
         let responses = try await ShoppingFixture.overlappingRequests(
-            lockedBy: "LOCK TABLE stores IN SHARE MODE",
-            waitingQuery: "%INSERT INTO stores%",
+            lockedBy: "SELECT id FROM groups WHERE id = \(bind: group)::uuid FOR UPDATE",
+            waitingQuery: "%FROM groups%FOR UPDATE%",
             first: {
                 try await ShoppingFixture.request(
                     .POST,
@@ -389,6 +392,129 @@ private actor ShoppingSQLGate {
 }
 
 extension SmartShoppingListServerTests {
+    @Test("Acceptance and recipient departure serialize without orphaning administration", arguments: [true, false])
+    func transferDepartureRace(acceptFirst: Bool) async throws {
+        let owner = try await ShoppingFixture.user()
+        let recipient = try await ShoppingFixture.user()
+        let group = try await ShoppingFixture.group(owner)
+        try await ShoppingFixture.join(recipient, group: group)
+        let transfer = try await AdministrationFixture.propose(owner, recipient: recipient, group: group)
+        let accept: @Sendable () async throws -> TestingHTTPResponse = {
+            try await ShoppingFixture.request(
+                .POST,
+                "/v1/groups/\(group)/administration-transfers/\(transfer)/accept",
+                recipient,
+                AdministrationFixture.operation()
+            )
+        }
+        let depart: @Sendable () async throws -> TestingHTTPResponse = {
+            try await ShoppingFixture.request(
+                .POST,
+                "/v1/groups/\(group)/departure",
+                recipient,
+                AdministrationFixture.departureBody(confirmClosure: false)
+            )
+        }
+        let responses = try await ShoppingFixture.overlappingRequests(
+            lockedBy: "SELECT id FROM groups WHERE id = \(bind: group)::uuid FOR UPDATE",
+            waitingQuery: "%FROM groups%FOR UPDATE%",
+            first: acceptFirst ? accept : depart,
+            second: acceptFirst ? depart : accept
+        )
+        #expect(responses.0.status == .ok)
+        #expect(responses.1.status == (acceptFirst ? .conflict : .notFound))
+        let sql = try shoppingSQL(database)
+        let persisted = try #require(try await sql.raw("""
+            SELECT administrator_user_id FROM groups WHERE id = \(bind: group)::uuid
+            """).first())
+        #expect(
+            try persisted.decode(column: "administrator_user_id", as: UUID.self)
+                == (acceptFirst ? recipient.id : owner.id)
+        )
+        let proposal = try #require(try await sql.raw("""
+            SELECT status FROM group_administration_transfers WHERE id = \(bind: transfer)::uuid
+            """).first())
+        #expect(try proposal.decode(column: "status", as: String.self) == (acceptFirst ? "accepted" : "invalidated"))
+    }
+
+    @Test(
+        "Closing and invitation acceptance respect the first committed membership transition",
+        arguments: [true, false]
+    )
+    func closureInvitationRace(closeFirst: Bool) async throws {
+        let owner = try await ShoppingFixture.user()
+        let recipient = try await ShoppingFixture.user()
+        let group = try await ShoppingFixture.group(owner)
+        let invitation = try await ShoppingFixture.invitation(group)
+        let close: @Sendable () async throws -> TestingHTTPResponse = {
+            try await ShoppingFixture.request(
+                .POST,
+                "/v1/groups/\(group)/departure",
+                owner,
+                AdministrationFixture.departureBody(confirmClosure: true)
+            )
+        }
+        let accept: @Sendable () async throws -> TestingHTTPResponse = {
+            try await ShoppingFixture.request(
+                .POST,
+                "/v1/invitations/\(invitation.id.uuidString.lowercased())/accept",
+                recipient,
+                .object(["token": .string(invitation.secret)])
+            )
+        }
+        let responses = try await ShoppingFixture.overlappingRequests(
+            lockedBy: "SELECT id FROM groups WHERE id = \(bind: group)::uuid FOR UPDATE",
+            waitingQuery: "%FROM groups%FOR UPDATE%",
+            first: closeFirst ? close : accept,
+            second: closeFirst ? accept : close
+        )
+        #expect(responses.0.status == .ok)
+        #expect(responses.1.status == (closeFirst ? .notFound : .conflict))
+        let sql = try shoppingSQL(database)
+        let members = try await sql.raw("SELECT id FROM users WHERE group_id = \(bind: group)::uuid").all()
+        #expect(members.count == (closeFirst ? 0 : 2))
+        let stored = try #require(try await sql.raw("SELECT closed_at FROM groups WHERE id = \(bind: group)::uuid").first())
+        #expect((try stored.decode(column: "closed_at", as: Date?.self) != nil) == closeFirst)
+    }
+
+    @Test("Concurrent retries of one transfer acceptance return one result and one administrator")
+    func repeatedTransferAcceptanceRace() async throws {
+        let owner = try await ShoppingFixture.user()
+        let recipient = try await ShoppingFixture.user()
+        let group = try await ShoppingFixture.group(owner)
+        try await ShoppingFixture.join(recipient, group: group)
+        let transfer = try await AdministrationFixture.propose(owner, recipient: recipient, group: group)
+        let operation = AdministrationFixture.operation()
+        let accept: @Sendable () async throws -> TestingHTTPResponse = {
+            try await ShoppingFixture.request(
+                .POST,
+                "/v1/groups/\(group)/administration-transfers/\(transfer)/accept",
+                recipient,
+                operation
+            )
+        }
+        let responses = try await ShoppingFixture.overlappingRequests(
+            lockedBy: "SELECT id FROM groups WHERE id = \(bind: group)::uuid FOR UPDATE",
+            waitingQuery: "%FROM groups%FOR UPDATE%",
+            first: accept,
+            second: accept
+        )
+        #expect(responses.0.status == .ok)
+        #expect(responses.1.body.string == responses.0.body.string)
+        let sql = try shoppingSQL(database)
+        let current = try #require(try await sql.raw("""
+            SELECT administrator_user_id FROM groups WHERE id = \(bind: group)::uuid
+            """).first())
+        #expect(try current.decode(column: "administrator_user_id", as: UUID.self) == recipient.id)
+        let receipts = try await sql.raw("""
+            SELECT operation_id FROM mutation_receipts
+            WHERE user_id = \(bind: recipient.id) AND operation_type = 'administrationTransfer.accept'
+            """).all()
+        #expect(receipts.count == 1)
+    }
+}
+
+extension SmartShoppingListServerTests {
     @Test(
         "Item changes and purchases serialize without overwriting the first transition",
         .timeLimit(.minutes(1)),
@@ -428,8 +554,8 @@ extension SmartShoppingListServerTests {
             )
         }
         let responses = try await ShoppingFixture.overlappingRequests(
-            lockedBy: "SELECT id FROM items WHERE id = \(bind: itemID)::uuid FOR UPDATE",
-            waitingQuery: "%FROM items%FOR UPDATE%",
+            lockedBy: "SELECT id FROM groups WHERE id = \(bind: group)::uuid FOR UPDATE",
+            waitingQuery: "%FROM groups%FOR UPDATE%",
             first: purchaseFirst ? purchase : change,
             second: purchaseFirst ? change : purchase
         )

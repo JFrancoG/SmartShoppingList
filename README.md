@@ -13,6 +13,7 @@ Lista de compra compartida para iPhone y iPad, desarrollada para **ACoding Hacka
 ### Qué puedes hacer
 
 - **Compartir la compra:** iniciar sesión con Apple, crear un grupo e invitar a otra persona mediante un enlace. Cuenta, grupo e invitaciones se gestionan desde **Ajustes**.
+- **Gestionar el grupo:** consultar miembros, proponer y aceptar el traspaso de administración y salir desde **Ajustes → Miembros y administración**. El último miembro confirma expresamente el cierre. Requiere servidor con el contrato 0.2.0.
 - **Añadir por voz o texto:** Speech transcribe y Foundation Models identifica productos, cantidades y tiendas. Si los datos están completos, **Confirmar** en el aviso los añade directamente a la lista. El borrador se abre para corregir errores de identificación, completar datos o cuando eliges **Editar**.
 - **Añadir a mano:** introducir producto, cantidad opcional y tienda sin Apple Intelligence. Con un grupo activo, **Añadir producto** guarda esa entrada directamente; sin grupo, **Guardar producto** la conserva en el borrador local. Los controles manuales se muestran cuando el modelo no está disponible o al recuperar y editar una propuesta; no dependen de haber iniciado sesión ni de tener grupo.
 - **Consultar y comprar:** elegir una tienda o buscarla por voz, actualizar sus pendientes, editar o cancelar productos y confirmar una compra parcial. Los checks son locales hasta pulsar **Confirmar compra**.
@@ -108,6 +109,7 @@ A shared shopping list for iPhone and iPad, built for **ACoding Hackathon 2026 �
 ### What you can do
 
 - **Share your shopping:** sign in with Apple, create a group and invite someone through a link. Account, group and invitations are managed in **Settings**.
+- **Manage the group:** view members, propose and accept an administration transfer, and leave from **Settings → Members and administration**. The last member explicitly confirms closure. Requires a server supporting contract 0.2.0.
 - **Add through speech or text:** Speech transcribes and Foundation Models identifies products, quantities and stores. When the details are complete, **Confirm** in the alert adds them directly to the list. The draft opens to correct identification errors, complete missing details or when you choose **Edit**.
 - **Add manually:** enter a product, optional quantity and store without Apple Intelligence. With an active group, **Add product** saves that entry directly; without a group, **Save product** keeps it in the local draft. Manual controls appear when the model is unavailable or when recovering and editing a proposal; they do not depend on being signed in or belonging to a group.
 - **Browse and shop:** select a store or find it by voice, refresh pending products, edit or cancel them, and confirm a partial purchase. Checkmarks stay local until you tap **Confirm purchase**.
@@ -217,7 +219,9 @@ La documentación técnica enlazada conserva su idioma original, principalmente 
 | [Servidor / Server](server/README.md) · [Configuración / Shared setup](docs/setup/shared-shopping.md) | PostgreSQL, Apple, HTTPS, firma y enlaces / PostgreSQL, Apple, HTTPS, signing and links |
 | [Contrato / API contract](docs/contracts/mvp-api.md) · [Aceptación / Acceptance](docs/contracts/acceptance.md) | Operaciones, errores y casos verificables / Operations, errors and verifiable cases |
 | [Borrador / Draft architecture](docs/architecture/ios-draft.md) · [Colaboración / Shared architecture](docs/architecture/shared-shopping.md) | Persistencia, coordinación y reintentos / Persistence, coordination and retries |
-| [Varios grupos y traspaso / Multiple groups and admin transfer](docs/architecture/multiple-groups.md) | Diseño futuro, fuera del MVP / Future design, outside the MVP |
+| [Administración y salida / Administration and departure](docs/contracts/group-administration.md) | Contrato 0.2.0 de traspaso y salida / Contract 0.2.0 for transfer and departure |
+| [Acceso y límites / Access and limits](docs/architecture/group-access-and-limits.md) | Plan aprobado: grupos adicionales premium y capacidad compartida / Approved plan: premium additional groups and shared capacity |
+| [Varios grupos / Multiple groups](docs/architecture/multiple-groups.md) | Decisión inicial; pertenencias múltiples aún pendientes / Initial decision; multiple memberships still pending |
 | [Diseño / Design system](docs/design-system.md) · [Accesibilidad / Accessibility](docs/accessibility.md) · [Contraste / Contrast](docs/validation/design-system-contrast.md) | Cuatro apariencias, criterios y cobertura / Four appearances, criteria and coverage |
 | [UI](docs/validation/issue-28-shopping-ui.md) · [Duo](docs/validation/issue-30-duo-controls.md) · [Siri](docs/validation/issue-10-app-intents.md) · [ES/EN](docs/validation/issue-13-localization.md) | Evidencia por entorno y limitaciones / Environment-specific evidence and limitations |
 | Release 2026-09-27: [iOS](docs/validation/release-2026-09-27.md) · [Servidor / Server](docs/validation/server-release-2026-09-27.md) | Compilación, pruebas y arranque por entorno / Build, tests and startup per environment |

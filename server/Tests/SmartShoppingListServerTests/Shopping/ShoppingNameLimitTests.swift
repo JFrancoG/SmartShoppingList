@@ -91,10 +91,14 @@ extension SmartShoppingListServerTests {
         let operation = UUID()
         let version = editing ? 2 : 1
         let sql = try shoppingSQL(database)
-        try await sql.raw("""
-            INSERT INTO groups(id,name,creator_user_id) VALUES (\(bind: group)::uuid,'Legacy group',\(bind: user.id))
-            """).run()
-        try await sql.raw("UPDATE users SET group_id = \(bind: group)::uuid WHERE id = \(bind: user.id)").run()
+        try await database.transaction { transaction in
+            let fixtureSQL = try shoppingSQL(transaction)
+            try await fixtureSQL.raw("""
+                INSERT INTO groups(id,name,creator_user_id,administrator_user_id)
+                VALUES (\(bind: group)::uuid,'Legacy group',\(bind: user.id),\(bind: user.id))
+                """).run()
+            try await fixtureSQL.raw("UPDATE users SET group_id = \(bind: group)::uuid WHERE id = \(bind: user.id)").run()
+        }
         try await sql.raw("""
             INSERT INTO stores(id,group_id,name,normalized_key)
             VALUES (\(bind: store)::uuid,\(bind: group)::uuid,\(bind: storeName),\(bind: storeName.lowercased()))

@@ -2,7 +2,7 @@
 
 Referencia funcional: [MVP, secciones 2–6](../mvp-spec.md). Esta matriz define resultados
 observables para revisar el contrato de la [issue #2](https://github.com/JFrancoG/SmartShoppingList/issues/2)
-y derivar las pruebas de implementación. Revisar ejemplos, esquemas o este documento no
+y su evolución de administración [#33](https://github.com/JFrancoG/SmartShoppingList/issues/33), y derivar las pruebas de implementación. Revisar ejemplos, esquemas o este documento no
 acredita llamadas reales, persistencia, concurrencia ni comportamiento de iOS. La evidencia
 de backend y cliente se conserva en los informes de validación de cada bloque.
 
@@ -29,7 +29,7 @@ juntos contrato, OpenAPI, ejemplos y los casos C05–C07.
 | I01 | Identidad Apple válida de A; aún sin grupo. | Iniciar sesión, crear G y abrir otra vez la app con la sesión conservada. | Se reconoce la misma cuenta y su grupo; no se crea otro usuario ni se exige otra autenticación mientras la sesión siga válida. | #4 |
 | I02 | Sesión caducada o invalidada; borrador local sin enviar. | Consultar o intentar guardar con esa sesión. | El servidor rechaza con `401`; no cambia datos. iOS solicita autenticación, conserva el borrador y no muestra éxito. | #4; conservación iOS en #3 |
 | I03 | A conoce IDs de grupo, tienda y producto pertenecientes a H. | Intentar leer, añadir, editar, cancelar o comprar usando esos IDs, también dentro de un lote de G. | No se revelan ni modifican datos de H. La validación de pertenencia cubre cada referencia; un lote que contiene una referencia ajena no produce escrituras parciales. | #4 para lectura/alta; Fase 2 para las demás operaciones |
-| I04 | A crea G; B es miembro sin ser creador. | B intenta crear o revocar invitaciones. | Se rechaza la gestión de invitaciones de B; se mantienen sus permisos ordinarios sobre productos. | #4 |
+| I04 | A administra G; B es miembro sin administrar, haya creado o no el grupo. | B intenta crear, listar o revocar invitaciones. | `403 administrator_required`; se mantienen sus permisos ordinarios sobre productos. El creador histórico no concede permisos. | #4; evolución #33 |
 | I05 | Invitación válida de G y B sin grupo. | Abrir el enlace y su previsualización varias veces, sin aceptar. | El enlace sigue utilizable; ninguna apertura crea pertenencia ni consume su único uso. Tras identificarse, B ve el nombre de G antes de confirmar. | #4 |
 | I06 | B recibe el enlace por un medio cuyo email difiere del usado con Apple. | B se identifica y acepta expresamente. | Se incorpora la identidad estable de Apple de B; no se exige coincidencia de email. A y B recuperan el mismo G. | #4 |
 | I07 | Invitaciones caducada sin consumir, revocada y consumida por otro usuario, como tres preparaciones independientes. | Intentar aceptar cada enlace. | No se concede acceso y se comunica un resultado comprensible. Reabrir la app o el enlace no recupera su validez. | #4 |
@@ -81,6 +81,35 @@ juntos contrato, OpenAPI, ejemplos y los casos C05–C07.
 | R01 | Lista recuperada anteriormente y conexión perdida. | Consultar esa lista e intentar una operación compartida. | La lista indica que puede estar desactualizada; el fallo conserva borrador o selección y no se muestra como guardado. No se encola una sincronización general silenciosa. | #3 para borrador; Fase 2 para compra/consulta |
 | R02 | B ha modificado los pendientes de S. | A entra en Comprar, termina una operación propia o pide refresco explícito. | Recupera pendientes reales de G y S; voz y selector consultan esos datos. No se exige actualización instantánea mientras A permanece sin refrescar. | #4 para consulta compartida; Fase 2 para todos los disparadores |
 | R03 | Altas y pertenencias confirmadas; después, compras y cancelaciones confirmadas. | Cerrar/reabrir iOS y reiniciar el servidor usando la base persistente. | Se conservan IDs, grupo, tienda, estados, autores y fechas confirmados. Comprados/cancelados no reaparecen como pendientes; la reapertura no repite escrituras ya confirmadas. | #4 para altas/grupo; Fase 2 para transiciones |
+
+## Administración, salida y capacidades (#33)
+
+Referencia exacta: [group-administration.md](group-administration.md). A es el administrador
+vigente de G, B otro miembro, C ajeno a G; cada fila describe una preparación independiente
+salvo que indique una secuencia. Estos son criterios por verificar, no resultados ejecutados.
+
+| ID | Preparación | Acción | Resultado observable | Bloque |
+|---|---|---|---|---|
+| G01 | Datos anteriores a #33, con creador A y miembros A/B. | Aplicar migración y consultar G. | Mismos IDs, autorías, tiendas y productos; administrador A, creador A. Una FK diferida asegura administrador miembro al commit; una transacción inválida no deja grupo abierto sin administrador. | #33 |
+| G02 | Más de 100 miembros de prueba y nombres opcionales. | Consultar miembros por páginas y administración. | Todas las identidades `{id, displayName}` aparecen sin duplicar por cursor estable; límite 1–100, sin email/sub. `memberCount` es el total. Cursor de otro grupo/recurso falla. | #33 |
+| G03 | A administra G y B pertenece a G. | A propone a B; B consulta su estado. | Una propuesta `pending` de siete días; A sigue administrando. B puede aceptar/rechazar; A retirar. Capacidades se calculan para cada solicitante. | #33 |
+| G04 | Propuesta utilizable de A a B. | A propone a C o B con otra clave; retirar y proponer de nuevo. | La segunda propuesta simultánea devuelve `409 transfer_pending`; retirar permite otra intención válida. Nunca hay dos propuestas pendientes. | #33 |
+| G05 | A administra G; C no es miembro. | A propone a A o C; B intenta proponer. | `409 invalid_transfer_recipient` para destinatario propio/ajeno, sin revelar datos de C; `403 administrator_required` para B. C no consulta miembros, administración ni transferencias de G. | #33 |
+| G06 | Propuesta válida de A a B. | B acepta y ambos refrescan; A/B gestionan invitaciones. | B es administrador, A permanece miembro y creador A intacto. Solo B crea/lista/revoca invitaciones, aunque use una sesión emitida antes del traspaso. Recibir administración no exige premium. | #33 |
+| G07 | Propuesta válida de A a B. | B rechaza o A retira, como preparaciones separadas; C o miembro distinto intenta responder. | Rechazo/retirada no cambian administrador; estado terminal con `resolvedAt`. Otro miembro recibe `transfer_recipient_required` al aceptar/rechazar; grupo ajeno no se revela. | #33 |
+| G08 | Propuesta cuyo plazo vence mientras la petición espera un bloqueo. | Intentar aceptar tras adquirir el bloqueo; consultar y proponer otra. | Reloj actual del servidor impide aceptar: `transfer_not_pending`. La consulta no ofrece aceptar una propuesta caducada y la nueva propuesta válida puede crearse sin depender de cron. | #33 |
+| G09 | Propuesta válida a B y solapamiento controlado. | B acepta mientras A retira; ejecutar ambos órdenes. | Solo una transición prevalece. El perdedor con intención distinta obtiene `transfer_not_pending`; nunca hay doble administración o resultado parcialmente aplicado. | #33 |
+| G10 | Propuesta válida a B y solapamiento controlado. | B sale mientras intenta aceptar; ejecutar ambos órdenes. | Si sale primero, la propuesta se invalida y no acepta; si acepta primero y siguen otros miembros, su salida exige traspaso. Administrador siempre miembro vigente. | #33 |
+| G11 | A administra G con B presente, con/sin propuesta pendiente. | A solicita salida con `confirmClosure` false y true. | `409 transfer_required` en ambos casos; ni sale, ni cierra, ni asigna sucesor automáticamente. Tras aceptación de B, A puede salir como miembro. | #33 |
+| G12 | A es el único miembro de G. | Salir con false; después confirmar con true y una nueva clave. | Primer intento `closure_confirmation_required` sin escritura; segundo deja a A sin grupo, cierra lógicamente G y devuelve `groupClosed: true`. Se conservan datos/autorías; no se ofrecen lecturas ni reincorporación por invitaciones. | #33 |
+| G13 | A único miembro e invitación válida para B; solapamiento controlado. | A confirma cierre mientras B acepta invitación; comprobar ambos órdenes. | Si cierre gana, B no entra. Si incorporación gana, A recibe `transfer_required` y no cierra. No queda grupo abierto sin administrador ni miembro en grupo cerrado. | #33 |
+| G14 | B envía escritura de productos mientras solicita salida; solapamiento controlado. | Ejecutar alta/edición/cancelación/compra y salida en ambos órdenes. | Escritura anterior a salida puede confirmarse; salida anterior impide escritura y replay con datos de grupo. No se produce escritura posterior a perder acceso. | #33 |
+| G15 | Transferencia/aceptación o salida ya confirmada, respuesta perdida después del commit. | Repetir misma cuenta, ruta, clave y contenido; cambiar después ruta/contenido. | Replay exacto conserva status/body y no repite efectos. Distinta intención reutilizando clave obtiene `idempotency_key_reused`. Solo recibo mínimo de salida propia se recupera tras perder pertenencia, incluso al cerrar. | #33 |
+| G16 | A salió de G y conserva recibos de creación, compras y traspaso. | Repetirlos o consultar G; intentar recuperar salida de otro usuario. | No se entregan datos de G ni recibos de otra cuenta. Recuperar salida propia no recupera membresía, grupo ni historia. | #33 |
+| G17 | A creó G, traspasó a B y salió. | A crea H con nueva clave; intenta después otra pertenencia. | H se crea sin colisionar por creador histórico. Permanece una pertenencia por cuenta; no se activa multigrupo. | #33 |
+| G18 | A administra G y después acepta B el cargo. | Consultar capacidades antes/después con ambos usuarios. | `capacityOwnerUserId` sigue al administrador. `groupsPerAccount` es 1/aplicado; tiendas y pendientes null/no aplicados. Sin StoreKit, precios ni bloqueos comerciales nuevos; comprado/cancelado no se define como consumo de pendientes. | #33 |
+| G19 | Caché iOS antigua y recibo de creación histórico sin administrador; después backend compatible. | Abrir app, recuperar el recibo, refrescar y traspasar. | El recibo conserva cuerpo exacto sin migración. Falta de `administratorUserId` no concede gestión por creador. Refresco autoritativo actualiza rol y controles; cliente antiguo conserva compra pero necesita actualización para gestionar el ciclo tras traspaso. | #33 |
+| G20 | Envío de salida o transferencia con resultado desconocido al cerrar/reabrir iOS. | Reanudar y recuperar; cambiar de cuenta/grupo. | Sobre original conserva cuenta, grupo, ruta, clave y contenido. No se reasigna ni se crea otra intención mientras se desconoce el resultado; tras salida se refresca usuario y se evita mostrar datos compartidos como accesibles. | #33 |
 
 ## Evidencia necesaria al implementar
 

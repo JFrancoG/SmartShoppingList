@@ -176,8 +176,7 @@ extension SmartShoppingListServerTests {
             body
         )
         try #require(created.status == .created)
-        let sql = try shoppingSQL(database)
-        try await sql.raw("UPDATE users SET group_id = NULL WHERE id = \(bind: owner.id)").run()
+        try await ShoppingFixture.depart(owner, group: group)
         let replay = try await ShoppingFixture.request(
             .POST,
             path,

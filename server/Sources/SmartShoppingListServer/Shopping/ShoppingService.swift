@@ -42,8 +42,8 @@ struct ShoppingService: Sendable {
             let id = UUID()
             let now = try await databaseClock(sql)
             try await sql.raw("""
-                INSERT INTO groups(id,name,creator_user_id,created_at)
-                VALUES (\(bind: id),\(bind: normalized),\(bind: user),\(bind: now))
+                INSERT INTO groups(id,name,creator_user_id,administrator_user_id,created_at)
+                VALUES (\(bind: id),\(bind: normalized),\(bind: user),\(bind: user),\(bind: now))
                 """).run()
             try await sql.raw("UPDATE users SET group_id = \(bind: id) WHERE id = \(bind: user)").run()
             let group = try await loadShoppingGroup(id: id, on: sql)
@@ -67,6 +67,7 @@ struct ShoppingService: Sendable {
         let fingerprint = try fingerprint(type: "addItems", group: group, value: .array(items.map(\.json)))
         return try await database.transaction { transaction in
             let sql = try shoppingSQL(transaction)
+            try await lockGroup(group, on: sql)
             let current = try await lockUser(user, on: sql)
             guard current == group else { throw APIProblem.notFound }
             if let replay = try await reserve(
@@ -123,7 +124,7 @@ struct ShoppingService: Sendable {
         }
         return try await database.transaction { transaction in
             let sql = try shoppingSQL(transaction)
-            try await requireCreator(user, group: group, on: sql)
+            try await requireAdministrator(user, group: group, on: sql)
             let id = UUID()
             let secret = ShoppingSecret.generate()
             let now = try await databaseClock(sql)
@@ -156,8 +157,13 @@ struct ShoppingService: Sendable {
         try ShoppingSecret.validate(secret)
         return try await database.transaction { transaction in
             let sql = try shoppingSQL(transaction)
-            let currentGroup = try await lockUser(user, on: sql)
             let hash = ShoppingSecret.hash(secret)
+            guard let preview = try await sql.raw("""
+                SELECT group_id FROM invitations WHERE id = \(bind: id) AND secret_hash = \(bind: hash)
+                """).first() else { throw APIProblem.notFound }
+            let expectedGroup = try preview.decode(column: "group_id", as: UUID.self)
+            try await lockGroup(expectedGroup, on: sql)
+            let currentGroup = try await lockUser(user, on: sql)
             let row: (any SQLRow)?
             if accepting {
                 row = try await sql.raw("""
@@ -170,6 +176,7 @@ struct ShoppingService: Sendable {
             }
             guard let row else { throw APIProblem.notFound }
             let groupID = try row.decode(column: "group_id", as: UUID.self)
+            guard groupID == expectedGroup else { throw APIProblem.notFound }
             let acceptedBy = try row.decode(column: "accepted_by", as: UUID?.self)
             let expires = try row.decode(column: "expires_at", as: Date.self)
             let alreadyAccepted = acceptedBy == user && currentGroup == groupID
@@ -204,7 +211,7 @@ struct ShoppingService: Sendable {
     func revokeInvitation(user: UUID, group: UUID, id: UUID) async throws {
         try await database.transaction { transaction in
             let sql = try shoppingSQL(transaction)
-            try await requireCreator(user, group: group, on: sql)
+            try await requireAdministrator(user, group: group, on: sql)
             guard let row = try await sql.raw("""
                 SELECT * FROM invitations WHERE id = \(bind: id) AND group_id = \(bind: group) FOR UPDATE
                 """).first()
@@ -241,11 +248,23 @@ extension ShoppingService {
         return try row.decode(column: "group_id", as: UUID?.self)
     }
 
-    func requireCreator(_ user: UUID, group: UUID, on sql: any SQLDatabase) async throws {
+    /// Every operation on an existing group locks it before any user, invitation, receipt or item.
+    func lockGroup(_ group: UUID, on sql: any SQLDatabase) async throws {
+        guard try await sql.raw("""
+            SELECT id FROM groups WHERE id = \(bind: group) AND closed_at IS NULL FOR UPDATE
+            """).first() != nil else { throw APIProblem.notFound }
+    }
+
+    func requireAdministrator(_ user: UUID, group: UUID, on sql: any SQLDatabase) async throws {
+        try await lockGroup(group, on: sql)
         guard try await lockUser(user, on: sql) == group else { throw APIProblem.notFound }
         let actual = try await loadShoppingGroup(id: group, on: sql)
-        guard actual.creatorUserId == user.uuidString.lowercased() else {
-            throw APIProblem(status: .forbidden, code: "creator_required", message: "Se requiere el creador del grupo.")
+        guard actual.administratorUserId == user.uuidString.lowercased() else {
+            throw APIProblem(
+                status: .forbidden,
+                code: "administrator_required",
+                message: "Se requiere el administrador del grupo."
+            )
         }
     }
 
@@ -371,6 +390,7 @@ extension ShoppingService {
         ]))
         return try await database.transaction { transaction in
             let sql = try shoppingSQL(transaction)
+            try await lockGroup(group, on: sql)
             let current = try await lockUser(user, on: sql)
             guard current == group else { throw APIProblem.notFound }
             guard try await sql.raw("""
@@ -460,6 +480,7 @@ extension ShoppingService {
         ]))
         return try await database.transaction { transaction in
             let sql = try shoppingSQL(transaction)
+            try await lockGroup(group, on: sql)
             let current = try await lockUser(user, on: sql)
             guard current == group else { throw APIProblem.notFound }
             if let replay = try await reserve(

@@ -1,15 +1,16 @@
 # Contrato técnico del MVP
 
-Versión **0.1.1**, 26 de septiembre de 2026. Unidad: [#2](https://github.com/JFrancoG/SmartShoppingList/issues/2). Alcance funcional: [spec, secciones 2–6](../mvp-spec.md). Este contrato define lo que implementarán cliente y servidor; no acredita endpoints disponibles ni pruebas de colaboración ejecutadas.
+Versión **0.2.0**, 9 de octubre de 2026. Unidades: contrato original [#2](https://github.com/JFrancoG/SmartShoppingList/issues/2) y administración transferible [#33](https://github.com/JFrancoG/SmartShoppingList/issues/33). Alcance funcional: [spec, secciones 2–6](../mvp-spec.md). Este contrato define lo que implementarán cliente y servidor; no acredita endpoints disponibles ni pruebas de colaboración ejecutadas.
 
 ## Cómo utilizarlo
 
 - Este documento fija las reglas de identidad, integridad, transacciones y recuperación.
+- [group-administration.md](group-administration.md) concreta administración transferible, salida, cierre y capacidades; conserva una pertenencia por cuenta en esta entrega.
 - [openapi.json](openapi.json) fija rutas, tipos JSON, límites estructurales, autorización y respuestas HTTP. Usa OpenAPI 3.2.1 y JSON Schema 2020-12.
 - [examples.json](examples.json) contiene peticiones y respuestas de referencia, además de entradas estructuralmente inválidas. Los UUID, dominios `.example`, códigos Apple y secretos son ficticios. Los casos son escenarios independientes salvo los pares de reintento nombrados; no son una secuencia de llamadas contra un servidor.
 - [acceptance.md](acceptance.md) describe la evidencia de comportamiento que deberá aportar la implementación. Validar JSON no demuestra transacciones, autorización ni idempotencia.
 
-El contrato concreta parámetros técnicos que la spec dejaba abiertos: invitaciones de 24 horas, sesión de 30 días, lotes y selecciones de hasta 50 productos. La finalización es atómica para toda la selección: si uno cambió, se devuelve conflicto y se revisa antes de confirmar.
+El contrato concreta parámetros técnicos que la spec dejaba abiertos: invitaciones de 24 horas, propuestas de administración de siete días, sesión de 30 días, lotes y selecciones de hasta 50 productos. La finalización es atómica para toda la selección: si uno cambió, se devuelve conflicto y se revisa antes de confirmar.
 
 ## Transporte y convenciones
 
@@ -85,7 +86,9 @@ Configuración necesaria en #4: capacidad Sign in with Apple y App ID compatible
 
 ## Grupo e invitaciones
 
-Un usuario tiene `group_id` nulo o un único grupo. `createGroup` bloquea la fila del usuario y crea grupo/asignación en una transacción; el usuario creador gestiona invitaciones, sin una infraestructura de roles. Un miembro puede consultar y modificar los productos compartidos. Un UUID conocido no concede acceso.
+Un usuario tiene `group_id` nulo o un único grupo en esta entrega. `createGroup` bloquea la fila del usuario y crea grupo/asignación en una transacción. `creatorUserId` conserva la autoría histórica; `administratorUserId` identifica al administrador vigente, que debe ser miembro del grupo abierto y gestiona invitaciones. El creador no conserva permisos por haber creado el grupo. Un miembro puede consultar y modificar los productos compartidos. Un UUID conocido no concede acceso.
+
+La administración se propone a otro miembro y requiere su aceptación antes de cambiar el cargo. El anterior administrador permanece como miembro hasta salir por separado. La salida del administrador con otros miembros exige traspaso; la del último miembro exige confirmación de cierre lógico, conserva datos y termina el acceso. Las rutas, capacidades y reintentos exactos se definen en [administración de grupo](group-administration.md). El primer grupo sigue disponible sin premium; tiendas y pendientes publican cuotas comerciales inactivas (`maximum: null`, `enforced: false`), sin prometer uso ilimitado ni activar cobro.
 
 Crear una invitación devuelve su UUID público, metadatos y enlace **una sola vez**:
 
@@ -93,7 +96,7 @@ Crear una invitación devuelve su UUID público, metadatos y enlace **una sola v
 https://links.smartshoppinglist.example/invite/<invitationId>#token=<secret>
 ```
 
-Se guarda solo el hash del secreto, con caducidad **24 horas** desde la creación. La creación no garantiza idempotencia: si la respuesta se pierde, el creador puede listar metadatos, revocar invitaciones no identificadas y crear otro enlace. No se reconstruye el secreto desde el hash. Listar nunca devuelve secretos; no se almacena un enlace en los recibos de mutaciones.
+Se guarda solo el hash del secreto, con caducidad **24 horas** desde la creación. La creación no garantiza idempotencia: si la respuesta se pierde, el administrador puede listar metadatos, revocar invitaciones no identificadas y crear otro enlace. No se reconstruye el secreto desde el hash. Listar nunca devuelve secretos; no se almacena un enlace en los recibos de mutaciones.
 
 El fragmento no se transmite en la petición HTTP de la página de aterrizaje; no convierte el enlace en un secreto protegido de quien pueda copiarlo. La app acepta únicamente el origen HTTPS configurado, la ruta exacta y un único parámetro `token` de formato válido. Conserva ID/secreto pendientes en Keychain durante SIWA, sin logs, analítica ni restauración insegura de UI. Un fallo transitorio conserva el enlace; aceptar, descartar explícitamente o confirmar invalidez terminal elimina el pendiente.
 
@@ -109,16 +112,17 @@ El dominio publica AASA para el App ID `TeamID.com.plusprojects.SmartShoppingLis
 | Revocada / caducada | `410 invitation_revoked` / `410 invitation_expired` |
 | Usuario ya en un grupo por otra operación | Preview válido puede mostrar el nombre; aceptar devuelve `409 already_in_group`, sin consumo ni traslado |
 
-Aceptar bloquea usuario e invitación y vuelve a comprobar estado, pertenencia y caducidad **después** de adquirir los bloqueos. Asignación y consumo se confirman juntos. Dos aceptantes no ganan la misma invitación. Revocar compite con aceptar sobre la misma fila: gana la primera transición confirmada. Revocar de nuevo devuelve `204`; revocar una consumida da `409 invitation_consumed` y no expulsa a su miembro. El creador no puede revocar enlaces de otro grupo.
+Aceptar obtiene previamente el grupo de la invitación sin bloquear y adquiere los bloqueos en orden **grupo → cuenta del actor → invitación**. Vuelve a comprobar secreto, grupo abierto, estado, pertenencia y caducidad **después** de adquirir los bloqueos. Asignación y consumo se confirman juntos. Dos aceptantes no ganan la misma invitación. Revocar compite con aceptar sobre la misma fila: gana la primera transición confirmada. Revocar de nuevo devuelve `204`; revocar una consumida da `409 invitation_consumed` y no expulsa a su miembro. El administrador no puede revocar enlaces de otro grupo. Un grupo cerrado responde `404 not_found` al previsualizar o aceptar, sin revelar su nombre ni permitir reincorporarse.
 
 ## Datos persistentes e integridad
 
-Diseño lógico para migraciones del bloque de implementación. No crea estas tablas todavía. Claves UUID, fechas con zona (`timestamptz`) y restricciones además de autorización en el servicio.
+Modelo lógico del contrato; no acredita ejecución de migraciones. La evolución de #33 se define en [administración de grupo](group-administration.md#transacciones-recuperación-y-migración). Claves UUID, fechas con zona (`timestamptz`) y restricciones además de autorización en el servicio.
 
 | Entidad | Campos y restricciones esenciales |
 |---|---|
 | `users` | `id`, `apple_subject UNIQUE NOT NULL`, `display_name?`, `group_id? FK groups`, `created_at`. Un solo campo de grupo evita pertenencias múltiples. |
-| `groups` | `id`, `name`, `creator_user_id UNIQUE FK users`, `created_at`. Crear después de existir el usuario y asignar su grupo dentro de la misma transacción. |
+| `groups` | `id`, `name`, `creator_user_id FK users` inmutable y sin unicidad, `administrator_user_id?`, `closed_at?`, `created_at`. Grupo abierto exige administrador miembro; cerrado no mantiene administración activa. FK de administrador/pertenencia diferida hasta commit para crear y asignar en una transacción. |
+| `group_administration_transfers` | `id`, `group_id`, `proposer_user_id`, `recipient_user_id`, `status`, `created_at`, `expires_at`, `resolved_at?`. Como máximo una propuesta pendiente por grupo; proponente y destinatario distintos. Estados y validez descritos en administración de grupo. |
 | `stores` | `id`, `group_id FK groups`, `name`, `normalized_key`, `created_at`; UNIQUE `(group_id, normalized_key)` y `(group_id, id)`. |
 | `items` | `id`, `group_id`, `store_id`, `name`, `quantity?`, `status`, `version`, `created_by FK users`, `created_at`, `purchased_by? FK users`, `purchased_at?`. FK compuesta `(group_id, store_id)` a tiendas. |
 | `invitations` | `id`, `group_id`, `secret_hash UNIQUE`, `created_at`, `expires_at`, `revoked_at?`, `accepted_by?`, `accepted_at?`. Aceptante/fecha presentes juntos; revocada y aceptada son estados mutuamente excluyentes. |
@@ -135,14 +139,14 @@ No se crea una tabla de catálogo de productos ni de cada edición. El registro 
 
 ### Operaciones idempotentes
 
-Usan `operationId`: crear grupo, añadir lote, editar, cancelar y finalizar compra. Aceptar/revocar invitaciones y logout tienen reintento definido por su propia transición; login y crear invitación tienen las excepciones descritas arriba.
+Usan `operationId`: crear grupo, añadir lote, editar, cancelar, finalizar compra, proponer/aceptar/rechazar/retirar administración y salir del grupo. Aceptar/revocar invitaciones y logout tienen reintento definido por su propia transición; login y crear invitación tienen las excepciones descritas arriba.
 
-1. Autorizar sesión y acceso al grupo de la ruta. Para crear grupo se autoriza identidad y se busca primero el recibo, antes de rechazar una pertenencia resultante de esa misma creación.
+1. Autorizar sesión y acceso vigente al grupo abierto de la ruta. Para crear grupo se autoriza identidad y se busca primero el recibo, antes de rechazar una pertenencia resultante de esa misma creación; reproducir ese recibo también exige acceso vigente al grupo del resultado. Los recibos de creación anteriores a 0.2.0 pueden omitir `administratorUserId` y conservan su cuerpo original; eso no autoriza gestión. La única excepción de pertenencia es recuperar el recibo mínimo de salida propia: misma cuenta autenticada, ruta, operación y huella exactas, sin devolver datos del grupo.
 2. Validar estructura, normalizar texto y construir representación canónica del DTO: tipo de operación, ruta con IDs, grupo y todos sus valores. Claves JSON ordenadas, UUID normalizados, opcionales representados explícitamente, sin números fraccionarios. La selección se ordena por ID; se rechazan IDs repetidos, aunque sus versiones difieran. El orden de las entradas de un lote se conserva. No incluir bearer ni `operationId` en la huella; este último identifica el recibo.
 3. Reservar UNIQUE `(user_id, operation_id)` dentro de la transacción. Una llamada concurrente espera el resultado de la primera; mismo DTO devuelve exactamente su status/body original, sin repetir escritura ni modificar fechas/versiones. Distinto DTO/tipo/ruta con la misma clave devuelve `409 idempotency_key_reused`.
 4. Ejecutar la mutación o determinar un conflicto de negocio y guardar su respuesta en la misma transacción. Se conservan éxitos y conflictos terminales `409` del dominio. Fallos previos de formato/autenticación no crean recibo. Un fallo transitorio revierte tanto mutación como reserva; no queda un recibo de éxito anticipado.
 
-Se retienen recibos durante el MVP, sin purga automática que convierta un reintento antiguo en una operación nueva. El hash SHA-256 usa la representación canónica producida por el servidor, no los bytes del JSON recibido. Cambiar espacios u orden de propiedades no altera intención. La autorización actual precede a la reproducción: no devuelve datos de un grupo al que ya no se tiene acceso.
+Se retienen recibos durante el MVP, sin purga automática que convierta un reintento antiguo en una operación nueva. El hash SHA-256 usa la representación canónica producida por el servidor, no los bytes del JSON recibido. Cambiar espacios u orden de propiedades no altera intención. La autorización actual precede a la reproducción: no devuelve datos de un grupo al que ya no se tiene acceso. El recibo mínimo de salida propia no devuelve el grupo y admite el replay acotado indicado arriba; su confirmación debe poder recuperarse después de terminar la pertenencia.
 
 Una respuesta perdida o resultado desconocido se resuelve repitiendo **misma ruta, operationId y payload**. La app conserva ese sobre de operación hasta resolverlo, también tras pasar a segundo plano/reabrir; no habilita una confirmación diferente del mismo borrador mientras desconoce el resultado anterior. No necesita una cola general offline ni un endpoint adicional de estado. Dos intenciones nuevas usan IDs distintos y ambas se conservan, aunque el texto sea igual.
 
@@ -158,7 +162,7 @@ Ante un `409` confirmado, la app muestra el conflicto, refresca y permite revisa
 
 `finalizePurchase` recibe `storeId` e IDs/versiones de 1–50 seleccionados. No acepta un filtro «todos los pendientes» ni campos comprador/fecha. Marcar checks no genera peticiones.
 
-En una transacción, el servidor bloquea exclusivamente filas del grupo correspondientes a los IDs enviados, en orden estable por ID. Tras bloquear, verifica existencia, tienda, estado pendiente y versión de **todos**. La prioridad de diagnóstico por ID es: ausente/no accesible, tienda distinta, no pendiente, versión distinta. Si algún seleccionado no cumple, devuelve `409 item_conflict` con todos los conflictos detectados y no compra ninguno de esta petición. El recibo de conflicto sí puede confirmarse.
+En una transacción, el servidor bloquea grupo y cuenta del actor y comprueba pertenencia vigente; después bloquea las filas de productos correspondientes exclusivamente a los IDs enviados, en orden estable por ID. Tras bloquear, verifica existencia, tienda, estado pendiente y versión de **todos**. La prioridad de diagnóstico por ID es: ausente/no accesible, tienda distinta, no pendiente, versión distinta. Si algún seleccionado no cumple, devuelve `409 item_conflict` con todos los conflictos detectados y no compra ninguno de esta petición. El recibo de conflicto sí puede confirmarse.
 
 La respuesta incluye estado actual solo de productos accesibles del propio grupo. Un ID ajeno o inexistente se representa igual, con `reason: not_found` y `current: null`. No filtra si existe en otro grupo. Un grupo/tienda de la ruta inexistente o ajeno responde `404` antes de operar.
 
@@ -173,11 +177,11 @@ Si todos cumplen, establece `purchased`, comprador autenticado, una misma fecha 
 | Cancelar antes de finalizar | Estado cancelado; no aparece como compra |
 | Alta distinta durante finalización | Se conserva pendiente; nunca entra por un filtro implícito |
 
-PostgreSQL `READ COMMITTED` más restricciones, versiones y `SELECT … FOR UPDATE` cubre estas operaciones acotadas; no se presupone aislamiento serializable de toda la app. Usar orden consistente de bloqueos para evitar ciclos. Después de `INSERT … ON CONFLICT DO NOTHING` del recibo, consultar el resultado en otra sentencia: el snapshot de la sentencia original puede no ver la fila concurrente que causó el conflicto. Caducidades de invitación/challenge se comprueban con tiempo actual después de esperar bloqueos (`clock_timestamp()`), no con una marca congelada al inicio de transacción. Deadlocks/fallos transitorios revierten la operación; un reintento conserva su clave.
+PostgreSQL `READ COMMITTED` más restricciones, versiones y `SELECT … FOR UPDATE` cubre estas operaciones acotadas; no se presupone aislamiento serializable de toda la app. El orden compartido es grupo → cuenta del actor → recurso; crear un grupo nuevo empieza por la cuenta porque el grupo aún no existe. Las operaciones de invitación, transferencia, salida y productos siguen ese protocolo y revalidan acceso después de los bloqueos para evitar escrituras tras salir o cerrar. No se adquiere un grupo existente después de bloquear primero la cuenta. Después de `INSERT … ON CONFLICT DO NOTHING` del recibo, consultar el resultado en otra sentencia: el snapshot de la sentencia original puede no ver la fila concurrente que causó el conflicto. Caducidades de invitación/transferencia/challenge se comprueban con tiempo actual después de esperar bloqueos (`clock_timestamp()`), no con una marca congelada al inicio de transacción. Deadlocks/fallos transitorios revierten la operación; un reintento conserva su clave.
 
 ## Consulta, selección y errores
 
-`listStores`, `listInvitations` y `listPendingItems` usan cursor opaco de servidor y límite acotado. Orden `(created_at, id)` ascendente; el cursor se vincula a grupo/recurso/filtros y se rechaza si es inválido o se reutiliza en otra consulta. El último devuelve solo pendientes de la tienda autorizada. Una tienda válida sin pendientes devuelve lista vacía, no `404`.
+`listStores`, `listInvitations`, `listPendingItems` y `listGroupMembers` usan cursor opaco de servidor y límite acotado. Orden `(created_at, id)` ascendente; el cursor se vincula a grupo/recurso/filtros y se rechaza si es inválido o se reutiliza en otra consulta. `listPendingItems` devuelve solo pendientes de la tienda autorizada. `listGroupMembers` devuelve identidades mínimas `{id, displayName}` dentro de `{data, nextCursor}`; nunca datos Apple ni emails. Una tienda válida sin pendientes devuelve lista vacía, no `404`.
 
 Las páginas no forman un snapshot entre peticiones; puede cambiar el contenido concurrentemente. El cliente acumula por ID, conserva la versión más reciente y vuelve a consultar desde el inicio al entrar, refrescar o confirmar operaciones. No anuncia que una lista local esté al día sin respuesta; cambiar de tienda no aplica los checks anteriores a la siguiente. La selección local conserva IDs/versiones hasta resolver una operación incierta. Al refrescar una selección sin envío en curso, los elementos cambiados se señalan para revisión explícita; no se sustituyen sus versiones y se compran automáticamente.
 
@@ -187,15 +191,15 @@ Las páginas no forman un snapshot entre peticiones; puede cambiar el contenido 
 |---|---|
 | `400` | JSON/parámetros inválidos, campos desconocidos, duplicados o cursor inválido. Corregir entrada. |
 | `401` | Sesión ausente/caducada/revocada o Apple/challenge inválido. Conservar borrador e iniciar acceso. |
-| `403` | Miembro sin permiso de creador para invitaciones. |
-| `404` | Recurso inexistente o ajeno; ID/secreto de invitación incorrectos. No revelar más. |
-| `409` | Estado/versión cambiado, grupo ya asignado, challenge consumido o clave reutilizada. Reconciliar; no sobrescribir. |
+| `403` | Miembro sin administración vigente (`administrator_required`) o distinto del destinatario de una transferencia (`transfer_recipient_required`). |
+| `404` | Recurso inexistente, cerrado o ajeno; ID/secreto de invitación incorrectos. No revelar más. |
+| `409` | Estado/versión cambiado, grupo ya asignado, challenge consumido o clave reutilizada; propuesta pendiente/terminal, destinatario inválido, traspaso o confirmación de cierre necesarios. Ver códigos de [administración](group-administration.md#errores-de-negocio). Reconciliar; una decisión revisada requiere clave nueva. |
 | `410` | Secreto de invitación auténtico pero caducado, revocado o consumido por otro. |
 | `413` | Body demasiado grande; no se procesa parcialmente. |
 | `429` | Esperar `Retry-After` en segundos; el mismo envío mantiene su clave. |
 | `503` / timeout / pérdida de conexión | Resultado potencialmente desconocido. Conservar sobre y repetir según la regla de esa operación; en login iniciar otro intento. |
 
-No añadir funcionalidad a partir de los errores: sin selección automática de todos, compra parcial automática, sincronización general offline, historial analítico, nuevos roles ni traslado entre grupos.
+No añadir funcionalidad a partir de los errores: sin selección automática de todos, compra parcial automática, sincronización general offline, historial analítico, coadministradores ni multigrupo en esta entrega.
 
 ## Comprobar el contrato
 
@@ -211,7 +215,7 @@ git diff --check
 
 El script valida referencias locales, seguridad explícita por operación, operationIds únicos, esquemas y formatos JSON Schema, cobertura de todas las operaciones, peticiones/respuestas positivas y rechazo de negativos. Los parámetros de ejemplo ya están decodificados y tipados; no prueba serialización HTTP ni bearer reales. La comprobación estructural OpenAPI es **parcial**, no una metavalidación completa de la especificación. Las reglas que necesitan estado (normalización, repetición de ID con distinta versión, autorización, transacciones) se revisan en la matriz y se comprobarán con Swift Testing contra implementación real.
 
-Cambiar el contrato exige actualizar ejemplos/matriz y ejecutar este comando. Los resultados concretos y el estado de entrega se registran en #2, sin duplicar un archivo de progreso.
+Cambiar el contrato exige actualizar ejemplos/matriz y ejecutar este comando. Los resultados concretos y el estado de entrega se registran en la issue correspondiente (#33 para esta evolución), sin duplicar un archivo de progreso.
 
 ## Fuentes técnicas y decisiones propias
 

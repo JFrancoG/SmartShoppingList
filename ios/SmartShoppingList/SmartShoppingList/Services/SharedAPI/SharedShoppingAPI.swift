@@ -6,6 +6,21 @@ protocol SharedShoppingAPI: Sendable {
     func currentUser(token: String) async throws -> SharedUser
     func logout(token: String) async throws
     func createGroup(_ request: CreateGroupRequest, token: String) async throws -> SharedGroup
+    func groupMembers(groupID: UUID, token: String) async throws -> [SharedGroupMember]
+    func groupAdministration(groupID: UUID, token: String) async throws -> SharedGroupAdministration
+    func proposeTransfer(
+        _ request: ProposeGroupTransferRequest,
+        groupID: UUID,
+        token: String
+    ) async throws -> SharedGroupTransferResult
+    func resolveTransfer(
+        _ request: ResolveGroupTransferRequest,
+        groupID: UUID,
+        transferID: UUID,
+        action: SharedGroupTransferAction,
+        token: String
+    ) async throws -> SharedGroupTransferResult
+    func leaveGroup(_ request: LeaveGroupRequest, groupID: UUID, token: String) async throws -> SharedGroupDeparture
     func stores(groupID: UUID, token: String) async throws -> [SharedStore]
     func createInvitation(groupID: UUID, token: String) async throws -> CreatedInvitation
     func invitations(groupID: UUID, token: String) async throws -> [SharedInvitation]
@@ -45,10 +60,12 @@ enum SharedAPIError: Error, Equatable {
         switch status {
         case 400: code == "invalid_request"
         case 401: ["invalid_session", "invalid_apple_credentials", "challenge_expired"].contains(code)
-        case 403: code == "creator_required"
+        case 403: ["creator_required", "administrator_required", "transfer_recipient_required"].contains(code)
         case 404: code == "not_found"
         case 409:
-            ["already_in_group", "challenge_consumed", "idempotency_key_reused", "item_conflict", "invitation_consumed"]
+            ["already_in_group", "challenge_consumed", "idempotency_key_reused", "item_conflict", "invitation_consumed",
+             "transfer_required", "closure_confirmation_required", "transfer_not_pending", "transfer_pending",
+             "invalid_transfer_recipient"]
                 .contains(code)
         case 410: ["invitation_expired", "invitation_revoked", "invitation_consumed"].contains(code)
         case 413: code == "body_too_large"
@@ -68,6 +85,8 @@ struct SharedGroup: Identifiable, Codable, Equatable {
     let name: String
     let creatorUserId: UUID
     let createdAt: Date
+    // Legacy Keychain sessions predate this field; absence never grants creator permissions.
+    var administratorUserId: UUID? = nil
 }
 
 struct SharedUser: Identifiable, Codable, Equatable {
@@ -248,11 +267,21 @@ enum PendingSharedOperation: Codable, Equatable {
     case addItems(userID: UUID, groupID: UUID, request: AddItemsRequest, sourceDraft: ShoppingDraftSnapshot)
     case changeItem(userID: UUID, original: SharedItem, request: SharedItemChangeRequest)
     case purchase(userID: UUID, groupID: UUID, request: FinalizePurchaseRequest, selection: [SharedItem])
+    case proposeTransfer(userID: UUID, groupID: UUID, request: ProposeGroupTransferRequest)
+    case resolveTransfer(
+        userID: UUID,
+        groupID: UUID,
+        transferID: UUID,
+        action: SharedGroupTransferAction,
+        request: ResolveGroupTransferRequest
+    )
+    case leaveGroup(userID: UUID, groupID: UUID, request: LeaveGroupRequest)
 
     var userID: UUID {
         switch self {
         case .createGroup(let userID, _), .addItems(let userID, _, _, _), .purchase(let userID, _, _, _),
-             .changeItem(let userID, _, _): userID
+             .changeItem(let userID, _, _), .proposeTransfer(let userID, _, _),
+             .resolveTransfer(let userID, _, _, _, _), .leaveGroup(let userID, _, _): userID
         }
     }
 
@@ -262,6 +291,9 @@ enum PendingSharedOperation: Codable, Equatable {
         case .addItems(_, _, let request, _): request.operationId
         case .purchase(_, _, let request, _): request.operationId
         case .changeItem(_, _, let request): request.operationId
+        case .proposeTransfer(_, _, let request): request.operationId
+        case .resolveTransfer(_, _, _, _, let request): request.operationId
+        case .leaveGroup(_, _, let request): request.operationId
         }
     }
 }

@@ -35,6 +35,10 @@ final class SharedShoppingViewModel {
     private(set) var items: [SharedItem] = []
     private(set) var invitations: [SharedInvitation] = []
     private(set) var shareURL: URL?
+    private(set) var administration: SharedGroupAdministration?
+    private(set) var groupMembers: [SharedGroupMember] = []
+    private(set) var groupManagementState = GroupManagementLoadState.notLoaded
+    var selectedSuccessorID: UUID?
     private(set) var hasLoaded = false
     private var isPerformingAction = false
     private var isProcessingShoppingIntent = false
@@ -149,7 +153,13 @@ final class SharedShoppingViewModel {
     var draftIsLocked: Bool {
         !hasLoaded || pendingOperation != nil || isBusy || isReviewPresented || draft.isReceivingIntent
     }
-    var isCreator: Bool { group?.creatorUserId == session?.user.id && group != nil }
+    var isAdministrator: Bool {
+        sessionIsVerified && group?.administratorUserId == session?.user.id && group?.administratorUserId != nil
+    }
+    var canManageInvitations: Bool {
+        sessionIsVerified && administration?.group.id == group?.id
+            && administration?.capabilities.canManageInvitations == true
+    }
     var canConfirmReview: Bool {
         canMutate && reviewOwner != nil && reviewOwner?.userID == session?.user.id
             && reviewOwner?.groupID == group?.id && !reviewedItems.isEmpty
@@ -736,6 +746,8 @@ final class SharedShoppingViewModel {
         var additionDestination: ShoppingNotice.StoreDestination?
         do {
             switch operation {
+            case .proposeTransfer, .resolveTransfer, .leaveGroup:
+                return await performPendingGroupOperation(operation)
             case .changeItem(_, let original, let request):
                 _ = try await api.changeItem(request, item: original, token: session.accessToken)
             case .purchase(_, let groupID, let request, _):
@@ -932,7 +944,7 @@ final class SharedShoppingViewModel {
     }
 
     func openInvitations() async {
-        guard canMutate, isCreator, let api, let session, let group else { return }
+        guard canMutate, canManageInvitations, let api, let session, let group else { return }
         await performAction {
             do {
                 invitations = try await api.invitations(groupID: group.id, token: session.accessToken)
@@ -944,7 +956,7 @@ final class SharedShoppingViewModel {
     }
 
     func createInvitation() async {
-        guard canMutate, isCreator, let api, let session, let group else { return }
+        guard canMutate, canManageInvitations, let api, let session, let group else { return }
         await performAction {
             shareURL = nil
             do {
@@ -958,7 +970,7 @@ final class SharedShoppingViewModel {
     }
 
     func revokeInvitation(_ invitation: SharedInvitation) async {
-        guard canMutate, isCreator, let api, let session, let group else { return }
+        guard canMutate, canManageInvitations, let api, let session, let group else { return }
         await performAction {
             do {
                 try await api.revokeInvitation(
@@ -1028,11 +1040,15 @@ final class SharedShoppingViewModel {
     @discardableResult
     private func refreshSessionAndLists() async -> Bool {
         guard let api, var current = session else { return false }
+        administration = nil
         var requestedStoreID = selectedStoreID
         loadedStoreID = nil
         storeItemsState = selectedStoreID == nil ? .notLoaded : .loading
         do {
             current.user = try await api.currentUser(token: current.accessToken)
+            if current.user.group?.id != session?.user.group?.id {
+                clearGroupPresentation()
+            }
             try await credentials.saveSession(current)
             session = current
             sessionIsVerified = true
@@ -1041,6 +1057,18 @@ final class SharedShoppingViewModel {
             storeItemsState = selectedStoreID == nil ? .notLoaded : .loading
             notice = nil
             if let group = current.user.group {
+                if group.administratorUserId != nil {
+                    let latest = try await api.groupAdministration(groupID: group.id, token: current.accessToken)
+                    current.user.group = latest.group
+                    try await credentials.saveSession(current)
+                    session = current
+                    administration = latest
+                    if !latest.capabilities.canManageInvitations {
+                        invitations = []
+                        shareURL = nil
+                        isInvitationsPresented = false
+                    }
+                }
                 stores = try await api.stores(groupID: group.id, token: current.accessToken)
                 if let selectedStoreID, !stores.contains(where: { $0.id == selectedStoreID }) {
                     self.selectedStoreID = nil
@@ -1158,6 +1186,12 @@ final class SharedShoppingViewModel {
     }
 
     private func clearSessionPresentation() {
+        clearGroupPresentation()
+        session = nil
+        sessionIsVerified = false
+    }
+
+    private func clearGroupPresentation() {
         reviewedItems = []
         reviewSnapshot = nil
         reviewOwner = nil
@@ -1170,8 +1204,6 @@ final class SharedShoppingViewModel {
         purchaseSelections = [:]
         purchaseSelectionOwner = nil
         loadedStoreID = nil
-        session = nil
-        sessionIsVerified = false
         stores = []
         items = []
         invitations = []
@@ -1179,6 +1211,190 @@ final class SharedShoppingViewModel {
         shareURL = nil
         selectedStoreID = nil
         storeItemsState = .notLoaded
+        administration = nil
+        groupMembers = []
+        groupManagementState = .notLoaded
+        selectedSuccessorID = nil
+        isInvitationsPresented = false
+    }
+
+    func loadGroupManagement() async {
+        guard hasLoaded, !isBusy, sessionIsVerified, let api, let session, let group else { return }
+        groupManagementState = .loading
+        await performAction {
+            do {
+                let latest = try await api.groupAdministration(groupID: group.id, token: session.accessToken)
+                let members = try await api.groupMembers(groupID: group.id, token: session.accessToken)
+                guard self.session?.user.id == session.user.id, self.group?.id == group.id else { return }
+                try await updateGroup(latest.group)
+                administration = latest
+                groupMembers = members
+                if !members.contains(where: { $0.id == selectedSuccessorID && $0.id != session.user.id }) {
+                    selectedSuccessorID = nil
+                }
+                groupManagementState = .loaded
+            } catch {
+                administration = nil
+                groupMembers = []
+                groupManagementState = .failed
+                await handle(error)
+            }
+        }
+    }
+
+    var canProposeGroupTransfer: Bool {
+        canMutate && groupManagementState == .loaded && administration?.capabilities.canProposeTransfer == true
+            && groupMembers.contains { $0.id == selectedSuccessorID && $0.id != session?.user.id }
+    }
+
+    func memberNeedsIdentifier(_ member: SharedGroupMember) -> Bool {
+        guard let name = member.visibleName else { return true }
+        return member.id == session?.user.id || groupMembers.contains {
+            $0.id != member.id && $0.visibleName?.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
+                == name.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
+        }
+    }
+
+    var groupSuccessorCandidates: [SharedGroupMember] {
+        groupMembers.filter { $0.id != session?.user.id }
+    }
+
+    func groupMember(id: UUID) -> SharedGroupMember? { groupMembers.first { $0.id == id } }
+
+    func proposeGroupTransfer() async {
+        guard canProposeGroupTransfer, let session, let group, let selectedSuccessorID else { return }
+        await submitGroupOperation(.proposeTransfer(
+            userID: session.user.id,
+            groupID: group.id,
+            request: ProposeGroupTransferRequest(operationId: UUID(), recipientUserId: selectedSuccessorID)
+        ))
+    }
+
+    func resolveGroupTransfer(_ action: SharedGroupTransferAction) async {
+        guard canMutate, let session, let group, let administration,
+              let transfer = administration.pendingTransfer else { return }
+        let allowed = switch action {
+        case .accept: administration.capabilities.canAcceptTransfer
+        case .reject: administration.capabilities.canRejectTransfer
+        case .withdraw: administration.capabilities.canWithdrawTransfer
+        }
+        guard allowed else { return }
+        await submitGroupOperation(.resolveTransfer(
+            userID: session.user.id,
+            groupID: group.id,
+            transferID: transfer.id,
+            action: action,
+            request: ResolveGroupTransferRequest(operationId: UUID())
+        ))
+    }
+
+    func leaveGroup(confirmClosure: Bool) async {
+        guard canMutate, let session, let group, let administration, administration.capabilities.canLeave,
+              !administration.capabilities.requiresClosureConfirmation || confirmClosure else { return }
+        await submitGroupOperation(.leaveGroup(
+            userID: session.user.id,
+            groupID: group.id,
+            request: LeaveGroupRequest(operationId: UUID(), confirmClosure: confirmClosure)
+        ))
+    }
+
+    private func submitGroupOperation(_ operation: PendingSharedOperation) async {
+        await performAction {
+            do {
+                try await credentials.saveOperation(operation)
+                pendingOperation = operation
+                await performPendingGroupOperation(operation)
+            } catch {
+                notice = SharedErrorMessage.message(for: error)
+            }
+        }
+    }
+
+    @discardableResult
+    private func performPendingGroupOperation(_ operation: PendingSharedOperation) async -> Bool {
+        guard let api, let session, operation.userID == session.user.id else { return false }
+        var confirmed = false
+        do {
+            switch operation {
+            case .proposeTransfer(_, let groupID, let request):
+                let result = try await api.proposeTransfer(request, groupID: groupID, token: session.accessToken)
+                guard result.transfer.proposerUserId == session.user.id else { throw SharedAPIError.invalidResponse }
+            case .resolveTransfer(_, let groupID, let transferID, let action, let request):
+                let result = try await api.resolveTransfer(
+                    request,
+                    groupID: groupID,
+                    transferID: transferID,
+                    action: action,
+                    token: session.accessToken
+                )
+                let actorID = action == .withdraw ? result.transfer.proposerUserId : result.transfer.recipientUserId
+                guard actorID == session.user.id else { throw SharedAPIError.invalidResponse }
+            case .leaveGroup(_, let groupID, let request):
+                let result = try await api.leaveGroup(request, groupID: groupID, token: session.accessToken)
+                guard result.userId == session.user.id else { throw SharedAPIError.invalidResponse }
+            default:
+                return false
+            }
+            confirmed = true
+            // Receipts describe the original commit. Never overwrite a later membership or role with their snapshot.
+            var current = session
+            current.user = try await api.currentUser(token: current.accessToken)
+            guard current.user.id == session.user.id else { throw SharedAPIError.invalidResponse }
+            let latest: SharedGroupAdministration?
+            if let group = current.user.group {
+                latest = try await api.groupAdministration(groupID: group.id, token: current.accessToken)
+                current.user.group = latest?.group
+            } else {
+                latest = nil
+            }
+            try await credentials.saveSession(current)
+            if current.user.group?.id != self.group?.id {
+                clearGroupPresentation()
+            } else {
+                groupMembers = []
+                groupManagementState = .notLoaded
+                selectedSuccessorID = nil
+            }
+            self.session = current
+            sessionIsVerified = true
+            administration = latest
+            try await credentials.saveOperation(nil)
+            pendingOperation = nil
+            retryNotBefore = nil
+            await refreshSessionAndLists()
+            if case .leaveGroup = operation {
+                notice = "Your departure is confirmed. Your current group access has been refreshed."
+            } else {
+                notice = "The transfer action is confirmed. Refresh group management to see its current state."
+            }
+            return true
+        } catch let error as SharedAPIError {
+            administration = nil
+            groupManagementState = .failed
+            if !confirmed, case .server(let status, _, _, let retryAfter) = error {
+                if let retryAfter {
+                    retryNotBefore = Date().addingTimeInterval(Double(max(0, retryAfter)))
+                }
+                if [400, 403, 404, 409, 410, 413].contains(status), !error.isUncertain {
+                    do {
+                        try await credentials.saveOperation(nil)
+                        pendingOperation = nil
+                    } catch {
+                        notice = SharedErrorMessage.message(for: error)
+                        return false
+                    }
+                }
+            }
+            await handle(error)
+            if confirmed, !error.isSessionInvalid {
+                notice = "The action is confirmed, but your current access could not be refreshed. Retry the saved request."
+            }
+        } catch {
+            administration = nil
+            groupManagementState = .failed
+            notice = "The result still needs to be saved on this device. Retry the original request."
+        }
+        return false
     }
 }
 
@@ -1215,6 +1431,10 @@ extension SharedShoppingViewModel {
         pendingInvitation = preview.pendingInvitation
         invitationPreview = preview.invitationPreview
         pendingOperation = preview.pendingOperation
+        administration = preview.administration
+        groupMembers = preview.groupMembers
+        groupManagementState = preview.groupManagementState
+        selectedSuccessorID = preview.selectedSuccessorID
         stores = preview.stores
         selectedStoreID = preview.selectedStoreID
         items = preview.items

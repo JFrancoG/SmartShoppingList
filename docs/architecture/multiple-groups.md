@@ -4,6 +4,8 @@ Fecha de decisión: 27 de septiembre de 2026.
 
 Estado: **reglas funcionales aprobadas para después del MVP; diseño técnico pendiente**. El usuario acuerda documentarlas para retomarlas dentro de unos días, sin fijar fecha de inicio. Este documento no activa su implementación ni modifica el contrato vigente de la entrega del 27.
 
+Actualización del 9 de octubre: el usuario autoriza retomar el trabajo y preparar límites comerciales. La [ampliación sobre acceso y cupos](group-access-and-limits.md) distingue el modelo de varios grupos de su disponibilidad por plan, confirma un grupo gratuito y el conteo de productos pendientes, y conserva las propuestas aún abiertas. Las secciones siguientes registran la decisión original; el seguimiento de la primera unidad está en [#33](https://github.com/JFrancoG/SmartShoppingList/issues/33).
+
 ## Decisión aprobada
 
 - Una persona puede pertenecer a varios grupos.

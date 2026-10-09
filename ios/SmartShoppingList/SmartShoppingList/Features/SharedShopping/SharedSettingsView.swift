@@ -17,7 +17,12 @@ struct SharedSettingsView: View {
                             .font(.headline)
                             .foregroundStyle(.textPrimary)
                             .fixedSize(horizontal: false, vertical: true)
-                        if viewModel.isCreator {
+                        NavigationLink {
+                            SharedGroupManagementView(viewModel: viewModel)
+                        } label: {
+                            Label("Members and administration", systemImage: "person.2")
+                        }
+                        if viewModel.canManageInvitations {
                             Button("Invitations", systemImage: "person.badge.plus") {
                                 Task {
                                     await viewModel.openInvitations()

@@ -69,6 +69,50 @@ struct SharedAPIKeychainTests {
 
 
 extension SharedAPIKeychainTests {
+    @Test(arguments: GroupOperationFixtureKind.allCases)
+    func `Group lifecycle requests survive reopening and sign out without changing identity`(
+        _ kind: GroupOperationFixtureKind
+    ) async throws {
+        let service = "GroupKeychainTests.\(UUID().uuidString)"
+        let store = SharedKeychainStore(service: service)
+        let fixture = try SharedPreviewFixture.sample()
+        let operationID = UUID()
+        let operation: PendingSharedOperation = switch kind {
+        case .propose:
+            .proposeTransfer(
+                userID: fixture.session.user.id,
+                groupID: fixture.group.id,
+                request: ProposeGroupTransferRequest(operationId: operationID, recipientUserId: UUID())
+            )
+        case .accept:
+            .resolveTransfer(
+                userID: fixture.session.user.id,
+                groupID: fixture.group.id,
+                transferID: UUID(),
+                action: .accept,
+                request: ResolveGroupTransferRequest(operationId: operationID)
+            )
+        case .leave:
+            .leaveGroup(
+                userID: fixture.session.user.id,
+                groupID: fixture.group.id,
+                request: LeaveGroupRequest(operationId: operationID, confirmClosure: true)
+            )
+        }
+        do {
+            try await store.saveSession(fixture.session)
+            try await store.saveOperation(operation)
+            try await store.saveSession(nil)
+            let reopened = SharedKeychainStore(service: service)
+            #expect(try await reopened.loadOperation() == operation)
+            #expect(try await reopened.loadSession() == nil)
+        } catch {
+            try? await clear(store)
+            throw error
+        }
+        try await clear(store)
+    }
+
     @Test
     func `Reopening keychain preserves the purchase selection versions and operation id`() async throws {
         let service = "PurchaseKeychainTests.\(UUID().uuidString)"
@@ -98,6 +142,10 @@ extension SharedAPIKeychainTests {
             throw error
         }
     }
+}
+
+enum GroupOperationFixtureKind: CaseIterable {
+    case propose, accept, leave
 }
 
 extension SharedAPIKeychainTests {

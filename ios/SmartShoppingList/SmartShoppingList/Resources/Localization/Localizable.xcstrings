@@ -3096,6 +3096,416 @@
           }
         }
       }
+    },
+    "Members and administration" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Miembros y administración"
+          }
+        }
+      }
+    },
+    "Loading group management…" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cargando la gestión del grupo…"
+          }
+        }
+      }
+    },
+    "Refresh to load the current members and administration." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Actualiza para consultar los miembros y la administración actuales."
+          }
+        }
+      }
+    },
+    "Members" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Miembros"
+          }
+        }
+      }
+    },
+    "New administrator" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nuevo administrador"
+          }
+        }
+      }
+    },
+    "Choose a member" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige un miembro"
+          }
+        }
+      }
+    },
+    "Propose transfer" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Proponer traspaso"
+          }
+        }
+      }
+    },
+    "Transfer administration" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Traspasar administración"
+          }
+        }
+      }
+    },
+    "The chosen member must accept within 7 days. You remain administrator until acceptance and then stay as a member." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El miembro elegido debe aceptar en un plazo de 7 días. Sigues siendo administrador hasta que acepte y después permaneces como miembro."
+          }
+        }
+      }
+    },
+    "Close group and leave" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cerrar el grupo y salir"
+          }
+        }
+      }
+    },
+    "Leave group" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salir del grupo"
+          }
+        }
+      }
+    },
+    "Group membership" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pertenencia al grupo"
+          }
+        }
+      }
+    },
+    "Leaving keeps your local draft. Group purchases and history are preserved on the server." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salir conserva tu borrador local. Las compras y el historial del grupo se conservan en el servidor."
+          }
+        }
+      }
+    },
+    "Leave group?" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Salir del grupo?"
+          }
+        }
+      }
+    },
+    "You will lose access to this group. You will need a new invitation to join again. Your draft is kept." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Perderás el acceso a este grupo. Necesitarás una nueva invitación para volver a unirte. Tu borrador se conserva."
+          }
+        }
+      }
+    },
+    "Close group and leave?" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Cerrar el grupo y salir?"
+          }
+        }
+      }
+    },
+    "You are the last member. The group will close and its invitations will stop working. Its history is preserved, but reopening is not available." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eres el último miembro. El grupo se cerrará y sus invitaciones dejarán de funcionar. Su historial se conserva, pero no se puede reabrir."
+          }
+        }
+      }
+    },
+    "Unnamed member" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Miembro sin nombre"
+          }
+        }
+      }
+    },
+    "You" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tú"
+          }
+        }
+      }
+    },
+    "Administrator" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Administrador"
+          }
+        }
+      }
+    },
+    "Member ID: %@" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identificador de miembro: %@"
+          }
+        }
+      }
+    },
+    "Proposed administrator" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Administrador propuesto"
+          }
+        }
+      }
+    },
+    "Proposed member ID: %@" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identificador del miembro propuesto: %@"
+          }
+        }
+      }
+    },
+    "Accept administration" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aceptar administración"
+          }
+        }
+      }
+    },
+    "Decline transfer" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rechazar traspaso"
+          }
+        }
+      }
+    },
+    "Withdraw proposal" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retirar propuesta"
+          }
+        }
+      }
+    },
+    "Pending transfer" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Traspaso pendiente"
+          }
+        }
+      }
+    },
+    "Only the current administrator can perform this action. Refresh the group." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solo el administrador actual puede realizar esta acción. Actualiza el grupo."
+          }
+        }
+      }
+    },
+    "Only the chosen member can accept or decline this transfer." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solo el miembro elegido puede aceptar o rechazar este traspaso."
+          }
+        }
+      }
+    },
+    "Transfer administration to another member before leaving the group." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Traspasa la administración a otro miembro antes de salir del grupo."
+          }
+        }
+      }
+    },
+    "You are now the last member. Refresh and confirm closing the group before leaving." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ahora eres el último miembro. Actualiza y confirma el cierre del grupo antes de salir."
+          }
+        }
+      }
+    },
+    "This transfer is no longer pending. Refresh group management before continuing." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este traspaso ya no está pendiente. Actualiza la gestión del grupo antes de continuar."
+          }
+        }
+      }
+    },
+    "There is already a pending transfer. Withdraw it before choosing another member." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ya hay un traspaso pendiente. Retíralo antes de elegir a otro miembro."
+          }
+        }
+      }
+    },
+    "Choose another current member of this group. Refresh the member list." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige a otro miembro actual de este grupo. Actualiza la lista de miembros."
+          }
+        }
+      }
+    },
+    "Your departure is confirmed. Your current group access has been refreshed." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tu salida está confirmada. Se ha actualizado tu acceso actual a grupos."
+          }
+        }
+      }
+    },
+    "The transfer action is confirmed. Refresh group management to see its current state." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La acción del traspaso está confirmada. Actualiza la gestión del grupo para consultar su estado actual."
+          }
+        }
+      }
+    },
+    "The action is confirmed, but your current access could not be refreshed. Retry the saved request." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La acción está confirmada, pero no se ha podido actualizar tu acceso actual. Reintenta la solicitud guardada."
+          }
+        }
+      }
+    },
+    "The result still needs to be saved on this device. Retry the original request." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Todavía hay que guardar el resultado en este dispositivo. Reintenta la solicitud original."
+          }
+        }
+      }
+    },
+    "Accepting makes you responsible for invitations and group administration. The previous administrator stays as a member." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Al aceptar asumes la responsabilidad de las invitaciones y la administración del grupo. El administrador anterior permanece como miembro."
+          }
+        }
+      }
+    },
+    "Refresh members and administration" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Actualizar miembros y administración"
+          }
+        }
+      }
+    },
+    "Group management" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gestión del grupo"
+          }
+        }
+      }
     }
   },
   "version" : "1.1"

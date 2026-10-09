@@ -25,6 +25,13 @@ enum SharedErrorMessage {
             case "invitation_consumed": return "Someone else has already used this invitation. Ask for a new link."
             case "not_found": return "The resource is unavailable or you do not have access. Refresh and try again."
             case "creator_required": return "Only the person who created the group can manage invitations."
+            case "administrator_required": return "Only the current administrator can perform this action. Refresh the group."
+            case "transfer_recipient_required": return "Only the chosen member can accept or decline this transfer."
+            case "transfer_required": return "Transfer administration to another member before leaving the group."
+            case "closure_confirmation_required": return "You are now the last member. Refresh and confirm closing the group before leaving."
+            case "transfer_not_pending": return "This transfer is no longer pending. Refresh group management before continuing."
+            case "transfer_pending": return "There is already a pending transfer. Withdraw it before choosing another member."
+            case "invalid_transfer_recipient": return "Choose another current member of this group. Refresh the member list."
             case "idempotency_key_reused", "item_conflict":
                 return "The submission has a conflict. Refresh and review the data before confirming again."
             case "invalid_request", "body_too_large": return "Review the form data before submitting it again."

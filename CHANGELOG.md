@@ -4,6 +4,8 @@
 
 ### Added
 
+- 2026-10-09 | ✨ feat(groups): add transferable administration
+
 - 2026-09-27 | ✨ feat(intents): add Siri shopping actions
 
 - 2026-09-26 | ✨ feat(ui): adapt controls to iPhone Duo folds
@@ -26,6 +28,8 @@
 - 2026-09-19 | ✨ feat(ios): add editable shopping drafts
 
 ### Documentation
+
+- 2026-10-09 | 📝 docs: plan group access and premium quotas
 
 - 2026-09-27 | 📝 docs: simplify demo links
 

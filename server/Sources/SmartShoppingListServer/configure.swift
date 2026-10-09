@@ -39,7 +39,10 @@ func configure(
     // Run migrations before boot; the lifecycle handler also closes database connections.
     app.lifecycle.use(MigrateLifecycleHandler(
         databases: databases,
-        migrations: CreateTodo(), CreateSharedShopping(), CreateAppleAuthentication()
+        migrations: CreateTodo(),
+        CreateSharedShopping(),
+        CreateAppleAuthentication(),
+        AddGroupAdministration()
     ))
 
     app.routes.defaultMaxBodySize = "128kb"

@@ -55,7 +55,10 @@ struct AppTrait: TestTrait, SuiteTrait, TestScoping {
         if configured {
             do {
                 try await databases.revert(
-                    migrations: CreateTodo(), CreateSharedShopping(), CreateAppleAuthentication(),
+                    migrations: CreateTodo(),
+                    CreateSharedShopping(),
+                    CreateAppleAuthentication(),
+                    AddGroupAdministration(),
                     on: app
                 )
             } catch {
