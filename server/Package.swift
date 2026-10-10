@@ -26,6 +26,7 @@ let package = Package(
                 .product(name: "Vapor", package: "vapor"),
                 .product(name: "JWTKit", package: "jwt-kit"),
             ],
+            resources: [.process("Subscriptions/Resources")],
             swiftSettings: swiftSettings
         ),
         .testTarget(

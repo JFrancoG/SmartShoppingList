@@ -1,5 +1,5 @@
 {
-  "contractVersion": "0.4.0",
+  "contractVersion": "0.5.0",
   "cases": [
     {
       "id": "challenge-fresh",
@@ -50,7 +50,13 @@
                   "maximum": 1,
                   "enforced": true
                 }
-              }
+              },
+              "premiumActive": false,
+              "premiumExpiresAt": null,
+              "transitionEndsAt": null,
+              "freeGroupId": null,
+              "freeGroupChangeAvailableAt": null,
+              "canChangeFreeGroup": true
             }
           }
         }
@@ -115,7 +121,11 @@
             "name": "Casa",
             "creatorUserId": "00000000-0000-4000-8000-000000000001",
             "createdAt": "2026-09-19T10:00:00Z",
-            "administratorUserId": "00000000-0000-4000-8000-000000000001"
+            "administratorUserId": "00000000-0000-4000-8000-000000000001",
+            "capabilities": {
+              "canUseShopping": true,
+              "isFreeGroup": false
+            }
           },
           "accountCapabilities": {
             "membershipCount": 1,
@@ -126,7 +136,13 @@
                 "maximum": 1,
                 "enforced": true
               }
-            }
+            },
+            "premiumActive": false,
+            "premiumExpiresAt": null,
+            "transitionEndsAt": null,
+            "freeGroupId": null,
+            "freeGroupChangeAvailableAt": null,
+            "canChangeFreeGroup": true
           }
         }
       }
@@ -176,7 +192,11 @@
           "name": "Casa",
           "creatorUserId": "00000000-0000-4000-8000-000000000001",
           "createdAt": "2026-09-19T10:00:00Z",
-          "administratorUserId": "00000000-0000-4000-8000-000000000001"
+          "administratorUserId": "00000000-0000-4000-8000-000000000001",
+          "capabilities": {
+            "canUseShopping": true,
+            "isFreeGroup": false
+          }
         }
       }
     },
@@ -198,7 +218,11 @@
           "name": "Casa",
           "creatorUserId": "00000000-0000-4000-8000-000000000001",
           "createdAt": "2026-09-19T10:00:00Z",
-          "administratorUserId": "00000000-0000-4000-8000-000000000001"
+          "administratorUserId": "00000000-0000-4000-8000-000000000001",
+          "capabilities": {
+            "canUseShopping": true,
+            "isFreeGroup": false
+          }
         }
       }
     },
@@ -411,7 +435,11 @@
             "name": "Casa",
             "creatorUserId": "00000000-0000-4000-8000-000000000001",
             "createdAt": "2026-09-19T10:00:00Z",
-            "administratorUserId": "00000000-0000-4000-8000-000000000001"
+            "administratorUserId": "00000000-0000-4000-8000-000000000001",
+            "capabilities": {
+              "canUseShopping": true,
+              "isFreeGroup": false
+            }
           },
           "expiresAt": "2026-09-20T10:01:00Z",
           "alreadyAccepted": false
@@ -479,7 +507,11 @@
           "name": "Casa",
           "creatorUserId": "00000000-0000-4000-8000-000000000001",
           "createdAt": "2026-09-19T10:00:00Z",
-          "administratorUserId": "00000000-0000-4000-8000-000000000001"
+          "administratorUserId": "00000000-0000-4000-8000-000000000001",
+          "capabilities": {
+            "canUseShopping": true,
+            "isFreeGroup": false
+          }
         }
       }
     },
@@ -502,7 +534,11 @@
           "name": "Casa",
           "creatorUserId": "00000000-0000-4000-8000-000000000001",
           "createdAt": "2026-09-19T10:00:00Z",
-          "administratorUserId": "00000000-0000-4000-8000-000000000001"
+          "administratorUserId": "00000000-0000-4000-8000-000000000001",
+          "capabilities": {
+            "canUseShopping": true,
+            "isFreeGroup": false
+          }
         }
       }
     },
@@ -1391,7 +1427,11 @@
             "name": "Casa",
             "creatorUserId": "00000000-0000-4000-8000-000000000001",
             "createdAt": "2026-09-19T10:00:00Z",
-            "administratorUserId": "00000000-0000-4000-8000-000000000001"
+            "administratorUserId": "00000000-0000-4000-8000-000000000001",
+            "capabilities": {
+              "canUseShopping": true,
+              "isFreeGroup": false
+            }
           },
           "memberCount": 2,
           "pendingTransfer": null,
@@ -1439,7 +1479,11 @@
             "name": "Casa",
             "creatorUserId": "00000000-0000-4000-8000-000000000001",
             "createdAt": "2026-09-19T10:00:00Z",
-            "administratorUserId": "00000000-0000-4000-8000-000000000001"
+            "administratorUserId": "00000000-0000-4000-8000-000000000001",
+            "capabilities": {
+              "canUseShopping": true,
+              "isFreeGroup": false
+            }
           },
           "memberCount": 2,
           "pendingTransfer": {
@@ -1496,7 +1540,11 @@
             "name": "Casa",
             "creatorUserId": "00000000-0000-4000-8000-000000000001",
             "createdAt": "2026-09-19T10:00:00Z",
-            "administratorUserId": "00000000-0000-4000-8000-000000000001"
+            "administratorUserId": "00000000-0000-4000-8000-000000000001",
+            "capabilities": {
+              "canUseShopping": true,
+              "isFreeGroup": false
+            }
           },
           "memberCount": 1,
           "pendingTransfer": null,
@@ -1548,7 +1596,11 @@
             "name": "Casa",
             "creatorUserId": "00000000-0000-4000-8000-000000000001",
             "createdAt": "2026-09-19T10:00:00Z",
-            "administratorUserId": "00000000-0000-4000-8000-000000000001"
+            "administratorUserId": "00000000-0000-4000-8000-000000000001",
+            "capabilities": {
+              "canUseShopping": true,
+              "isFreeGroup": false
+            }
           },
           "transfer": {
             "id": "00000000-0000-4000-8000-000000000060",
@@ -1664,7 +1716,11 @@
             "name": "Casa",
             "creatorUserId": "00000000-0000-4000-8000-000000000001",
             "createdAt": "2026-09-19T10:00:00Z",
-            "administratorUserId": "00000000-0000-4000-8000-000000000002"
+            "administratorUserId": "00000000-0000-4000-8000-000000000002",
+            "capabilities": {
+              "canUseShopping": true,
+              "isFreeGroup": false
+            }
           },
           "transfer": {
             "id": "00000000-0000-4000-8000-000000000060",
@@ -1736,7 +1792,11 @@
             "name": "Casa",
             "creatorUserId": "00000000-0000-4000-8000-000000000001",
             "createdAt": "2026-09-19T10:00:00Z",
-            "administratorUserId": "00000000-0000-4000-8000-000000000001"
+            "administratorUserId": "00000000-0000-4000-8000-000000000001",
+            "capabilities": {
+              "canUseShopping": true,
+              "isFreeGroup": false
+            }
           },
           "transfer": {
             "id": "00000000-0000-4000-8000-000000000060",
@@ -1772,7 +1832,11 @@
             "name": "Casa",
             "creatorUserId": "00000000-0000-4000-8000-000000000001",
             "createdAt": "2026-09-19T10:00:00Z",
-            "administratorUserId": "00000000-0000-4000-8000-000000000001"
+            "administratorUserId": "00000000-0000-4000-8000-000000000001",
+            "capabilities": {
+              "canUseShopping": true,
+              "isFreeGroup": false
+            }
           },
           "transfer": {
             "id": "00000000-0000-4000-8000-000000000060",
@@ -2081,14 +2145,22 @@
               "name": "Casa",
               "creatorUserId": "00000000-0000-4000-8000-000000000001",
               "createdAt": "2026-09-19T10:00:00Z",
-              "administratorUserId": "00000000-0000-4000-8000-000000000001"
+              "administratorUserId": "00000000-0000-4000-8000-000000000001",
+              "capabilities": {
+                "canUseShopping": true,
+                "isFreeGroup": false
+              }
             },
             {
               "id": "00000000-0000-4000-8000-000000000011",
               "name": "Trabajo",
               "creatorUserId": "00000000-0000-4000-8000-000000000002",
               "createdAt": "2026-10-09T10:00:00Z",
-              "administratorUserId": "00000000-0000-4000-8000-000000000002"
+              "administratorUserId": "00000000-0000-4000-8000-000000000002",
+              "capabilities": {
+                "canUseShopping": true,
+                "isFreeGroup": false
+              }
             }
           ],
           "nextCursor": null
@@ -2113,7 +2185,11 @@
               "name": "Casa",
               "creatorUserId": "00000000-0000-4000-8000-000000000001",
               "createdAt": "2026-09-19T10:00:00Z",
-              "administratorUserId": "00000000-0000-4000-8000-000000000001"
+              "administratorUserId": "00000000-0000-4000-8000-000000000001",
+              "capabilities": {
+                "canUseShopping": true,
+                "isFreeGroup": false
+              }
             }
           ],
           "nextCursor": "opaque-account-groups-cursor"
@@ -2139,7 +2215,11 @@
               "name": "Trabajo",
               "creatorUserId": "00000000-0000-4000-8000-000000000002",
               "createdAt": "2026-10-09T10:00:00Z",
-              "administratorUserId": "00000000-0000-4000-8000-000000000002"
+              "administratorUserId": "00000000-0000-4000-8000-000000000002",
+              "capabilities": {
+                "canUseShopping": true,
+                "isFreeGroup": false
+              }
             }
           ],
           "nextCursor": null
@@ -2163,7 +2243,11 @@
             "name": "Casa",
             "creatorUserId": "00000000-0000-4000-8000-000000000001",
             "createdAt": "2026-09-19T10:00:00Z",
-            "administratorUserId": "00000000-0000-4000-8000-000000000001"
+            "administratorUserId": "00000000-0000-4000-8000-000000000001",
+            "capabilities": {
+              "canUseShopping": true,
+              "isFreeGroup": false
+            }
           },
           "accountCapabilities": {
             "membershipCount": 2,
@@ -2174,7 +2258,13 @@
                 "maximum": 5,
                 "enforced": true
               }
-            }
+            },
+            "premiumActive": true,
+            "premiumExpiresAt": null,
+            "transitionEndsAt": null,
+            "freeGroupId": null,
+            "freeGroupChangeAvailableAt": null,
+            "canChangeFreeGroup": true
           }
         }
       }
@@ -2201,7 +2291,13 @@
                 "maximum": 1,
                 "enforced": true
               }
-            }
+            },
+            "premiumActive": false,
+            "premiumExpiresAt": null,
+            "transitionEndsAt": null,
+            "freeGroupId": null,
+            "freeGroupChangeAvailableAt": null,
+            "canChangeFreeGroup": true
           }
         }
       }
@@ -2228,7 +2324,13 @@
                 "maximum": 1,
                 "enforced": true
               }
-            }
+            },
+            "premiumActive": false,
+            "premiumExpiresAt": null,
+            "transitionEndsAt": null,
+            "freeGroupId": null,
+            "freeGroupChangeAvailableAt": null,
+            "canChangeFreeGroup": true
           }
         }
       }
@@ -2292,7 +2394,11 @@
           "name": "Casa",
           "creatorUserId": "00000000-0000-4000-8000-000000000001",
           "createdAt": "2026-09-19T10:00:00Z",
-          "administratorUserId": "00000000-0000-4000-8000-000000000001"
+          "administratorUserId": "00000000-0000-4000-8000-000000000001",
+          "capabilities": {
+            "canUseShopping": true,
+            "isFreeGroup": false
+          }
         }
       }
     },
@@ -2314,7 +2420,11 @@
           "name": "Trabajo",
           "creatorUserId": "00000000-0000-4000-8000-000000000001",
           "createdAt": "2026-10-09T10:00:00Z",
-          "administratorUserId": "00000000-0000-4000-8000-000000000001"
+          "administratorUserId": "00000000-0000-4000-8000-000000000001",
+          "capabilities": {
+            "canUseShopping": true,
+            "isFreeGroup": false
+          }
         }
       }
     },
@@ -3062,6 +3172,651 @@
         "body": {
           "code": "store_not_empty",
           "message": "Revisa la capacidad o el estado y confirma una nueva intención.",
+          "requestId": "00000000-0000-4000-8000-000000000900"
+        }
+      }
+    },
+    {
+      "id": "subscription-not-configured",
+      "operationId": "getAccountSubscription",
+      "request": {
+        "path": {},
+        "query": {}
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "appAccountToken": "00000000-0000-4000-8000-000000000001",
+          "isConfigured": false,
+          "productIDs": [],
+          "state": "free",
+          "expiresAt": null,
+          "gracePeriodExpiresAt": null,
+          "autoRenewEnabled": null,
+          "verifiedAt": null
+        }
+      }
+    },
+    {
+      "id": "subscription-cancelled-renewal-still-active",
+      "operationId": "getAccountSubscription",
+      "request": {
+        "path": {},
+        "query": {}
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "appAccountToken": "00000000-0000-4000-8000-000000000001",
+          "isConfigured": true,
+          "productIDs": [
+            "com.plusprojects.SmartShoppingList.premium.monthly.example",
+            "com.plusprojects.SmartShoppingList.premium.yearly.example"
+          ],
+          "state": "subscribed",
+          "expiresAt": "2026-11-10T10:00:00Z",
+          "gracePeriodExpiresAt": null,
+          "autoRenewEnabled": false,
+          "verifiedAt": "2026-10-10T10:00:00Z"
+        }
+      }
+    },
+    {
+      "id": "subscription-apple-billing-grace",
+      "operationId": "getAccountSubscription",
+      "request": {
+        "path": {},
+        "query": {}
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "appAccountToken": "00000000-0000-4000-8000-000000000001",
+          "isConfigured": true,
+          "productIDs": [
+            "com.plusprojects.SmartShoppingList.premium.monthly.example",
+            "com.plusprojects.SmartShoppingList.premium.yearly.example"
+          ],
+          "state": "in_grace_period",
+          "expiresAt": "2026-10-10T10:00:00Z",
+          "gracePeriodExpiresAt": "2026-10-26T10:00:00Z",
+          "autoRenewEnabled": true,
+          "verifiedAt": "2026-10-10T10:00:01Z"
+        }
+      }
+    },
+    {
+      "id": "subscription-ordinary-expired",
+      "operationId": "getAccountSubscription",
+      "request": {
+        "path": {},
+        "query": {}
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "appAccountToken": "00000000-0000-4000-8000-000000000001",
+          "isConfigured": true,
+          "productIDs": [
+            "com.plusprojects.SmartShoppingList.premium.monthly.example",
+            "com.plusprojects.SmartShoppingList.premium.yearly.example"
+          ],
+          "state": "expired",
+          "expiresAt": "2026-10-10T10:00:00Z",
+          "gracePeriodExpiresAt": null,
+          "autoRenewEnabled": false,
+          "verifiedAt": "2026-10-10T10:00:01Z"
+        }
+      }
+    },
+    {
+      "id": "subscription-refunded-no-transition",
+      "operationId": "getAccountSubscription",
+      "request": {
+        "path": {},
+        "query": {}
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "appAccountToken": "00000000-0000-4000-8000-000000000001",
+          "isConfigured": true,
+          "productIDs": [
+            "com.plusprojects.SmartShoppingList.premium.monthly.example",
+            "com.plusprojects.SmartShoppingList.premium.yearly.example"
+          ],
+          "state": "revoked",
+          "expiresAt": "2026-10-10T10:00:00Z",
+          "gracePeriodExpiresAt": null,
+          "autoRenewEnabled": false,
+          "verifiedAt": "2026-10-10T10:00:01Z"
+        }
+      }
+    },
+    {
+      "id": "subscription-transaction-acknowledged",
+      "operationId": "submitAppStoreTransaction",
+      "request": {
+        "path": {},
+        "query": {},
+        "body": {
+          "signedTransaction": "FAKE_HEADER.FAKE_TRANSACTION.FAKE_SIGNATURE"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "subscription": {
+            "appAccountToken": "00000000-0000-4000-8000-000000000001",
+            "isConfigured": true,
+            "productIDs": [
+              "com.plusprojects.SmartShoppingList.premium.monthly.example",
+              "com.plusprojects.SmartShoppingList.premium.yearly.example"
+            ],
+            "state": "subscribed",
+            "expiresAt": "2026-11-10T10:00:00Z",
+            "gracePeriodExpiresAt": null,
+            "autoRenewEnabled": true,
+            "verifiedAt": "2026-10-10T10:00:00Z"
+          },
+          "acknowledgedTransactionId": "EXAMPLE_TRANSACTION_1001"
+        }
+      }
+    },
+    {
+      "id": "subscription-invalid-signature",
+      "operationId": "submitAppStoreTransaction",
+      "request": {
+        "path": {},
+        "query": {},
+        "body": {
+          "signedTransaction": "FAKE_HEADER.TAMPERED_TRANSACTION.FAKE_SIGNATURE"
+        }
+      },
+      "response": {
+        "status": 400,
+        "body": {
+          "code": "invalid_app_store_transaction",
+          "message": "La transacción no se ha podido validar.",
+          "requestId": "00000000-0000-4000-8000-000000000900"
+        }
+      }
+    },
+    {
+      "id": "subscription-wrong-service-account",
+      "operationId": "submitAppStoreTransaction",
+      "request": {
+        "path": {},
+        "query": {},
+        "body": {
+          "signedTransaction": "FAKE_HEADER.OTHER_ACCOUNT.FAKE_SIGNATURE"
+        }
+      },
+      "response": {
+        "status": 403,
+        "body": {
+          "code": "transaction_account_mismatch",
+          "message": "La compra pertenece a otra cuenta.",
+          "requestId": "00000000-0000-4000-8000-000000000900"
+        }
+      }
+    },
+    {
+      "id": "subscription-original-transaction-bound",
+      "operationId": "submitAppStoreTransaction",
+      "request": {
+        "path": {},
+        "query": {},
+        "body": {
+          "signedTransaction": "FAKE_HEADER.BOUND_TRANSACTION.FAKE_SIGNATURE"
+        }
+      },
+      "response": {
+        "status": 409,
+        "body": {
+          "code": "transaction_already_bound",
+          "message": "La suscripción ya está vinculada a otra cuenta.",
+          "requestId": "00000000-0000-4000-8000-000000000900"
+        }
+      }
+    },
+    {
+      "id": "subscription-unavailable-preserves-transaction",
+      "operationId": "submitAppStoreTransaction",
+      "request": {
+        "path": {},
+        "query": {},
+        "body": {
+          "signedTransaction": "FAKE_HEADER.FAKE_TRANSACTION.FAKE_SIGNATURE"
+        }
+      },
+      "response": {
+        "status": 503,
+        "body": {
+          "code": "subscription_unavailable",
+          "message": "No se ha podido comprobar la suscripción.",
+          "requestId": "00000000-0000-4000-8000-000000000900"
+        }
+      }
+    },
+    {
+      "id": "free-group-first-explicit-choice",
+      "operationId": "selectFreeGroup",
+      "request": {
+        "path": {},
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000140",
+          "groupId": "00000000-0000-4000-8000-000000000011"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "membershipCount": 2,
+          "canCreateGroup": false,
+          "canJoinGroup": false,
+          "limits": {
+            "groupsPerAccount": {
+              "maximum": 1,
+              "enforced": true
+            }
+          },
+          "premiumActive": false,
+          "premiumExpiresAt": null,
+          "transitionEndsAt": null,
+          "freeGroupId": "00000000-0000-4000-8000-000000000011",
+          "freeGroupChangeAvailableAt": "2026-11-09T10:00:00Z",
+          "canChangeFreeGroup": false
+        }
+      }
+    },
+    {
+      "id": "free-group-same-choice-noop",
+      "operationId": "selectFreeGroup",
+      "request": {
+        "path": {},
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000141",
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "membershipCount": 2,
+          "canCreateGroup": false,
+          "canJoinGroup": false,
+          "limits": {
+            "groupsPerAccount": {
+              "maximum": 1,
+              "enforced": true
+            }
+          },
+          "premiumActive": false,
+          "premiumExpiresAt": null,
+          "transitionEndsAt": null,
+          "freeGroupId": "00000000-0000-4000-8000-000000000010",
+          "freeGroupChangeAvailableAt": "2026-11-09T10:00:00Z",
+          "canChangeFreeGroup": false
+        }
+      }
+    },
+    {
+      "id": "free-group-change-too-soon",
+      "operationId": "selectFreeGroup",
+      "request": {
+        "path": {},
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000142",
+          "groupId": "00000000-0000-4000-8000-000000000011"
+        }
+      },
+      "response": {
+        "status": 409,
+        "body": {
+          "code": "free_group_change_cooldown",
+          "message": "Espera hasta completar el plazo para cambiar de grupo gratuito.",
+          "requestId": "00000000-0000-4000-8000-000000000900"
+        }
+      }
+    },
+    {
+      "id": "free-group-lost-membership-exception-retains-cooldown",
+      "operationId": "selectFreeGroup",
+      "request": {
+        "path": {},
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000143",
+          "groupId": "00000000-0000-4000-8000-000000000011"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "membershipCount": 2,
+          "canCreateGroup": false,
+          "canJoinGroup": false,
+          "limits": {
+            "groupsPerAccount": {
+              "maximum": 1,
+              "enforced": true
+            }
+          },
+          "premiumActive": false,
+          "premiumExpiresAt": null,
+          "transitionEndsAt": null,
+          "freeGroupId": "00000000-0000-4000-8000-000000000011",
+          "freeGroupChangeAvailableAt": "2026-11-09T10:00:00Z",
+          "canChangeFreeGroup": false
+        }
+      }
+    },
+    {
+      "id": "free-group-unrelated-group-not-revealed",
+      "operationId": "selectFreeGroup",
+      "request": {
+        "path": {},
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000144",
+          "groupId": "00000000-0000-4000-8000-000000000019"
+        }
+      },
+      "response": {
+        "status": 404,
+        "body": {
+          "code": "not_found",
+          "message": "El grupo no está disponible.",
+          "requestId": "00000000-0000-4000-8000-000000000900"
+        }
+      }
+    },
+    {
+      "id": "current-account-in-seven-day-transition",
+      "operationId": "getCurrentUser",
+      "request": {
+        "path": {},
+        "query": {}
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "displayName": "Alex",
+          "group": null,
+          "accountCapabilities": {
+            "membershipCount": 2,
+            "canCreateGroup": false,
+            "canJoinGroup": false,
+            "limits": {
+              "groupsPerAccount": {
+                "maximum": 1,
+                "enforced": true
+              }
+            },
+            "premiumActive": false,
+            "premiumExpiresAt": "2026-10-10T10:00:00Z",
+            "transitionEndsAt": "2026-10-17T10:00:00Z",
+            "freeGroupId": "00000000-0000-4000-8000-000000000010",
+            "freeGroupChangeAvailableAt": null,
+            "canChangeFreeGroup": true
+          }
+        }
+      }
+    },
+    {
+      "id": "transition-with-zero-memberships-still-no-admission",
+      "operationId": "getCurrentUser",
+      "request": {
+        "path": {},
+        "query": {}
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "displayName": "Alex",
+          "group": null,
+          "accountCapabilities": {
+            "membershipCount": 0,
+            "canCreateGroup": false,
+            "canJoinGroup": false,
+            "limits": {
+              "groupsPerAccount": {
+                "maximum": 1,
+                "enforced": true
+              }
+            },
+            "premiumActive": false,
+            "premiumExpiresAt": "2026-10-10T10:00:00Z",
+            "transitionEndsAt": "2026-10-17T10:00:00Z",
+            "freeGroupId": null,
+            "freeGroupChangeAvailableAt": null,
+            "canChangeFreeGroup": true
+          }
+        }
+      }
+    },
+    {
+      "id": "groups-after-transition-with-restricted-membership",
+      "operationId": "listGroups",
+      "request": {
+        "path": {},
+        "query": {}
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "data": [
+            {
+              "id": "00000000-0000-4000-8000-000000000010",
+              "name": "Casa",
+              "creatorUserId": "00000000-0000-4000-8000-000000000001",
+              "createdAt": "2026-09-19T10:00:00Z",
+              "administratorUserId": "00000000-0000-4000-8000-000000000001",
+              "capabilities": {
+                "canUseShopping": true,
+                "isFreeGroup": true
+              }
+            },
+            {
+              "id": "00000000-0000-4000-8000-000000000011",
+              "name": "Trabajo",
+              "creatorUserId": "00000000-0000-4000-8000-000000000002",
+              "createdAt": "2026-10-09T10:00:00Z",
+              "administratorUserId": "00000000-0000-4000-8000-000000000002",
+              "capabilities": {
+                "canUseShopping": false,
+                "isFreeGroup": false
+              }
+            }
+          ],
+          "nextCursor": null
+        }
+      }
+    },
+    {
+      "id": "restricted-group-add-rejected",
+      "operationId": "addItems",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000101",
+          "items": [
+            {
+              "name": "Jabón",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Cerveza",
+              "quantity": null,
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            },
+            {
+              "name": "Yogures sin lactosa",
+              "quantity": "4 unidades",
+              "store": {
+                "id": "00000000-0000-4000-8000-000000000020"
+              }
+            }
+          ]
+        }
+      },
+      "response": {
+        "status": 409,
+        "body": {
+          "code": "group_access_restricted",
+          "message": "Elige este grupo como gratuito o recupera premium para usarlo.",
+          "requestId": "00000000-0000-4000-8000-000000000900"
+        }
+      }
+    },
+    {
+      "id": "restricted-group-edit-rejected",
+      "operationId": "editItem",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "itemId": "00000000-0000-4000-8000-000000000030"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000106",
+          "expectedVersion": 1,
+          "name": "Jabón de manos",
+          "quantity": "2 unidades",
+          "store": {
+            "id": "00000000-0000-4000-8000-000000000020"
+          }
+        }
+      },
+      "response": {
+        "status": 409,
+        "body": {
+          "code": "group_access_restricted",
+          "message": "Elige este grupo como gratuito o recupera premium para usarlo.",
+          "requestId": "00000000-0000-4000-8000-000000000900"
+        }
+      }
+    },
+    {
+      "id": "restricted-group-purchase-rejected",
+      "operationId": "finalizePurchase",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000102",
+          "storeId": "00000000-0000-4000-8000-000000000020",
+          "items": [
+            {
+              "id": "00000000-0000-4000-8000-000000000030",
+              "expectedVersion": 1
+            },
+            {
+              "id": "00000000-0000-4000-8000-000000000031",
+              "expectedVersion": 1
+            },
+            {
+              "id": "00000000-0000-4000-8000-000000000032",
+              "expectedVersion": 1
+            }
+          ]
+        }
+      },
+      "response": {
+        "status": 409,
+        "body": {
+          "code": "group_access_restricted",
+          "message": "Elige este grupo como gratuito o recupera premium para usarlo.",
+          "requestId": "00000000-0000-4000-8000-000000000900"
+        }
+      }
+    },
+    {
+      "id": "restricted-group-restore-rejected",
+      "operationId": "restoreStore",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010",
+          "storeId": "00000000-0000-4000-8000-000000000020"
+        },
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000124"
+        }
+      },
+      "response": {
+        "status": 409,
+        "body": {
+          "code": "group_access_restricted",
+          "message": "Elige este grupo como gratuito o recupera premium para usarlo.",
+          "requestId": "00000000-0000-4000-8000-000000000900"
+        }
+      }
+    },
+    {
+      "id": "restricted-group-invitation-rejected",
+      "operationId": "createInvitation",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "body": {}
+      },
+      "response": {
+        "status": 409,
+        "body": {
+          "code": "group_access_restricted",
+          "message": "Elige este grupo como gratuito o recupera premium para usarlo.",
+          "requestId": "00000000-0000-4000-8000-000000000900"
+        }
+      }
+    },
+    {
+      "id": "apple-notification-verified-acknowledged",
+      "operationId": "receiveAppStoreNotification",
+      "request": {
+        "path": {},
+        "query": {},
+        "body": {
+          "signedPayload": "FAKE_HEADER.FAKE_NOTIFICATION.FAKE_SIGNATURE"
+        }
+      },
+      "response": {
+        "status": 204
+      }
+    },
+    {
+      "id": "apple-notification-invalid-signature",
+      "operationId": "receiveAppStoreNotification",
+      "request": {
+        "path": {},
+        "query": {},
+        "body": {
+          "signedPayload": "FAKE_HEADER.TAMPERED_NOTIFICATION.FAKE_SIGNATURE"
+        }
+      },
+      "response": {
+        "status": 400,
+        "body": {
+          "code": "invalid_app_store_notification",
+          "message": "La notificación no se ha podido validar.",
           "requestId": "00000000-0000-4000-8000-000000000900"
         }
       }
@@ -4024,6 +4779,96 @@
             "active",
             "archived"
           ]
+        }
+      }
+    },
+    {
+      "id": "free-group-selection-missing-operation-id",
+      "operationId": "selectFreeGroup",
+      "request": {
+        "path": {},
+        "query": {},
+        "body": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        }
+      }
+    },
+    {
+      "id": "free-group-selection-invalid-group",
+      "operationId": "selectFreeGroup",
+      "request": {
+        "path": {},
+        "query": {},
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000145",
+          "groupId": "not-a-uuid"
+        }
+      }
+    },
+    {
+      "id": "subscription-client-premium-boolean",
+      "operationId": "submitAppStoreTransaction",
+      "request": {
+        "path": {},
+        "query": {},
+        "body": {
+          "signedTransaction": "FAKE_JWS",
+          "isPremium": true
+        }
+      }
+    },
+    {
+      "id": "subscription-empty-transaction",
+      "operationId": "submitAppStoreTransaction",
+      "request": {
+        "path": {},
+        "query": {},
+        "body": {
+          "signedTransaction": ""
+        }
+      }
+    },
+    {
+      "id": "subscription-no-transaction",
+      "operationId": "submitAppStoreTransaction",
+      "request": {
+        "path": {},
+        "query": {},
+        "body": {}
+      }
+    },
+    {
+      "id": "subscription-client-account-token",
+      "operationId": "submitAppStoreTransaction",
+      "request": {
+        "path": {},
+        "query": {},
+        "body": {
+          "signedTransaction": "FAKE_JWS",
+          "appAccountToken": "00000000-0000-4000-8000-000000000002"
+        }
+      }
+    },
+    {
+      "id": "notification-empty-payload",
+      "operationId": "receiveAppStoreNotification",
+      "request": {
+        "path": {},
+        "query": {},
+        "body": {
+          "signedPayload": ""
+        }
+      }
+    },
+    {
+      "id": "notification-untrusted-decoded-state",
+      "operationId": "receiveAppStoreNotification",
+      "request": {
+        "path": {},
+        "query": {},
+        "body": {
+          "signedPayload": "FAKE_JWS",
+          "premiumActive": true
         }
       }
     }

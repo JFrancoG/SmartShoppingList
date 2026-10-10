@@ -4,6 +4,8 @@ Las excepciones requieren un acuerdo explícito y se limitan al diagnóstico, ve
 
 Revisión de entrega del **27 de septiembre de 2026**: la [compilación y suite Release del servidor](validation/server-release-2026-09-27.md) vuelven a emitir únicamente el diagnóstico de EXC-001. La [app iOS Release](validation/release-2026-09-27.md) compila sin warnings y genera los metadatos de sus dos acciones Siri. Esta comprobación no retira ni amplía EXC-002 para los bundles de pruebas: su alcance sigue limitado a los targets y versiones enumerados abajo.
 
+La unidad #39 usa StoreKit de Apple en iOS y las dependencias criptográficas ya fijadas en el servidor (JWTKit y sus dependencias X509/SwiftASN1/Swift Crypto) para verificar evidencia App Store. No añade un SDK comercial ni una biblioteca externa nueva. El propósito App Store de los certificados y su estado de revocación requieren política explícita además de verificar la firma; esta reutilización no amplía EXC-001 ni EXC-002.
+
 ## EXC-001 · Manifiesto Swift 6.4 de JWTKit 5.7.1
 
 Aceptada por el responsable del proyecto el 19 de septiembre de 2026 para entregar [el bloque 1](https://github.com/JFrancoG/SmartShoppingList/issues/1).

@@ -108,7 +108,7 @@ extension SharedGroupCapacity {
         guard activeStoreCount >= 0, let storeMaximum = limits.storesPerGroup.maximum, storeMaximum > 0,
               let itemMaximum = limits.pendingItemsPerStore.maximum, itemMaximum > 0,
               limits.storesPerGroup.enforced, limits.pendingItemsPerStore.enforced,
-              canCreateStore == (activeStoreCount < storeMaximum) else {
+              (!canCreateStore || activeStoreCount < storeMaximum) else {
             throw SharedAPIError.invalidResponse
         }
         groupIdentifier = groupId

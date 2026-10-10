@@ -5,6 +5,245 @@ import Testing
 @Suite(.tags(.fast))
 @MainActor
 struct MultipleGroupTests {
+    @Test(arguments: ["purchase", "restore", "verification"])
+    func `Explicit premium action failures use the native notice while background status remains inline`(
+        action: String
+    ) async throws {
+        let fixture = try MembershipFixture()
+        let api = MembershipAPI(fixture: fixture)
+        let status = SharedSubscriptionStatus(
+            appAccountToken: fixture.session.user.id,
+            isConfigured: true,
+            productIDs: ["premium.monthly", "premium.annual"],
+            state: .free,
+            expiresAt: nil,
+            gracePeriodExpiresAt: nil,
+            autoRenewEnabled: nil,
+            verifiedAt: nil
+        )
+        await api.configureSubscription(status)
+        let verification = PendingSubscriptionVerification(
+            userID: fixture.session.user.id,
+            transactionID: "908",
+            request: VerifySharedSubscriptionRequest(signedTransaction: "saved.original.transaction")
+        )
+        if action == "verification" {
+            await api.rejectSubscriptionVerification(.transport)
+        }
+        let credentials = MemorySharedCredentialStore(
+            session: fixture.session,
+            subscriptionVerification: action == "verification" ? verification : nil
+        )
+        let store = MembershipNoTransactionsStore(withCatalogue: true)
+        let model = fixture.model(api: api, credentials: credentials, subscriptionStore: store)
+        await model.load()
+        await model.loadPremium()
+        #expect(model.presentedNotice == nil)
+        switch action {
+        case "purchase":
+            await model.purchasePremium(productID: "premium.monthly")
+            #expect(await store.purchases == 1)
+        case "restore":
+            await model.restorePremium()
+            #expect(await store.restorations == 1)
+        default:
+            try #require(model.premium.notice != nil)
+            await model.loadPremium(reportsActionErrors: true)
+            #expect(await credentials.loadSubscriptionVerification() == verification)
+            #expect(await api.subscriptionRequests.count == 2)
+        }
+        #expect(model.presentedNotice != nil)
+        #expect(model.premium.notice == nil)
+        #expect(await store.finished.isEmpty)
+        #expect(model.pendingOperation == nil)
+        #expect(model.membershipAccess?.premiumActive != true)
+    }
+
+    @Test
+    func `A subscription status read refreshes account rights even without transactions on this Apple device`() async throws {
+        let fixture = try MembershipFixture()
+        let api = MembershipAPI(fixture: fixture)
+        await api.configureFreeGroup(fixture.first.id)
+        let status = SharedSubscriptionStatus(
+            appAccountToken: UUID(),
+            isConfigured: true,
+            productIDs: ["premium.monthly", "premium.annual"],
+            state: .subscribed,
+            expiresAt: Date(timeIntervalSince1970: 1_900_000_000),
+            gracePeriodExpiresAt: nil,
+            autoRenewEnabled: true,
+            verifiedAt: Date(timeIntervalSince1970: 1_800_000_000)
+        )
+        await api.configureSubscription(status, reconcilesPremium: true)
+        let store = MembershipNoTransactionsStore()
+        let model = fixture.model(api: api, subscriptionStore: store)
+        await model.load()
+        await model.selectGroup(id: fixture.second.id)
+        try #require(model.hasRestrictedGroup)
+        try #require(!model.canCreateGroup)
+        await model.loadPremium()
+        #expect(model.premium.status?.state == .subscribed)
+        #expect(model.membershipAccess?.premiumActive == true)
+        #expect(model.canCreateGroup)
+        #expect(model.canPerformShopping)
+        #expect(model.group?.id == fixture.second.id)
+        #expect(model.draft.items == fixture.draft.items)
+        #expect(await api.subscriptionRequests.isEmpty)
+        #expect(await store.finished.isEmpty)
+    }
+
+    @Test(.timeLimit(.minutes(1)), arguments: [false, true])
+    func `An Apple update received during a group or store read is verified after that action finishes`(
+        readsStore: Bool
+    ) async throws {
+        let fixture = try MembershipFixture()
+        let api = MembershipAPI(fixture: fixture)
+        let accountToken = UUID()
+        let status = SharedSubscriptionStatus(
+            appAccountToken: accountToken,
+            isConfigured: true,
+            productIDs: ["premium.monthly"],
+            state: .free,
+            expiresAt: nil,
+            gracePeriodExpiresAt: nil,
+            autoRenewEnabled: nil,
+            verifiedAt: nil
+        )
+        await api.configureSubscription(status)
+        let deliveryGate = MembershipGate()
+        let consumedGate = MembershipGate()
+        let transaction = SharedStoreTransaction(
+            id: "908",
+            appAccountToken: accountToken,
+            productID: "premium.monthly",
+            signedTransaction: "apple.update.during.refresh"
+        )
+        let store = MembershipSubscriptionStore(
+            transaction: transaction,
+            deliveryGate: deliveryGate,
+            consumedGate: consumedGate
+        )
+        let model = fixture.model(api: api, subscriptionStore: store)
+        await model.load()
+        await deliveryGate.waitUntilReached()
+        await model.loadPremium()
+        await model.selectGroup(id: fixture.first.id)
+        model.selectedStoreID = fixture.firstStore.id
+        let refreshGate = MembershipGate()
+        if readsStore {
+            await api.delayNextItems(refreshGate)
+        } else {
+            await api.delayNextUserLookup(refreshGate)
+        }
+        let refresh = Task {
+            if readsStore {
+                await model.loadSelectedStore()
+            } else {
+                await model.refresh()
+            }
+        }
+        await refreshGate.waitUntilReached()
+        try #require(model.isBusy)
+        await deliveryGate.open()
+        // Requesting the next stream element proves the previous update reached the busy ViewModel.
+        await consumedGate.waitUntilReached()
+        #expect(await api.subscriptionRequests.isEmpty)
+        #expect(await store.finished.isEmpty)
+        await refreshGate.open()
+        await refresh.value
+        #expect(await api.subscriptionRequests.map(\.signedTransaction) == ["apple.update.during.refresh"])
+        #expect(await store.finished == ["908"])
+        #expect(model.premium.pendingVerification == nil)
+        #expect(!model.isBusy)
+        await consumedGate.open()
+    }
+
+    @Test
+    func `A lost free group selection is retried with its exact identity without changing the active shopping group`(
+    ) async throws {
+        let fixture = try MembershipFixture()
+        let api = MembershipAPI(fixture: fixture)
+        await api.configureFreeGroup(fixture.first.id, loseNextSelectionResponse: true)
+        var session = fixture.session
+        session.activeGroupID = fixture.first.id
+        let credentials = MemorySharedCredentialStore(session: session)
+        let model = fixture.model(api: api, credentials: credentials)
+        await model.load()
+        await model.selectFreeGroup(id: fixture.second.id)
+        let pending = try #require(model.pendingOperation)
+        #expect(model.group?.id == fixture.first.id)
+        #expect(await credentials.loadOperation() == pending)
+        #expect(model.draft.items == fixture.draft.items)
+
+        let reopened = fixture.model(api: api, credentials: credentials)
+        await reopened.load()
+        try #require(reopened.hasRestrictedGroup)
+        #expect(!reopened.canSelectFreeGroup)
+        await reopened.retryPendingOperation()
+
+        #expect(reopened.pendingOperation == nil)
+        #expect(await credentials.loadOperation() == nil)
+        #expect(reopened.membershipAccess?.freeGroupId == fixture.second.id)
+        #expect(reopened.group?.id == fixture.first.id)
+        #expect(reopened.draft.items == fixture.draft.items)
+        let requests = await api.freeGroupRequests
+        #expect(requests.count == 2)
+        #expect(requests[0] == requests[1])
+        #expect(requests[0].operationId == pending.operationID)
+        #expect(requests[0].groupId == fixture.second.id)
+    }
+
+    @Test
+    func `A restricted additional group keeps consultation and cancellation but cannot create ordinary shopping intents`(
+    ) async throws {
+        let fixture = try MembershipFixture()
+        let api = MembershipAPI(fixture: fixture)
+        await api.configureFreeGroup(fixture.second.id)
+        let model = fixture.model(api: api)
+        await model.load()
+        await model.selectGroup(id: fixture.first.id)
+        model.selectedStoreID = fixture.firstStore.id
+        await model.loadSelectedStore()
+        let item = try #require(model.items.first)
+        #expect(model.hasRestrictedGroup)
+        #expect(model.canCancelItem(item))
+        #expect(!model.canChangeItem(item))
+        #expect(!model.canTogglePurchaseItem(item))
+        #expect(!model.canFinalizePurchase)
+        await model.addDraftItems()
+        await model.prepareReview()
+        await model.finalizePurchase()
+        model.beginEditingItem(item)
+        #expect(model.pendingOperation == nil)
+        #expect(model.editingItem == nil)
+        #expect(model.reviewedItems.isEmpty)
+        #expect(await api.additionGroups.isEmpty)
+        #expect(model.items == [item])
+        #expect(model.draft.items == fixture.draft.items)
+
+        await model.cancelItem(item)
+        #expect(await api.cancelledItems == [item.id])
+        #expect(model.pendingOperation == nil)
+        #expect(model.items.isEmpty)
+        #expect(model.hasRestrictedGroup)
+    }
+
+    @Test
+    func `Changing only the active group cannot bypass an account free group cooldown`() async throws {
+        let fixture = try MembershipFixture()
+        let api = MembershipAPI(fixture: fixture)
+        await api.configureFreeGroup(fixture.first.id, permitsChange: false)
+        let model = fixture.model(api: api)
+        await model.load()
+        await model.selectGroup(id: fixture.second.id)
+        await model.selectFreeGroup(id: fixture.second.id)
+        #expect(model.group?.id == fixture.second.id)
+        #expect(model.membershipAccess?.freeGroupId == fixture.first.id)
+        #expect(model.hasRestrictedGroup)
+        #expect(await api.freeGroupRequests.isEmpty)
+        #expect(model.pendingOperation == nil)
+    }
+
     @Test
     func `Several memberships require a choice and reopening restores the local choice instead of the legacy group`(
     ) async throws {
@@ -408,13 +647,18 @@ private extension MembershipFixture {
     }
 
     @MainActor
-    func model(api: MembershipAPI, credentials: (any SharedCredentialStoring)? = nil) -> SharedShoppingViewModel {
+    func model(
+        api: MembershipAPI,
+        credentials: (any SharedCredentialStoring)? = nil,
+        subscriptionStore: (any SharedSubscriptionStore)? = nil
+    ) -> SharedShoppingViewModel {
         SharedShoppingViewModel(
             api: api,
             configuration: configuration,
             credentials: credentials ?? MemorySharedCredentialStore(session: session),
             draft: DraftPreviewSupport.viewModel(snapshot: draft, state: .content),
-            storeQuery: StoreQueryViewModel(speech: MembershipSpeech())
+            storeQuery: StoreQueryViewModel(speech: MembershipSpeech()),
+            subscriptionStore: subscriptionStore
         )
     }
 }
@@ -431,6 +675,17 @@ private actor MembershipAPI: SharedShoppingAPI {
     private var delayedItemsError: SharedAPIError?
     private var firstGroupHasItems = true
     private var nextUserGate: MembershipGate?
+    private var subscriptionStatus: SharedSubscriptionStatus?
+    private var subscriptionVerificationError: SharedAPIError?
+    private var premiumOnSubscriptionRead = false
+    private var hasReadSubscription = false
+    private(set) var subscriptionRequests: [VerifySharedSubscriptionRequest] = []
+    private var freeGroupID: UUID?
+    private var permitsFreeGroupChange = true
+    private var loseNextFreeGroupResponse = false
+    private var selectionReceipts: [UUID: SharedAccountCapabilities] = [:]
+    private(set) var freeGroupRequests: [SelectFreeGroupRequest] = []
+    private(set) var cancelledItems: [UUID] = []
     private(set) var userLookups = 0
     private(set) var additionGroups: [UUID] = []
     private(set) var additionOperations: [UUID] = []
@@ -439,6 +694,56 @@ private actor MembershipAPI: SharedShoppingAPI {
     init(fixture: MembershipFixture) {
         self.fixture = fixture
         memberships = [fixture.first, fixture.second]
+    }
+
+    func rejectSubscriptionVerification(_ error: SharedAPIError) {
+        subscriptionVerificationError = error
+    }
+
+    func configureSubscription(_ status: SharedSubscriptionStatus, reconcilesPremium: Bool = false) {
+        subscriptionStatus = status
+        premiumOnSubscriptionRead = reconcilesPremium
+    }
+
+    func subscription(token: String) async throws -> SharedSubscriptionStatus {
+        hasReadSubscription = true
+        return try #require(subscriptionStatus)
+    }
+
+    func verifySubscription(
+        _ request: VerifySharedSubscriptionRequest,
+        token: String
+    ) async throws -> SharedSubscriptionAcknowledgement {
+        subscriptionRequests.append(request)
+        if let subscriptionVerificationError {
+            throw subscriptionVerificationError
+        }
+        return SharedSubscriptionAcknowledgement(
+            subscription: try #require(subscriptionStatus),
+            acknowledgedTransactionId: "908"
+        )
+    }
+
+    func configureFreeGroup(_ groupID: UUID, loseNextSelectionResponse: Bool = false, permitsChange: Bool = true) {
+        freeGroupID = groupID
+        loseNextFreeGroupResponse = loseNextSelectionResponse
+        permitsFreeGroupChange = permitsChange
+    }
+
+    func selectFreeGroup(_ request: SelectFreeGroupRequest, token: String) async throws -> SharedAccountCapabilities {
+        freeGroupRequests.append(request)
+        if let receipt = selectionReceipts[request.operationId] {
+            return receipt
+        }
+        freeGroupID = request.groupId
+        permitsFreeGroupChange = false
+        let result = try #require(await currentUser(token: token).accountCapabilities)
+        selectionReceipts[request.operationId] = result
+        if loseNextFreeGroupResponse {
+            loseNextFreeGroupResponse = false
+            throw SharedAPIError.transport
+        }
+        return result
     }
 
     func delayNextUserLookup(_ gate: MembershipGate) {
@@ -495,11 +800,24 @@ private actor MembershipAPI: SharedShoppingAPI {
         await gate?.pause()
         var user = fixture.session.user
         if providesCapabilities {
+            let premiumActive = premiumOnSubscriptionRead && hasReadSubscription
+            let maximum = freeGroupID == nil ? 3 : (premiumActive ? 5 : 1)
             user.accountCapabilities = try SharedAccountCapabilities(
                 membershipCount: membershipCountOverride ?? memberships.count,
-                canCreateGroup: memberships.count < 3,
-                canJoinGroup: memberships.count < 3,
-                limits: SharedAccountLimits(groupsPerAccount: SharedResourceLimit(maximum: 3, enforced: true))
+                canCreateGroup: memberships.count < maximum,
+                canJoinGroup: memberships.count < maximum,
+                limits: SharedAccountLimits(groupsPerAccount: SharedResourceLimit(maximum: maximum, enforced: true)),
+                membershipAccess: freeGroupID.map { id in
+                    SharedMembershipAccess(
+                        premiumActive: premiumActive,
+                        premiumExpiresAt: Date(timeIntervalSince1970: 1_800_000_000),
+                        transitionEndsAt: Date(timeIntervalSince1970: 1_800_604_800),
+                        freeGroupId: id,
+                        freeGroupChangeAvailableAt: permitsFreeGroupChange
+                            ? nil : Date(timeIntervalSince1970: 1_902_592_000),
+                        canChangeFreeGroup: permitsFreeGroupChange
+                    )
+                }
             )
         }
         return user
@@ -507,7 +825,15 @@ private actor MembershipAPI: SharedShoppingAPI {
 
     func groups(token: String) async throws -> [SharedGroup] {
         guard !lookupFails else { throw SharedAPIError.transport }
-        return memberships
+        return memberships.map { original in
+            guard let freeGroupID else { return original }
+            var group = original
+            group.capabilities = SharedGroupAccess(
+                canUseShopping: (premiumOnSubscriptionRead && hasReadSubscription) || group.id == freeGroupID,
+                isFreeGroup: group.id == freeGroupID
+            )
+            return group
+        }
     }
 
     func stores(groupID: UUID, token: String) async throws -> [SharedStore] {
@@ -677,7 +1003,22 @@ private actor MembershipAPI: SharedShoppingAPI {
         throw SharedAPIError.configuration
     }
     func changeItem(_ request: SharedItemChangeRequest, item: SharedItem, token: String) async throws -> SharedItem {
-        throw SharedAPIError.configuration
+        guard request.replacement == nil else { throw SharedAPIError.configuration }
+        cancelledItems.append(item.id)
+        firstGroupHasItems = false
+        return SharedItem(
+            id: item.id,
+            groupId: item.groupId,
+            storeId: item.storeId,
+            name: item.name,
+            quantity: item.quantity,
+            status: "cancelled",
+            version: item.version + 1,
+            createdBy: item.createdBy,
+            createdAt: item.createdAt,
+            purchasedBy: nil,
+            purchasedAt: nil
+        )
     }
 }
 
@@ -892,5 +1233,92 @@ extension MultipleGroupTests {
         #expect(model.group?.id == fixture.second.id)
         #expect(model.groupCapacity?.groupId == fixture.second.id)
         #expect(model.storeManagementState == .loaded)
+    }
+}
+
+private actor MembershipSubscriptionStore: SharedSubscriptionStore {
+    private let transaction: SharedStoreTransaction
+    private let deliveryGate: MembershipGate
+    private let consumedGate: MembershipGate
+    private var hasDelivered = false
+    private(set) var finished: [String] = []
+
+    init(transaction: SharedStoreTransaction, deliveryGate: MembershipGate, consumedGate: MembershipGate) {
+        self.transaction = transaction
+        self.deliveryGate = deliveryGate
+        self.consumedGate = consumedGate
+    }
+
+    func products(ids: [String]) async throws -> [SharedSubscriptionProduct] { [] }
+    func purchase(id: String, appAccountToken: UUID) async throws -> SharedSubscriptionPurchaseResult {
+        throw SharedSubscriptionStoreError.unavailable
+    }
+    func restore() async throws {}
+    func transactions() async throws -> [SharedStoreTransaction] { [] }
+    func updates() async -> AsyncStream<SharedStoreTransaction> {
+        AsyncStream(unfolding: {
+            await self.nextUpdate()
+        })
+    }
+    func finish(transactionID: String) async {
+        finished.append(transactionID)
+    }
+
+    private func nextUpdate() async -> SharedStoreTransaction? {
+        if !hasDelivered {
+            hasDelivered = true
+            await deliveryGate.pause()
+            return transaction
+        }
+        await consumedGate.pause()
+        return nil
+    }
+}
+
+private actor MembershipNoTransactionsStore: SharedSubscriptionStore {
+    private let withCatalogue: Bool
+    private(set) var finished: [String] = []
+    private(set) var purchases = 0
+    private(set) var restorations = 0
+
+    init(withCatalogue: Bool = false) {
+        self.withCatalogue = withCatalogue
+    }
+
+    func products(ids: [String]) async throws -> [SharedSubscriptionProduct] {
+        guard withCatalogue else { throw SharedSubscriptionStoreError.unavailable }
+        return [
+            SharedSubscriptionProduct(
+                id: "premium.monthly",
+                displayName: "Example monthly",
+                displayPrice: "Example price",
+                period: .monthly,
+                subscriptionGroupID: "910"
+            ),
+            SharedSubscriptionProduct(
+                id: "premium.annual",
+                displayName: "Example annual",
+                displayPrice: "Example price",
+                period: .annual,
+                subscriptionGroupID: "910"
+            )
+        ]
+    }
+    func purchase(id: String, appAccountToken: UUID) async throws -> SharedSubscriptionPurchaseResult {
+        purchases += 1
+        throw SharedSubscriptionStoreError.unavailable
+    }
+    func restore() async throws {
+        restorations += 1
+        throw SharedSubscriptionStoreError.unavailable
+    }
+    func transactions() async throws -> [SharedStoreTransaction] { [] }
+    func updates() async -> AsyncStream<SharedStoreTransaction> {
+        AsyncStream { continuation in
+            continuation.finish()
+        }
+    }
+    func finish(transactionID: String) async {
+        finished.append(transactionID)
     }
 }

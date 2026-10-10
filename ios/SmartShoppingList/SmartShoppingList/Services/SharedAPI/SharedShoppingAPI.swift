@@ -1,10 +1,16 @@
 import Foundation
 
-protocol SharedShoppingAPI: Sendable {
+protocol SharedShoppingAPI: SharedSubscriptionAPI {
     func createChallenge() async throws -> SharedChallenge
     func loginWithApple(_ request: AppleLoginRequest) async throws -> SharedSession
     func currentUser(token: String) async throws -> SharedUser
     func groups(token: String) async throws -> [SharedGroup]
+    func selectFreeGroup(_ request: SelectFreeGroupRequest, token: String) async throws -> SharedAccountCapabilities
+    func subscription(token: String) async throws -> SharedSubscriptionStatus
+    func verifySubscription(
+        _ request: VerifySharedSubscriptionRequest,
+        token: String
+    ) async throws -> SharedSubscriptionAcknowledgement
     func logout(token: String) async throws
     func createGroup(_ request: CreateGroupRequest, token: String) async throws -> SharedGroup
     func groupMembers(groupID: UUID, token: String) async throws -> [SharedGroupMember]
@@ -68,15 +74,18 @@ enum SharedAPIError: Error, Equatable {
     /// A proxy or malformed error body cannot prove the outcome of a mutation or consume an invitation.
     private static func matchesContract(status: Int, code: String) -> Bool {
         switch status {
-        case 400: code == "invalid_request"
+        case 400: ["invalid_request", "invalid_app_store_transaction"].contains(code)
         case 401: ["invalid_session", "invalid_apple_credentials", "challenge_expired"].contains(code)
-        case 403: ["creator_required", "administrator_required", "transfer_recipient_required"].contains(code)
+        case 403:
+            ["creator_required", "administrator_required", "transfer_recipient_required", "transaction_account_mismatch"]
+                .contains(code)
         case 404: code == "not_found"
         case 409:
             ["already_in_group", "challenge_consumed", "idempotency_key_reused", "item_conflict", "invitation_consumed",
              "transfer_required", "closure_confirmation_required", "transfer_not_pending", "transfer_pending",
              "invalid_transfer_recipient", "group_limit_reached", "store_limit_reached", "pending_item_limit_reached",
-             "store_archived", "store_not_empty"]
+             "store_archived", "store_not_empty", "group_access_restricted", "free_group_change_cooldown",
+             "transaction_already_bound"]
                 .contains(code)
         case 410: ["invitation_expired", "invitation_revoked", "invitation_consumed"].contains(code)
         case 413: code == "body_too_large"
@@ -98,6 +107,7 @@ struct SharedGroup: Identifiable, Codable, Equatable {
     let createdAt: Date
     // Legacy Keychain sessions predate this field; absence never grants creator permissions.
     var administratorUserId: UUID? = nil
+    var capabilities: SharedGroupAccess? = .ordinary
 }
 
 struct SharedUser: Identifiable, Codable, Equatable {
@@ -298,6 +308,7 @@ enum PendingSharedOperation: Codable, Equatable {
         request: ResolveGroupTransferRequest
     )
     case leaveGroup(userID: UUID, groupID: UUID, request: LeaveGroupRequest)
+    case selectFreeGroup(userID: UUID, request: SelectFreeGroupRequest)
     case changeStoreState(
         userID: UUID,
         groupID: UUID,
@@ -311,7 +322,7 @@ enum PendingSharedOperation: Codable, Equatable {
         case .createGroup(let userID, _), .addItems(let userID, _, _, _), .purchase(let userID, _, _, _),
              .changeItem(let userID, _, _), .proposeTransfer(let userID, _, _),
              .resolveTransfer(let userID, _, _, _, _), .leaveGroup(let userID, _, _),
-             .changeStoreState(let userID, _, _, _, _): userID
+             .changeStoreState(let userID, _, _, _, _), .selectFreeGroup(let userID, _): userID
         }
     }
 
@@ -325,6 +336,7 @@ enum PendingSharedOperation: Codable, Equatable {
         case .resolveTransfer(_, _, _, _, let request): request.operationId
         case .leaveGroup(_, _, let request): request.operationId
         case .changeStoreState(_, _, _, _, let request): request.operationId
+        case .selectFreeGroup(_, let request): request.operationId
         }
     }
 }
@@ -341,7 +353,8 @@ protocol SharedCredentialStoring: Sendable {
     func saveOperation(_ operation: PendingSharedOperation?) async throws
 }
 
-actor MemorySharedCredentialStore: SharedCredentialStoring {
+actor MemorySharedCredentialStore: SharedCredentialStoring, SharedSubscriptionCredentialStoring {
+    private var subscriptionVerification: PendingSubscriptionVerification?
     private var session: SharedSession?
     private var invitation: PendingInvitation?
     private var incomingInvitation: PendingInvitation?
@@ -350,11 +363,19 @@ actor MemorySharedCredentialStore: SharedCredentialStoring {
     init(
         session: SharedSession? = nil,
         invitation: PendingInvitation? = nil,
-        operation: PendingSharedOperation? = nil
+        operation: PendingSharedOperation? = nil,
+        subscriptionVerification: PendingSubscriptionVerification? = nil
     ) {
         self.session = session
         self.invitation = invitation
         self.operation = operation
+        self.subscriptionVerification = subscriptionVerification
+    }
+
+    func loadSubscriptionVerification() -> PendingSubscriptionVerification? { subscriptionVerification }
+
+    func saveSubscriptionVerification(_ verification: PendingSubscriptionVerification?) {
+        subscriptionVerification = verification
     }
 
     func loadSession() -> SharedSession? { session }
@@ -456,5 +477,23 @@ extension SharedItemChangeRequest {
         } else {
             replacement = nil
         }
+    }
+}
+
+// Existing preview and test services deliberately do not simulate purchasing unless they opt into this boundary.
+extension SharedShoppingAPI {
+    func selectFreeGroup(_ request: SelectFreeGroupRequest, token: String) async throws -> SharedAccountCapabilities {
+        throw SharedAPIError.configuration
+    }
+
+    func subscription(token: String) async throws -> SharedSubscriptionStatus {
+        throw SharedAPIError.configuration
+    }
+
+    func verifySubscription(
+        _ request: VerifySharedSubscriptionRequest,
+        token: String
+    ) async throws -> SharedSubscriptionAcknowledgement {
+        throw SharedAPIError.configuration
     }
 }

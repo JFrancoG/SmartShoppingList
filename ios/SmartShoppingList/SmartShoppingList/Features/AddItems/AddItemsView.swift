@@ -99,7 +99,9 @@ struct AddItemsView: View {
                                     }
                                 }
                                 .buttonStyle(ShoppingActionButtonStyle())
-                                .disabled(!shared.canMutate || shared.group == nil || viewModel.activity != .idle)
+                                .disabled(
+                                    !shared.canPerformShopping || shared.group == nil || viewModel.activity != .idle
+                                )
                             }
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)

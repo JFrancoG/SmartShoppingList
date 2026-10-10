@@ -1,6 +1,479 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%@ will be your free group on all devices. Ordinary changes follow a 30-day limit; replacing a group keeps the previous change schedule. No membership or content is removed." : {
+      "comment" : "Account-wide free group confirmation. An exceptional replacement retains the prior cooldown rather than starting a new 30-day period.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ será tu grupo gratuito en todos los dispositivos. Los cambios ordinarios siguen un límite de 30 días; sustituir un grupo conserva el plazo de cambio anterior. No se elimina ninguna pertenencia ni contenido."
+          }
+        }
+      }
+    },
+    "Example monthly premium" : {
+      "comment" : "Illustrative preview metadata only; this is not an approved or real StoreKit offer.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premium mensual de ejemplo"
+          }
+        }
+      }
+    },
+    "Example annual premium" : {
+      "comment" : "Illustrative preview metadata only; this is not an approved or real StoreKit offer.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premium anual de ejemplo"
+          }
+        }
+      }
+    },
+    "Example price" : {
+      "comment" : "Illustrative preview metadata only; this is not an approved or real StoreKit offer.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Precio de ejemplo"
+          }
+        }
+      }
+    },
+    "Payment grace ends" : {
+      "comment" : "Apple-verified payment grace deadline, distinct from the past end of the paid subscription period.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fin de la gracia de pago"
+          }
+        }
+      }
+    },
+    "Subscription options could not be loaded. Your existing access and saved purchases are kept. Refresh to try again." : {
+      "comment" : "StoreKit catalogue failure does not invalidate server-confirmed premium rights or saved purchase recovery.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se han podido cargar las opciones de suscripción. Se conservan tu acceso actual y las compras guardadas. Actualiza para reintentarlo."
+          }
+        }
+      }
+    },
+    "This product is saved on this device until you choose a group with full shopping access." : {
+      "comment" : "Manual product remains local when the active group is restricted after premium expires.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este producto se guarda en el dispositivo hasta que elijas un grupo con acceso completo a la compra."
+          }
+        }
+      }
+    },
+    "Free group" : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Grupo gratuito"
+          }
+        }
+      }
+    },
+    "No group selected" : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ningún grupo seleccionado"
+          }
+        }
+      }
+    },
+    "Group transition ends" : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fin de la transición de grupos"
+          }
+        }
+      }
+    },
+    "Next free group change" : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Próximo cambio de grupo gratuito"
+          }
+        }
+      }
+    },
+    "Use %@ as free group" : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usar %@ como grupo gratuito"
+          }
+        }
+      }
+    },
+    "Changes the account's free group on all devices. Your active shopping group stays selected." : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambia el grupo gratuito de la cuenta en todos los dispositivos. Mantiene tu selección del grupo activo."
+          }
+        }
+      }
+    },
+    "Choose one group for full use without premium. You can change it once every 30 days. Leaving or closing it allows a replacement. Your other memberships and data are kept." : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige un grupo para usarlo por completo sin premium. Puedes cambiarlo una vez cada 30 días. Si lo abandonas o se cierra, puedes elegir otro. Se conservan tus otros grupos y sus datos."
+          }
+        }
+      }
+    },
+    "Change free group?" : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Cambiar el grupo gratuito?"
+          }
+        }
+      }
+    },
+    "Premium" : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premium"
+          }
+        }
+      }
+    },
+    "Premium and free group" : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premium y grupo gratuito"
+          }
+        }
+      }
+    },
+    "Premium active" : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premium activo"
+          }
+        }
+      }
+    },
+    "Current period ends" : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fin del periodo actual"
+          }
+        }
+      }
+    },
+    "Premium remains active while Apple retries your payment. Check your payment method in subscription settings." : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premium sigue activo mientras Apple reintenta el cobro. Revisa tu método de pago en los ajustes de suscripciones."
+          }
+        }
+      }
+    },
+    "Renewal is cancelled. Premium remains active until the current period ends." : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Has cancelado la renovación. Premium sigue activo hasta el final del periodo actual."
+          }
+        }
+      }
+    },
+    "Free plan" : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plan gratuito"
+          }
+        }
+      }
+    },
+    "One personal premium subscription includes up to 5 groups. Groups you administer share limits of 10 active stores and 100 pending products per store." : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Una suscripción premium personal incluye hasta 5 grupos. Los grupos que administras comparten límites de 10 tiendas activas y 100 productos pendientes por tienda."
+          }
+        }
+      }
+    },
+    "Without premium: one group, 3 active stores and 20 pending products per store. Group store and product limits follow the current administrator's plan." : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sin premium: un grupo, 3 tiendas activas y 20 productos pendientes por tienda. Los límites de tiendas y productos del grupo dependen del plan del administrador actual."
+          }
+        }
+      }
+    },
+    "Checking subscription…" : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comprobando la suscripción…"
+          }
+        }
+      }
+    },
+    "%@ per month" : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ al mes"
+          }
+        }
+      }
+    },
+    "%@ per year" : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ al año"
+          }
+        }
+      }
+    },
+    "Retry purchase verification" : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reintentar verificación de compra"
+          }
+        }
+      }
+    },
+    "Restore purchases" : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restaurar compras"
+          }
+        }
+      }
+    },
+    "Manage Apple subscription" : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gestionar suscripción de Apple"
+          }
+        }
+      }
+    },
+    "Payment is charged to your Apple Account. The subscription renews automatically unless you cancel in Apple's subscription settings." : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El pago se carga en tu cuenta de Apple. La suscripción se renueva automáticamente salvo que la canceles en los ajustes de suscripciones de Apple."
+          }
+        }
+      }
+    },
+    "Purchases will be available once premium is ready." : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las compras estarán disponibles cuando premium esté listo."
+          }
+        }
+      }
+    },
+    "Consultation only" : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solo consulta"
+          }
+        }
+      }
+    },
+    "Choose this as your free group or renew premium to use its shopping list. Your group and draft are kept." : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige este como tu grupo gratuito o renueva premium para usar su lista de la compra. Se conservan el grupo y tu borrador."
+          }
+        }
+      }
+    },
+    "This additional group is available for consultation. You can remove pending products, archive empty stores, transfer administration or leave." : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este grupo adicional está disponible para consulta. Puedes retirar productos pendientes, archivar tiendas vacías, traspasar la administración o abandonarlo."
+          }
+        }
+      }
+    },
+    "The free group cannot be changed yet. Refresh to check when the next change is available." : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Todavía no puedes cambiar el grupo gratuito. Actualiza para comprobar cuándo podrás volver a cambiarlo."
+          }
+        }
+      }
+    },
+    "Apple could not verify this purchase. No premium access has been confirmed." : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple no ha podido verificar esta compra. No se ha confirmado el acceso premium."
+          }
+        }
+      }
+    },
+    "This purchase belongs to another app account. Sign in with its original account." : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta compra pertenece a otra cuenta de la app. Inicia sesión con su cuenta original."
+          }
+        }
+      }
+    },
+    "Subscription verification is unavailable. Your purchase is kept so you can try again." : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La verificación de suscripciones no está disponible. Conservamos tu compra para que puedas reintentarlo."
+          }
+        }
+      }
+    },
+    "Sign in with the account that started this purchase to finish verifying it." : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inicia sesión con la cuenta que inició esta compra para completar su verificación."
+          }
+        }
+      }
+    },
+    "Apple is awaiting approval of this purchase. Premium starts after verification." : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple está esperando la aprobación de esta compra. Premium comienza después de la verificación."
+          }
+        }
+      }
+    },
+    "The purchase still needs verification, but it could not be saved on this device. Keep the app open and try again." : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La compra sigue pendiente de verificación, pero no se ha podido guardar en este dispositivo. Mantén la app abierta y vuelve a intentarlo."
+          }
+        }
+      }
+    },
+    "The purchase could not be verified. No premium access has been confirmed. Try again or restore purchases." : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se ha podido verificar la compra. No se ha confirmado el acceso premium. Reinténtalo o restaura las compras."
+          }
+        }
+      }
+    },
     "" : {
 
     },

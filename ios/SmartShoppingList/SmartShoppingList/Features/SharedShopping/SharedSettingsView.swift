@@ -11,6 +11,16 @@ struct SharedSettingsView: View {
                 SharedOperationSection(viewModel: viewModel)
                 SharedGroupSelector(viewModel: viewModel)
                 SharedPendingInvitationSection(viewModel: viewModel)
+                if viewModel.session != nil {
+                    Section {
+                        NavigationLink {
+                            SharedPremiumView(viewModel: viewModel)
+                        } label: {
+                            Label("Premium and free group", systemImage: "checkmark.seal")
+                        }
+                    }
+                    .listRowBackground(Color.surface)
+                }
 
                 if let group = viewModel.group {
                     Section("Group") {

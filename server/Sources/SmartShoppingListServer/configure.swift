@@ -13,12 +13,31 @@ func configure(
     _ app: Application,
     databases suppliedDatabases: Databases? = nil,
     databaseConfiguration suppliedConfiguration: DatabaseConfigurationFactory? = nil,
-    accountCapacity: AccountCapacityPolicy = .init()
+    accountCapacity: AccountCapacityPolicy = .init(),
+    appStoreGateway suppliedGateway: (any AppStoreGateway)? = nil
 ) async throws {
     // Vapor's low-level trace logs dump HTTP headers, including Authorization.
     // Preserve operational diagnostics while preventing credential dumps even with LOG_LEVEL=trace.
     app.logger.logLevel = max(app.logger.logLevel, .info)
     app.http.server.configuration.logger.logLevel = max(app.http.server.configuration.logger.logLevel, .info)
+
+    let appStoreGateway: any AppStoreGateway
+    if let suppliedGateway {
+        appStoreGateway = suppliedGateway
+    } else if app.environment == .testing {
+        appStoreGateway = UnconfiguredAppStoreGateway()
+    } else if let configuration = try AppStoreConfiguration.load() {
+        appStoreGateway = try LiveAppStoreGateway(configuration: configuration)
+    } else {
+        appStoreGateway = UnconfiguredAppStoreGateway()
+    }
+    var effectiveCapacity = accountCapacity
+    if let configuration = appStoreGateway.configuration {
+        guard app.environment != .production || configuration.environment == .production else {
+            throw AppStoreGatewayError.invalidConfiguration
+        }
+        effectiveCapacity.verificationEnvironment = configuration.environment
+    }
 
     let databaseConfiguration: DatabaseConfigurationFactory
     if let suppliedConfiguration {
@@ -45,7 +64,9 @@ func configure(
         CreateAppleAuthentication(),
         AddGroupAdministration(),
         AddGroupMemberships(),
-        AddStoreArchiving()
+        AddStoreArchiving(),
+        AddAccountPremiumAccess(),
+        AddAppStoreSubscriptions()
     ))
 
     app.routes.defaultMaxBodySize = "128kb"
@@ -53,7 +74,12 @@ func configure(
     app.middleware.use(APIErrorMiddleware(), at: .end)
 
     // register routes
-    try routes(app, databases: databases, accountCapacity: accountCapacity)
+    try routes(
+        app,
+        databases: databases,
+        accountCapacity: effectiveCapacity,
+        appStoreGateway: appStoreGateway
+    )
 }
 
 enum DatabaseTLSConfiguration {

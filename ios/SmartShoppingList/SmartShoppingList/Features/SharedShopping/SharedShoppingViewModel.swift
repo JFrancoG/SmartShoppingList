@@ -117,6 +117,11 @@ final class SharedShoppingViewModel {
     @ObservationIgnored private var storeQueryRevision: UUID?
     @ObservationIgnored let storeQuery: StoreQueryViewModel
     @ObservationIgnored let draft: ShoppingDraftViewModel
+    @ObservationIgnored let premium: SharedPremiumViewModel
+    @ObservationIgnored private let subscriptionStore: (any SharedSubscriptionStore)?
+    @ObservationIgnored private var subscriptionUpdatesTask: Task<Void, Never>?
+    @ObservationIgnored private var deferredSubscriptionUpdates: [String: SharedStoreTransaction] = [:]
+    @ObservationIgnored private var isDrainingSubscriptionUpdates = false
     @ObservationIgnored private let api: (any SharedShoppingAPI)?
     @ObservationIgnored private let configuration: SharedAPIConfiguration?
     @ObservationIgnored private let credentials: any SharedCredentialStoring
@@ -135,8 +140,15 @@ final class SharedShoppingViewModel {
         credentials: any SharedCredentialStoring,
         draft: ShoppingDraftViewModel,
         storeQuery: StoreQueryViewModel,
-        appleLoginDate: @escaping @MainActor () -> Date = { Date() }
+        appleLoginDate: @escaping @MainActor () -> Date = { Date() },
+        subscriptionStore: (any SharedSubscriptionStore)? = nil
     ) {
+        self.subscriptionStore = subscriptionStore
+        premium = SharedPremiumViewModel(
+            api: api,
+            store: subscriptionStore,
+            credentials: credentials as? any SharedSubscriptionCredentialStoring
+        )
         self.api = api
         self.configuration = configuration
         self.credentials = credentials
@@ -145,9 +157,13 @@ final class SharedShoppingViewModel {
         self.appleLoginDate = appleLoginDate
     }
 
+    deinit {
+        subscriptionUpdatesTask?.cancel()
+    }
+
     var group: SharedGroup? { groups.first { $0.id == session?.activeGroupID } }
     var isConfigured: Bool { api != nil && configuration != nil }
-    var isBusy: Bool { isPerformingAction || isProcessingShoppingIntent || groupLoadID != nil }
+    var isBusy: Bool { isPerformingAction || isProcessingShoppingIntent || groupLoadID != nil || premium.isBusy }
     var isPreparingAppleLogin: Bool { applePreparationID != nil }
     var shouldMaintainAppleLogin: Bool {
         hasLoaded && isConfigured && session == nil && !isAuthorizingWithApple && !storageFailed
@@ -163,6 +179,15 @@ final class SharedShoppingViewModel {
         hasLoaded && sessionIsVerified && groupsAreVerified && !isBusy && !storageFailed && pendingOperation == nil
             && storeQuery.activity == .idle && !draft.isReceivingIntent
     }
+    var canUseShopping: Bool { group?.capabilities?.canUseShopping == true && groupsAreVerified }
+    var canPerformShopping: Bool { canMutate && canUseShopping }
+    var membershipAccess: SharedMembershipAccess? { session?.user.accountCapabilities?.membershipAccess }
+    var freeGroupName: String? { groups.first { $0.id == membershipAccess?.freeGroupId }?.name }
+    var canSelectFreeGroup: Bool {
+        canSelectGroup && membershipAccess?.canChangeFreeGroup == true
+    }
+    var hasRestrictedGroup: Bool { groupsAreVerified && group?.capabilities?.canUseShopping == false }
+
     var draftIsLocked: Bool {
         !hasLoaded || pendingOperation != nil || isBusy || isReviewPresented || draft.isReceivingIntent
     }
@@ -175,7 +200,7 @@ final class SharedShoppingViewModel {
             && administration?.capabilities.canManageInvitations == true
     }
     var canConfirmReview: Bool {
-        canMutate && reviewOwner != nil && reviewOwner?.userID == session?.user.id
+        canPerformShopping && reviewOwner != nil && reviewOwner?.userID == session?.user.id
             && reviewOwner?.groupID == group?.id && !reviewedItems.isEmpty
             && storeChoices.allSatisfy { !$0.selection.isEmpty }
             && submissionCapacityMessage == nil
@@ -221,6 +246,116 @@ final class SharedShoppingViewModel {
         }
     }
 
+    func groupConfirmationName(_ candidate: SharedGroup) -> String {
+        groupNeedsIdentifier(candidate) ? "\(candidate.name) (\(candidate.id.uuidString))" : candidate.name
+    }
+
+    func selectFreeGroup(id: UUID) async {
+        guard canSelectFreeGroup, id != membershipAccess?.freeGroupId,
+              groups.contains(where: { $0.id == id }), let session else { return }
+        let request = SelectFreeGroupRequest(operationId: UUID(), groupId: id)
+        await performAction {
+            do {
+                let operation = PendingSharedOperation.selectFreeGroup(userID: session.user.id, request: request)
+                try await credentials.saveOperation(operation)
+                pendingOperation = operation
+                await performPendingOperation()
+            } catch {
+                notice = SharedErrorMessage.message(for: error)
+            }
+        }
+    }
+
+    func loadPremium(reportsActionErrors: Bool = false) async {
+        guard subscriptionStore != nil, !isBusy, sessionIsVerified, let session else { return }
+        await performAction {
+            let receivedAuthority = await premium.load(session: session, isCurrentSession: isCurrentSubscriptionSession)
+            let actionNotice = reportsActionErrors ? premium.takeActionNotice() : nil
+            if receivedAuthority, isCurrentSubscriptionSession(session) {
+                await refreshSessionAndLists()
+            }
+            if isCurrentSubscriptionSession(session), let actionNotice {
+                notice = actionNotice
+            }
+        }
+    }
+
+    func purchasePremium(productID: String) async {
+        guard !isBusy, sessionIsVerified, let session else { return }
+        await performAction {
+            let acknowledged = await premium.purchase(
+                productID: productID,
+                session: session,
+                isCurrentSession: isCurrentSubscriptionSession
+            )
+            let actionNotice = premium.takeActionNotice()
+            if acknowledged, isCurrentSubscriptionSession(session) {
+                await refreshSessionAndLists()
+            }
+            if isCurrentSubscriptionSession(session), let actionNotice {
+                notice = actionNotice
+            }
+        }
+    }
+
+    func restorePremium() async {
+        guard !isBusy, sessionIsVerified, let session else { return }
+        await performAction {
+            let acknowledged = await premium.restore(session: session, isCurrentSession: isCurrentSubscriptionSession)
+            let actionNotice = premium.takeActionNotice()
+            if acknowledged, isCurrentSubscriptionSession(session) {
+                await refreshSessionAndLists()
+            }
+            if isCurrentSubscriptionSession(session), let actionNotice {
+                notice = actionNotice
+            }
+        }
+    }
+
+    private func isCurrentSubscriptionSession(_ candidate: SharedSession) -> Bool {
+        sessionIsVerified && session?.user.id == candidate.user.id && session?.accessToken == candidate.accessToken
+    }
+
+    private func startSubscriptionUpdates() {
+        guard subscriptionUpdatesTask == nil, let subscriptionStore else { return }
+        subscriptionUpdatesTask = Task { [weak self] in
+            let updates = await subscriptionStore.updates()
+            for await transaction in updates {
+                guard !Task.isCancelled else { break }
+                guard let self else { break }
+                self.deferredSubscriptionUpdates[transaction.id] = transaction
+                if self.deferredSubscriptionUpdates.count > 100,
+                   let oldest = self.deferredSubscriptionUpdates.keys.sorted().first {
+                    // StoreKit's unfinished sequence remains the durable recovery source after bounded eviction.
+                    self.deferredSubscriptionUpdates[oldest] = nil
+                }
+                await self.drainSubscriptionUpdates()
+            }
+        }
+    }
+
+    private func drainSubscriptionUpdates() async {
+        guard !isDrainingSubscriptionUpdates, !isBusy, sessionIsVerified,
+              premium.status != nil, premium.pendingVerification == nil, let session else { return }
+        isDrainingSubscriptionUpdates = true
+        defer { isDrainingSubscriptionUpdates = false }
+        while !deferredSubscriptionUpdates.isEmpty, !isBusy,
+              isCurrentSubscriptionSession(session), premium.pendingVerification == nil {
+            guard let id = deferredSubscriptionUpdates.keys.sorted().first,
+                  let transaction = deferredSubscriptionUpdates.removeValue(forKey: id) else { break }
+            await performAction {
+                let acknowledged = await premium.receiveUpdate(
+                    transaction,
+                    session: session,
+                    isCurrentSession: isCurrentSubscriptionSession
+                )
+                if acknowledged, isCurrentSubscriptionSession(session) {
+                    await refreshSessionAndLists()
+                }
+            }
+        }
+    }
+
     func selectGroup(id: UUID) async {
         guard canSelectGroup, id != group?.id, groups.contains(where: { $0.id == id }), var current = session else {
             return
@@ -236,6 +371,7 @@ final class SharedShoppingViewModel {
             guard session?.user.id == current.user.id, session?.accessToken == originalToken,
                   sessionIsVerified, groupsAreVerified else {
                 isPerformingAction = false
+                await drainSubscriptionUpdates()
                 return
             }
             clearGroupPresentation()
@@ -245,10 +381,12 @@ final class SharedShoppingViewModel {
             notice = SharedErrorMessage.message(for: error)
             storeItemsState = loadedStoreID == nil ? .notLoaded : .loaded
             isPerformingAction = false
+            await drainSubscriptionUpdates()
             return
         }
         isPerformingAction = false
         await loadActiveGroup()
+        await drainSubscriptionUpdates()
     }
 
     private var groupContext: GroupContext? {
@@ -272,6 +410,7 @@ final class SharedShoppingViewModel {
     }
 
     func load() async {
+        startSubscriptionUpdates()
         if let initialLoadTask {
             await initialLoadTask.value
             return
@@ -379,7 +518,7 @@ final class SharedShoppingViewModel {
             await load()
         }
         try Task.checkCancellation()
-        guard sessionIsVerified, groupsAreVerified, groups.count == 1, !storageFailed,
+        guard sessionIsVerified, groupsAreVerified, groups.count == 1, canUseShopping, !storageFailed,
               let api, let session, let group, let context = groupContext else {
             return keepShoppingIntentInDraft()
         }
@@ -394,7 +533,7 @@ final class SharedShoppingViewModel {
             return keepShoppingIntentInDraft()
         }
         try Task.checkCancellation()
-        guard groupContext == context, sessionIsVerified, groupsAreVerified, groups.count == 1 else {
+        guard groupContext == context, sessionIsVerified, groupsAreVerified, groups.count == 1, canUseShopping else {
             return keepShoppingIntentInDraft()
         }
         stores = fetchedStores
@@ -646,7 +785,7 @@ final class SharedShoppingViewModel {
 
     /// The visible editable summary is the confirmation surface for this explicit Add action.
     func addDraftItems() async {
-        guard canMutate, group != nil else { return }
+        guard canPerformShopping, group != nil else { return }
         draft.reviewDraft()
         guard draft.preparedItems != nil else { return }
         let snapshot = ShoppingDraftSnapshot(text: draft.text, items: draft.items)
@@ -658,7 +797,7 @@ final class SharedShoppingViewModel {
 
     /// Only the manually entered row joins this operation; unrelated draft rows keep their own intent.
     func addManualItem() async {
-        guard canMutate, group != nil, let item = draft.saveEditor(closeEditor: false) else { return }
+        guard canPerformShopping, group != nil, let item = draft.saveEditor(closeEditor: false) else { return }
         await prepareInlineSubmission(ShoppingDraftSnapshot(items: [item]))
         if canConfirmReview {
             await confirmReviewedBatch()
@@ -681,8 +820,13 @@ final class SharedShoppingViewModel {
 
     /// Confirmation consumes only the displayed interpretation, never unrelated draft rows.
     func confirmInterpretationProposal(_ snapshot: ShoppingNotice) async {
-        guard canMutate, draftConfirmationNotice == snapshot, let reference = snapshot.draftConfirmation,
-              let source = draft.takeInterpretationProposal(id: reference.proposalID) else { return }
+        guard canMutate, draftConfirmationNotice == snapshot, let reference = snapshot.draftConfirmation else { return }
+        guard canUseShopping else {
+            draft.editInterpretationProposal(id: reference.proposalID)
+            notice = "Choose this as your free group or renew premium to use its shopping list. Your group and draft are kept."
+            return
+        }
+        guard let source = draft.takeInterpretationProposal(id: reference.proposalID) else { return }
         await prepareInlineSubmission(source)
         guard session?.user.id == reference.userID, group?.id == reference.groupID else {
             draft.revealRecoveryControls()
@@ -707,7 +851,7 @@ final class SharedShoppingViewModel {
     }
 
     private func prepareInlineSubmission(_ snapshot: ShoppingDraftSnapshot) async {
-        guard canMutate, let api, let session, let group else { return }
+        guard canPerformShopping, let api, let session, let group else { return }
         // Clear stale preparation before a fetch so failure cannot submit a previous summary.
         let previousChoices = storeChoices
         reviewedItems = []
@@ -766,7 +910,7 @@ final class SharedShoppingViewModel {
     }
 
     func prepareReview() async {
-        guard canMutate, group != nil, let api, let session, let group else { return }
+        guard canPerformShopping, group != nil, let api, let session, let group else { return }
         draft.reviewDraft()
         guard let prepared = draft.preparedItems else { return }
         await performAction {
@@ -844,6 +988,8 @@ final class SharedShoppingViewModel {
             switch operation {
             case .proposeTransfer, .resolveTransfer, .leaveGroup:
                 return await performPendingGroupOperation(operation)
+            case .selectFreeGroup(_, let request):
+                _ = try await api.selectFreeGroup(request, token: session.accessToken)
             case .changeStoreState:
                 return await performPendingStoreOperation(operation)
             case .changeItem(_, let original, let request):
@@ -928,9 +1074,13 @@ final class SharedShoppingViewModel {
                         try await credentials.saveOperation(nil)
                         pendingOperation = nil
                         if case .addItems = operation,
-                           ["store_limit_reached", "pending_item_limit_reached", "store_archived"].contains(code) {
+                           ["store_limit_reached", "pending_item_limit_reached", "store_archived",
+                            "group_access_restricted"].contains(code) {
                             await refreshSessionAndLists()
                             draft.revealRecoveryControls()
+                        }
+                        if case .selectFreeGroup = operation {
+                            await refreshSessionAndLists()
                         }
                         if case .purchase = operation {
                             let previousSelection = purchaseSelection
@@ -1002,7 +1152,7 @@ final class SharedShoppingViewModel {
         case .archive:
             return stores.contains(store) && store.capabilities?.canArchive == true
         case .restore:
-            return archivedStores.contains(store) && store.capabilities?.canRestore == true
+            return canUseShopping && archivedStores.contains(store) && store.capabilities?.canRestore == true
         }
     }
 
@@ -1015,6 +1165,9 @@ final class SharedShoppingViewModel {
         }
         if action == .archive, store.pendingItemCount != 0 {
             return "Buy or cancel the pending products before archiving this store."
+        }
+        if action == .restore, hasRestrictedGroup {
+            return "Choose this as your free group or renew premium to use its shopping list. Your group and draft are kept."
         }
         if action == .restore, groupCapacity?.canCreateStore != true {
             return "Archive an empty active store to make room before restoring this one."
@@ -1044,9 +1197,11 @@ final class SharedShoppingViewModel {
             if groupContext == context, sessionIsVerified {
                 storeManagementState = .failed
             }
+            await drainSubscriptionUpdates()
             return
         }
         await refreshStoreManagement()
+        await drainSubscriptionUpdates()
     }
 
     @discardableResult
@@ -1225,6 +1380,11 @@ final class SharedShoppingViewModel {
     }
 
     func loadSelectedStore() async {
+        await refreshSelectedStore()
+        await drainSubscriptionUpdates()
+    }
+
+    private func refreshSelectedStore() async {
         guard !isBusy, sessionIsVerified, groupsAreVerified, let api, let session,
               let group, let storeID = selectedStoreID, let context = groupContext else { return }
         let loadID = UUID()
@@ -1265,7 +1425,7 @@ final class SharedShoppingViewModel {
     }
 
     func createInvitation() async {
-        guard canMutate, canManageInvitations, let api, let session, let group else { return }
+        guard canPerformShopping, canManageInvitations, let api, let session, let group else { return }
         await performAction {
             shareURL = nil
             do {
@@ -1509,6 +1669,7 @@ final class SharedShoppingViewModel {
     private func finishAction() async {
         isPerformingAction = false
         await promoteIncomingInvitation()
+        await drainSubscriptionUpdates()
     }
 
     private func promoteIncomingInvitation() async {
@@ -1547,6 +1708,7 @@ final class SharedShoppingViewModel {
         groups = []
         groupsAreVerified = false
         session = nil
+        premium.clearPresentation()
         sessionIsVerified = false
     }
 
@@ -1585,6 +1747,11 @@ final class SharedShoppingViewModel {
     }
 
     func loadGroupManagement() async {
+        await refreshGroupManagement()
+        await drainSubscriptionUpdates()
+    }
+
+    private func refreshGroupManagement() async {
         guard hasLoaded, !isBusy, sessionIsVerified, groupsAreVerified,
               let api, let session, let group, let context = groupContext else { return }
         let loadID = UUID()
@@ -1775,15 +1942,18 @@ extension SharedShoppingViewModel {
         configuration: SharedAPIConfiguration?,
         credentials: any SharedCredentialStoring,
         draft: ShoppingDraftViewModel,
-        storeQuery: StoreQueryViewModel
+        storeQuery: StoreQueryViewModel,
+        subscriptionStore: (any SharedSubscriptionStore)? = nil
     ) {
         self.init(
             api: api,
             configuration: configuration,
             credentials: credentials,
             draft: draft,
-            storeQuery: storeQuery
+            storeQuery: storeQuery,
+            subscriptionStore: subscriptionStore
         )
+        premium.applyPreview(preview)
         session = preview.session
         groups = preview.groups
         groupsAreVerified = preview.groupsAreVerified
@@ -1835,7 +2005,7 @@ extension SharedShoppingViewModel {
     }
 
     var canFinalizePurchase: Bool {
-        canMutate && loadedStoreID != nil && loadedStoreID == selectedStoreID
+        canPerformShopping && loadedStoreID != nil && loadedStoreID == selectedStoreID
             && (1...50).contains(purchaseSelection.count) && !purchaseSelectionNeedsReview
     }
 
@@ -1846,7 +2016,7 @@ extension SharedShoppingViewModel {
     }
 
     func canTogglePurchaseItem(_ item: SharedItem) -> Bool {
-        canMutate && loadedStoreID == selectedStoreID && item.storeId == selectedStoreID
+        canPerformShopping && loadedStoreID == selectedStoreID && item.storeId == selectedStoreID
             && item.groupId == group?.id && items.contains(item)
             && (isPurchaseSelected(item) || purchaseSelection.count < 50)
     }
@@ -1927,6 +2097,11 @@ extension SharedShoppingViewModel {
 
 extension SharedShoppingViewModel {
     func canChangeItem(_ item: SharedItem) -> Bool {
+        canPerformShopping && loadedStoreID == selectedStoreID && item.status == "pending"
+            && item.groupId == group?.id && items.contains(item)
+    }
+
+    func canCancelItem(_ item: SharedItem) -> Bool {
         canMutate && loadedStoreID == selectedStoreID && item.status == "pending"
             && item.groupId == group?.id && items.contains(item)
     }
@@ -1949,7 +2124,7 @@ extension SharedShoppingViewModel {
 
     var canSaveItemEdit: Bool {
         guard let editingItem else { return false }
-        return canChangeItem(editingItem) && !editNeedsReview && preparedItemEdit != nil
+        return canPerformShopping && canChangeItem(editingItem) && !editNeedsReview && preparedItemEdit != nil
     }
 
     var latestEditingItem: SharedItem? {
@@ -1959,7 +2134,7 @@ extension SharedShoppingViewModel {
 
     /// Explicitly review the current row before confirming a new intent after a conflict.
     func reviewLatestItem() {
-        guard canMutate, let current = latestEditingItem else { return }
+        guard canPerformShopping, let current = latestEditingItem else { return }
         editingItem = current
         editNeedsReview = false
     }
@@ -1970,7 +2145,7 @@ extension SharedShoppingViewModel {
     }
 
     func cancelItem(_ item: SharedItem) async {
-        guard canChangeItem(item) else { return }
+        guard canCancelItem(item) else { return }
         await submitItemChange(item, replacement: nil)
     }
 

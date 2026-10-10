@@ -22,6 +22,16 @@ enum SharedErrorMessage {
             case "already_in_group": return "Your account already belongs to a group. Refresh to check its status."
             case "group_limit_reached":
                 return "Your account has reached its group limit. Your current groups and draft are kept."
+            case "group_access_restricted":
+                return "Choose this as your free group or renew premium to use its shopping list. Your group and draft are kept."
+            case "free_group_change_cooldown":
+                return "The free group cannot be changed yet. Refresh to check when the next change is available."
+            case "invalid_app_store_transaction":
+                return "Apple could not verify this purchase. No premium access has been confirmed."
+            case "transaction_account_mismatch", "transaction_already_bound":
+                return "This purchase belongs to another app account. Sign in with its original account."
+            case "subscription_unavailable":
+                return "Subscription verification is unavailable. Your purchase is kept so you can try again."
             case "store_limit_reached":
                 return "This group has reached its active store limit. Archive an empty store before adding or restoring another. Your draft is kept."
             case "pending_item_limit_reached":

@@ -22,6 +22,7 @@ struct SharedPurchaseSection: View {
                     isSelected: viewModel.isPurchaseSelected(item),
                     canSelect: viewModel.canTogglePurchaseItem(item),
                     canChange: viewModel.canChangeItem(item),
+                    canRemove: viewModel.canCancelItem(item),
                     focusedProductID: $focusedProductID
                 ) {
                     viewModel.togglePurchaseItem(item)
@@ -36,7 +37,11 @@ struct SharedPurchaseSection: View {
             Text("Pending products")
         } footer: {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Select the products you are buying. The others will remain pending.")
+                if viewModel.hasRestrictedGroup {
+                    Text("This additional group is available for consultation. You can remove pending products, archive empty stores, transfer administration or leave.")
+                } else {
+                    Text("Select the products you are buying. The others will remain pending.")
+                }
                 if !viewModel.items.isEmpty {
                     Label {
                         if isVoiceOverEnabled {
