@@ -90,3 +90,7 @@ Compilar e instalar de nuevo tras configurar los dominios. Comprobar la asociaci
 7. Registrar los resultados físicos manuales y, por separado, la entrada de voz/IA del entorno compatible según [#7](https://github.com/JFrancoG/SmartShoppingList/issues/7).
 
 La consulta se actualiza expresamente mediante **Actualizar**; no hay tiempo real. Checks y finalización de #11, edición y cancelación de #22 están implementados y desplegados en el entorno del proyecto. Una instalación propia necesita cliente y servidor compatibles. El historial mínimo conserva registros; no hay una pantalla de historial. El [README bilingüe](../../README.md) incluye la demostración actual de compra parcial, edición, cancelación y Siri.
+
+## Suscripciones personales
+
+La configuración de identidad anterior autentica cuentas y no verifica compras. Para el contrato 0.5, seguir [la guía de suscripciones](premium-subscriptions.md): clave In-App Purchase independiente, catálogo permitido y entorno explícito, App Store Server API, notificaciones V2 y gracia de cobro. Los derechos premium requieren verificación del servidor y vínculo de cuenta; configurar Apple Sign in, Railway o un precio en la app no los concede. La inscripción Small Business y la activación de cobros se realizan por separado.

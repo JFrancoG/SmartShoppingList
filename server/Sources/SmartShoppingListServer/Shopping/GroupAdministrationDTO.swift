@@ -34,7 +34,7 @@ struct GroupAdministrationTransfer: Sendable {
     }
 }
 
-/// The current release exposes its effective limits without pretending a paid entitlement exists.
+/// Group roles remain valid independently of personal shopping access.
 enum GroupCapabilityPolicy {
     static func capabilities(
         user: UUID,

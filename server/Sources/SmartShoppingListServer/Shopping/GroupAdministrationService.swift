@@ -24,11 +24,11 @@ extension ShoppingService {
             try await lockGroup(group, on: sql)
             try await requireMembership(user, group: group, on: sql)
             try await refreshTransfers(group: group, on: sql)
-            let actual = try await loadShoppingGroup(id: group, on: sql)
+            let actual = try await loadGroup(id: group, user: user, on: sql)
             let capacity = try await storeCapacity(group: group, on: sql)
             let count = try await memberCount(group: group, on: sql)
             let pending = try await pendingTransfer(group: group, on: sql)
-            let accountMaximum = capacity.owner == user ? capacity.limits.groups : accountCapacity.maximum(for: user)
+            let accountMaximum = try await accountCapacity.maximum(for: user, on: sql)
             return try APIReply(status: .ok, json: .object([
                 "group": actual.json, "memberCount": .integer(count), "pendingTransfer": pending?.json ?? .null,
                 "capabilities": GroupCapabilityPolicy.capabilities(
@@ -68,7 +68,7 @@ extension ShoppingService {
             ) {
                 return replay
             }
-            let actual = try await loadShoppingGroup(id: group, on: sql)
+            let actual = try await loadGroup(id: group, user: user, on: sql)
             guard actual.administratorUserId == user.uuidString.lowercased() else {
                 throw Self.administrationProblem("administrator_required", forbidden: true)
             }
@@ -139,7 +139,7 @@ extension ShoppingService {
             }
             try await refreshTransfers(group: group, on: sql)
             let transfer = try await loadTransfer(id: transferID, group: group, on: sql)
-            let actual = try await loadShoppingGroup(id: group, on: sql)
+            let actual = try await loadGroup(id: group, user: user, on: sql)
             if action == .withdraw {
                 guard transfer.proposerID == user, actual.administratorUserId == user.uuidString.lowercased() else {
                     throw Self.administrationProblem("administrator_required", forbidden: true)
@@ -171,7 +171,7 @@ extension ShoppingService {
                 UPDATE group_administration_transfers
                 SET status = \(bind: action.resolvedStatus), resolved_at = clock_timestamp() WHERE id = \(bind: transferID)
                 """).run()
-            let updated = try await loadShoppingGroup(id: group, on: sql)
+            let updated = try await loadGroup(id: group, user: user, on: sql)
             let resolved = try await loadTransfer(id: transferID, group: group, on: sql)
             return try await save(
                 APIReply(status: .ok, json: .object(["group": updated.json, "transfer": resolved.json])),
@@ -210,7 +210,7 @@ extension ShoppingService {
                 return replay
             }
             guard try await isMember(user, group: group, on: sql) else { throw APIProblem.notFound }
-            let actual = try await loadShoppingGroup(id: group, on: sql)
+            let actual = try await loadGroup(id: group, user: user, on: sql)
             if let replay = try await reserve(
                 user: user,
                 operation: operation,

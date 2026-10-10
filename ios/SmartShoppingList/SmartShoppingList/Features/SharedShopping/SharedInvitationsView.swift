@@ -15,7 +15,7 @@ struct SharedInvitationsView: View {
                         }
                     }
                     .buttonStyle(ShoppingActionButtonStyle())
-                    .disabled(!viewModel.canMutate || !viewModel.canManageInvitations)
+                    .disabled(!viewModel.canPerformShopping || !viewModel.canManageInvitations)
                     if let url = viewModel.shareURL {
                         ShareLink(item: url) {
                             Label("Share invitation", systemImage: "square.and.arrow.up")

@@ -18,32 +18,10 @@ struct AccountResourceLimits: Sendable, Equatable {
     }
 }
 
-/// Production uses the free allowance until a trusted entitlement provider is installed.
+/// Production resolves verified persisted access; the optional override is a trusted test seam.
 struct AccountCapacityPolicy: Sendable {
-    var resolve: @Sendable (UUID) -> AccountResourceLimits = { _ in .free }
-
-    func limits(for user: UUID) -> AccountResourceLimits {
-        let supplied = resolve(user)
-        return AccountResourceLimits(
-            groups: max(1, supplied.groups),
-            activeStores: max(1, supplied.activeStores),
-            pendingItems: max(1, supplied.pendingItems)
-        )
-    }
-
-    func maximum(for user: UUID) -> Int64 { limits(for: user).groups }
-
-    func capabilities(user: UUID, membershipCount: Int64) -> APIJSON {
-        let maximum = maximum(for: user)
-        return .object([
-            "membershipCount": .integer(membershipCount),
-            "canCreateGroup": .bool(membershipCount < maximum),
-            "canJoinGroup": .bool(membershipCount < maximum),
-            "limits": .object([
-                "groupsPerAccount": .object(["maximum": .integer(maximum), "enforced": .bool(true)])
-            ])
-        ])
-    }
+    var resolve: (@Sendable (UUID) -> AccountResourceLimits)? = nil
+    var verificationEnvironment: AppStoreEnvironment = .production
 }
 
 extension ShoppingService {

@@ -8,8 +8,9 @@ struct GroupStoreCapacity: Sendable {
     let owner: UUID
     let activeStoreCount: Int64
     let limits: AccountResourceLimits
+    var canUseShopping = true
 
-    var canCreateStore: Bool { activeStoreCount < limits.activeStores }
+    var canCreateStore: Bool { canUseShopping && activeStoreCount < limits.activeStores }
 
     var json: APIJSON {
         .object([
@@ -37,7 +38,7 @@ struct ShoppingStore: Sendable {
             "name": .string(name), "archivedAt": .optional(archivedAt.map(APIEncoding.timestamp)),
             "pendingItemCount": .integer(pendingCount),
             "capabilities": .object([
-                "canAddItems": .bool(active && pendingCount < capacity.limits.pendingItems),
+                "canAddItems": .bool(capacity.canUseShopping && active && pendingCount < capacity.limits.pendingItems),
                 "canArchive": .bool(administrator && active && pendingCount == 0),
                 "canRestore": .bool(administrator && !active && capacity.canCreateStore)
             ])
@@ -70,13 +71,13 @@ extension ShoppingService {
             let sql = try shoppingSQL(transaction)
             try await lockGroup(group, on: sql)
             try await requireMembership(user, group: group, on: sql)
-            let snapshot = try await storeCapacity(group: group, on: sql)
+            let snapshot = try await storeCapacity(group: group, user: user, on: sql)
             return try APIReply(status: .ok, json: snapshot.json)
         }
     }
 
     /// Called while holding the group lock so its administrator and all counts belong to this mutation.
-    func storeCapacity(group: UUID, on sql: any SQLDatabase) async throws -> GroupStoreCapacity {
+    func storeCapacity(group: UUID, user: UUID? = nil, on sql: any SQLDatabase) async throws -> GroupStoreCapacity {
         guard let row = try await sql.raw("""
             SELECT administrator_user_id, (SELECT COUNT(*) FROM stores
                 WHERE group_id = groups.id AND archived_at IS NULL) AS active_count
@@ -86,11 +87,18 @@ extension ShoppingService {
             throw APIProblem.notFound
         }
         let owner = try row.decode(column: "administrator_user_id", as: UUID.self)
+        let canUse: Bool
+        if let user {
+            canUse = try await canUseShopping(user: user, group: group, on: sql)
+        } else {
+            canUse = true
+        }
         return GroupStoreCapacity(
             group: group,
             owner: owner,
             activeStoreCount: try row.decode(column: "active_count", as: Int64.self),
-            limits: accountCapacity.limits(for: owner)
+            limits: try await accountCapacity.limits(for: owner, on: sql),
+            canUseShopping: canUse
         )
     }
 
@@ -129,7 +137,15 @@ extension ShoppingService {
             ) {
                 return replay
             }
-            let capacity = try await storeCapacity(group: group, on: sql)
+            if state == .active, let restriction = try await restrictedGroupReply(
+                user: user,
+                group: group,
+                operation: operation,
+                on: sql
+            ) {
+                return restriction
+            }
+            let capacity = try await storeCapacity(group: group, user: user, on: sql)
             guard capacity.owner == user else {
                 throw APIProblem(
                     status: .forbidden,
@@ -171,7 +187,8 @@ extension ShoppingService {
                 group: group,
                 owner: capacity.owner,
                 activeStoreCount: capacity.activeStoreCount + countDelta,
-                limits: capacity.limits
+                limits: capacity.limits,
+                canUseShopping: capacity.canUseShopping
             )
             let updated = try await loadStore(store, group: group, on: sql)
             return try await save(

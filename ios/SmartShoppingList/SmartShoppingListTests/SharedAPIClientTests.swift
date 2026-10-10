@@ -592,7 +592,8 @@ extension SharedAPIClientTests {
         """
         {"id":"00000000-0000-4000-8000-0000000000\(id)","name":"\(name)",
         "creatorUserId":"00000000-0000-4000-8000-000000000002","createdAt":"2026-09-19T10:10:00Z",
-        "administratorUserId":"00000000-0000-4000-8000-000000000002"}
+        "administratorUserId":"00000000-0000-4000-8000-000000000002",
+        "capabilities":{"canUseShopping":true,"isFreeGroup":true}}
         """
     }
 }
@@ -713,10 +714,11 @@ extension SharedAPIClientTests {
     func `Invalid capacity responses cannot authorize store creation`(_ fault: String) async throws {
         let transport = FixtureSharedTransport { request in
             let group = fault == "wrongGroup" ? Self.storeID : Self.groupID
-            let count = fault == "negativeCount" ? -1 : 2
+            // A denial below the quota is legitimate for a restricted group. Granting growth at the quota is not.
+            let count = fault == "negativeCount" ? -1 : fault == "contradiction" ? 3 : 2
             let maximum = fault == "zeroMaximum" ? 0 : 3
             let enforced = fault == "unenforced" ? "false" : "true"
-            let canCreate = fault == "contradiction" ? "false" : "true"
+            let canCreate = "true"
             return try Self.response(
                 request,
                 status: 200,

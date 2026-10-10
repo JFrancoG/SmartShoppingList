@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct SharedRootView: View {
+    @Environment(\.scenePhase) private var scenePhase
     @State private var selectedTab = SharedTab.add
     @State private var isSettingsPresented = false
     @State private var isSettingsPresentationActive = false
@@ -20,6 +21,22 @@ struct SharedRootView: View {
         }
         .task {
             await viewModel.load()
+            await viewModel.loadPremium()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                Task {
+                    await viewModel.refresh()
+                    await viewModel.loadPremium()
+                }
+            }
+        }
+        .onChange(of: viewModel.sessionIsVerified) { _, verified in
+            if verified {
+                Task {
+                    await viewModel.loadPremium()
+                }
+            }
         }
         .onOpenURL { url in
             Task {

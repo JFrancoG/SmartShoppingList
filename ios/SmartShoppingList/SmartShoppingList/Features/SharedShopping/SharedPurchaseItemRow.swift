@@ -6,6 +6,7 @@ struct SharedPurchaseItemRow: View {
     let isSelected: Bool
     let canSelect: Bool
     let canChange: Bool
+    var canRemove = true
     @AccessibilityFocusState.Binding var focusedProductID: UUID?
     let onSelect: () -> Void
     let onEdit: () -> Void
@@ -43,7 +44,7 @@ struct SharedPurchaseItemRow: View {
             .accessibilityFocused($focusedProductID, equals: item.id)
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-            if canChange {
+            if canRemove {
                 // Resolve symbol colors in the row's appearance before the native actions capture their images.
                 Button(action: onRemove) {
                     Image(systemName: "trash")
@@ -53,6 +54,8 @@ struct SharedPurchaseItemRow: View {
                 }
                 .accessibilityLabel("Remove")
                 .tint(.dangerSoft)
+            }
+            if canChange {
                 Button(action: onEdit) {
                     Image(systemName: "pencil")
                         .renderingMode(.original)

@@ -13,6 +13,7 @@ struct ShoppingRoutes: RouteCollection {
         let api = routes.grouped("v1").grouped(APIErrorMiddleware())
         api.post("groups", use: createGroup)
         api.get("groups", use: listGroups)
+        api.post("account", "free-group", use: selectFreeGroup)
         api.get("groups", ":groupId", "stores", use: listStores)
         api.get(
             "groups",
@@ -115,6 +116,20 @@ struct ShoppingRoutes: RouteCollection {
         let body = try APIObject.body(request, allowed: ["operationId", "name"], required: ["operationId", "name"])
         return try await service().createGroup(
             user: user, operation: body.uuid("operationId"), name: body.string("name")
+        ).response()
+    }
+
+    private func selectFreeGroup(_ request: Request) async throws -> Response {
+        let user = try await authentication.authenticate(request)
+        let body = try APIObject.body(
+            request,
+            allowed: ["operationId", "groupId"],
+            required: ["operationId", "groupId"]
+        )
+        return try await service().selectFreeGroup(
+            user: user,
+            group: body.uuid("groupId"),
+            operation: body.uuid("operationId")
         ).response()
     }
 

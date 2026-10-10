@@ -1,7 +1,12 @@
 import FluentKit
 import Vapor
 
-func routes(_ app: Application, databases: Databases, accountCapacity: AccountCapacityPolicy = .init()) throws {
+func routes(
+    _ app: Application,
+    databases: Databases,
+    accountCapacity: AccountCapacityPolicy = .init(),
+    appStoreGateway: any AppStoreGateway = UnconfiguredAppStoreGateway()
+) throws {
     app.get { req async in
         "It works!"
     }
@@ -33,6 +38,10 @@ func routes(_ app: Application, databases: Databases, accountCapacity: AccountCa
         authentication: authentication,
         invitationOrigin: app.environment == .testing ? "https://links.test" : Environment.get("INVITATION_ORIGIN"),
         accountCapacity: accountCapacity
+    ))
+    try app.register(collection: AppStoreRoutes(
+        service: SubscriptionService(databases: databases, gateway: appStoreGateway, accountCapacity: accountCapacity),
+        authentication: authentication
     ))
     try app.register(collection: InvitationWebsite(
         teamID: app.environment == .testing ? "NWN8JUE438" : Environment.get("APPLE_TEAM_ID"),

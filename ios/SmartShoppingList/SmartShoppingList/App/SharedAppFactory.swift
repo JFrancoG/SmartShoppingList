@@ -18,7 +18,8 @@ enum SharedAppFactory {
             configuration: configuration,
             credentials: SharedKeychainStore(),
             draft: draft,
-            storeQuery: StoreQueryViewModel(speech: SpeechCaptureService(localeIdentifier: language.locale.identifier))
+            storeQuery: StoreQueryViewModel(speech: SpeechCaptureService(localeIdentifier: language.locale.identifier)),
+            subscriptionStore: StoreKitSubscriptionStore()
         )
     }
 }

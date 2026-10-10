@@ -4,7 +4,7 @@ struct DraftItemEditor: View {
     @Bindable var viewModel: ShoppingDraftViewModel
     var shared: SharedShoppingViewModel? = nil
 
-    private var addsDirectly: Bool { viewModel.isAddingItem && shared?.group != nil }
+    private var addsDirectly: Bool { viewModel.isAddingItem && shared?.canUseShopping == true }
 
     var body: some View {
         NavigationStack {
@@ -66,11 +66,13 @@ struct DraftItemEditor: View {
                     .buttonStyle(ShoppingActionButtonStyle())
                     .disabled(
                         viewModel.editorHasLengthIssue || shared?.draftIsLocked == true
-                            || (addsDirectly && shared?.canMutate != true)
+                            || (addsDirectly && shared?.canPerformShopping != true)
                     )
                 } footer: {
                     if addsDirectly {
                         Text("Adds this product to the specified store. A new store is created if needed.")
+                    } else if shared?.hasRestrictedGroup == true {
+                        Text("This product is saved on this device until you choose a group with full shopping access.")
                     }
                 }
                 .listRowBackground(Color.clear)

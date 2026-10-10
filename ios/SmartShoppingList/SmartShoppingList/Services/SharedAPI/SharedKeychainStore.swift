@@ -8,7 +8,7 @@ enum SharedCredentialError: Error, Equatable {
 }
 
 /// Each update replaces one value atomically; a locked or unreadable item is never treated as absent.
-actor SharedKeychainStore: SharedCredentialStoring {
+actor SharedKeychainStore: SharedCredentialStoring, SharedSubscriptionCredentialStoring {
     private let service: String
     private let maximumBytes = 512 * 1_024
 
@@ -53,6 +53,14 @@ actor SharedKeychainStore: SharedCredentialStoring {
 
     func saveOperation(_ operation: PendingSharedOperation?) throws {
         try save(operation, account: "operation")
+    }
+
+    func loadSubscriptionVerification() throws -> PendingSubscriptionVerification? {
+        try load(PendingSubscriptionVerification.self, account: "subscription-verification")
+    }
+
+    func saveSubscriptionVerification(_ verification: PendingSubscriptionVerification?) throws {
+        try save(verification, account: "subscription-verification")
     }
 
     private func load<Value: Decodable>(_ type: Value.Type, account: String) throws -> Value? {

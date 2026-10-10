@@ -3,8 +3,8 @@
   "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
   "info": {
     "title": "SmartShoppingList · contrato MVP",
-    "version": "0.4.0",
-    "description": "Contrato de desarrollo del MVP, administración (#33), pertenencias (#35) y cuotas/archivo de tiendas (#37). No acredita despliegue ni pagos disponibles. Reglas en docs/contracts/mvp-api.md, group-administration.md, group-memberships.md y store-quotas.md. Origen .example deliberadamente ficticio."
+    "version": "0.5.0",
+    "description": "Contrato de desarrollo del MVP, administración (#33), pertenencias (#35), cuotas/archivo (#37) y suscripción/verificación/vuelta a gratuito (#39). Reglas en docs/contracts/mvp-api.md y sus ampliaciones. No acredita despliegue ni cobros activados. Origen .example deliberadamente ficticio."
   },
   "servers": [
     {
@@ -114,7 +114,7 @@
       "get": {
         "operationId": "getCurrentUser",
         "summary": "Leer identidad, proyección de grupo anterior y capacidades de cuenta.",
-        "description": "accountCapabilities cuenta las pertenencias vigentes y expresa capacidad de nueva admisión. group conserva compatibilidad singular y puede ser null con varias pertenencias. La selección del cliente es local; usar listGroups para consultar pertenencias.",
+        "description": "accountCapabilities cuenta las pertenencias vigentes y expresa capacidad de nueva admisión. group conserva compatibilidad singular y puede ser null con varias pertenencias. La selección del cliente es local; usar listGroups para consultar pertenencias. En 0.5 publica estado premium, transición y elección gratuita persistida; la selección de consulta local no cambia esa elección.",
         "security": [
           {
             "bearerSession": []
@@ -389,7 +389,7 @@
       "post": {
         "operationId": "createInvitation",
         "summary": "Crear invitación de 24 horas; solo el administrador vigente del grupo.",
-        "description": "Secreto retornado una sola vez dentro del fragmento del enlace. Creación sin garantía de idempotencia; listar metadatos permite revocar enlaces cuya respuesta se perdió. El permiso se revalida con el administrador vigente; creatorUserId no concede gestión. Un miembro sin ese rol recibe 403 administrator_required.",
+        "description": "Secreto retornado una sola vez dentro del fragmento del enlace. Creación sin garantía de idempotencia; listar metadatos permite revocar enlaces cuya respuesta se perdió. El permiso se revalida con el administrador vigente; creatorUserId no concede gestión. Un miembro sin ese rol recibe 403 administrator_required. Desde 0.5 una intención nueva requiere uso ordinario del solicitante en el grupo: 409 group_access_restricted, sin mutación. El recibo confirmado se recupera antes de esta restricción y no vuelve a ejecutar la escritura.",
         "security": [
           {
             "bearerSession": []
@@ -446,6 +446,9 @@
           },
           "503": {
             "$ref": "#/components/responses/Error503"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
           }
         }
       },
@@ -713,7 +716,7 @@
       "post": {
         "operationId": "addItems",
         "summary": "Guardar de 1 a 50 productos revisados como lote atómico.",
-        "description": "Cualquier miembro. Solo datos confirmados, sin transcripción/audio ni reinterpretación IA. operationId preservado al reintentar; dos IDs de operación distintos son altas voluntarias distintas. En 0.4.0, preflight de tiendas activas realmente nuevas y pendientes proyectados por destino antes de cualquier INSERT bajo lock del grupo. Exceder cupos responde 409 store_limit_reached/pending_item_limit_reached; referencia archivada da store_archived. Rechazo íntegro persistido sin tiendas huérfanas; tras liberar capacidad hace falta nueva intención. Replay conserva éxito aunque la tienda se archive después.",
+        "description": "Cualquier miembro. Solo datos confirmados, sin transcripción/audio ni reinterpretación IA. operationId preservado al reintentar; dos IDs de operación distintos son altas voluntarias distintas. En 0.4.0, preflight de tiendas activas realmente nuevas y pendientes proyectados por destino antes de cualquier INSERT bajo lock del grupo. Exceder cupos responde 409 store_limit_reached/pending_item_limit_reached; referencia archivada da store_archived. Rechazo íntegro persistido sin tiendas huérfanas; tras liberar capacidad hace falta nueva intención. Replay conserva éxito aunque la tienda se archive después. Desde 0.5 una intención nueva requiere uso ordinario del solicitante en el grupo: 409 group_access_restricted, sin mutación. El recibo confirmado se recupera antes de esta restricción y no vuelve a ejecutar la escritura.",
         "security": [
           {
             "bearerSession": []
@@ -855,7 +858,7 @@
       "patch": {
         "operationId": "editItem",
         "summary": "Sustituir los campos editables de un producto pendiente.",
-        "description": "Todos los campos editables son obligatorios; quantity null elimina cantidad. expectedVersion debe coincidir. Puede cambiar tienda. No puede modificar estado, autor o fechas. Incrementa versión una vez. En 0.4.0 editar en la misma tienda no consume capacidad aunque esté excedida. Mover comprueba destino y eventual tienda nueva, sin autoarchivar origen ni restaurar destino. Cupo/archivo produce 409 definitivo persistido; sin cambios parciales.",
+        "description": "Todos los campos editables son obligatorios; quantity null elimina cantidad. expectedVersion debe coincidir. Puede cambiar tienda. No puede modificar estado, autor o fechas. Incrementa versión una vez. En 0.4.0 editar en la misma tienda no consume capacidad aunque esté excedida. Mover comprueba destino y eventual tienda nueva, sin autoarchivar origen ni restaurar destino. Cupo/archivo produce 409 definitivo persistido; sin cambios parciales. Desde 0.5 una intención nueva requiere uso ordinario del solicitante en el grupo: 409 group_access_restricted, sin mutación. El recibo confirmado se recupera antes de esta restricción y no vuelve a ejecutar la escritura.",
         "security": [
           {
             "bearerSession": []
@@ -928,7 +931,7 @@
       "post": {
         "operationId": "cancelItem",
         "summary": "Cancelar un pendiente sin registrarlo como compra.",
-        "description": "Validar expectedVersion y pending. Cambia a cancelled, incrementa versión, conserva purchasedBy/purchasedAt null. Replay retorna su resultado original.",
+        "description": "Validar expectedVersion y pending. Cambia a cancelled, incrementa versión, conserva purchasedBy/purchasedAt null. Replay retorna su resultado original. Accesible también en un grupo adicional restringido según autorización actual; conserva datos y recibos.",
         "security": [
           {
             "bearerSession": []
@@ -1001,7 +1004,7 @@
       "post": {
         "operationId": "finalizePurchase",
         "summary": "Comprar exactamente los IDs seleccionados de una tienda.",
-        "description": "Transacción de toda la selección. Cualquier ID ausente, no pendiente, editado o cambiado de tienda devuelve 409 item_conflict sin comprar ninguno de esta petición. Guardar comprador/fecha del servidor, incrementar versiones; no tocar IDs omitidos ni nuevas altas. Replay retorna resultado original.",
+        "description": "Transacción de toda la selección. Cualquier ID ausente, no pendiente, editado o cambiado de tienda devuelve 409 item_conflict sin comprar ninguno de esta petición. Guardar comprador/fecha del servidor, incrementar versiones; no tocar IDs omitidos ni nuevas altas. Replay retorna resultado original. Desde 0.5 una intención nueva requiere uso ordinario del solicitante en el grupo: 409 group_access_restricted, sin mutación. El recibo confirmado se recupera antes de esta restricción y no vuelve a ejecutar la escritura.",
         "security": [
           {
             "bearerSession": []
@@ -1480,7 +1483,7 @@
       "post": {
         "operationId": "leaveGroup",
         "summary": "Salir del grupo o confirmar su cierre si es el último miembro.",
-        "description": "Administrador con otros miembros: 409 transfer_required. Último miembro sin confirmClosure: 409 closure_confirmation_required. La salida invalida la propuesta dirigida a ese miembro; cierre lógico preserva historial y revoca acceso. Solo el replay exacto del recibo de salida propia exige sesión de la misma cuenta sin exigir pertenencia. Resto de operaciones conserva autorización vigente.",
+        "description": "Administrador con otros miembros: 409 transfer_required. Último miembro sin confirmClosure: 409 closure_confirmation_required. La salida invalida la propuesta dirigida a ese miembro; cierre lógico preserva historial y revoca acceso. Solo el replay exacto del recibo de salida propia exige sesión de la misma cuenta sin exigir pertenencia. Resto de operaciones conserva autorización vigente. Accesible también en un grupo adicional restringido según autorización actual; conserva datos y recibos.",
         "security": [
           {
             "bearerSession": []
@@ -1594,7 +1597,7 @@
       "post": {
         "operationId": "archiveStore",
         "summary": "Archivar una tienda vacía.",
-        "description": "Nueva intención solo administrador; membership vigente antes de replay. Archivar exige cero pendientes; si no, 409 store_not_empty. Ya archivada confirma 200 sin renovar fecha. Conserva ID, nombre, clave normalizada e historial. Éxito y 409 de estado/cupo quedan en recibo exacto. Replay autorizado no reevalúa rol, estado o cupo ni aplica otra transición. Refrescar después; no instalar el Store histórico.",
+        "description": "Nueva intención solo administrador; membership vigente antes de replay. Archivar exige cero pendientes; si no, 409 store_not_empty. Ya archivada confirma 200 sin renovar fecha. Conserva ID, nombre, clave normalizada e historial. Éxito y 409 de estado/cupo quedan en recibo exacto. Replay autorizado no reevalúa rol, estado o cupo ni aplica otra transición. Refrescar después; no instalar el Store histórico. Accesible también en un grupo adicional restringido según autorización actual; conserva datos y recibos.",
         "security": [
           {
             "bearerSession": []
@@ -1670,7 +1673,7 @@
       "post": {
         "operationId": "restoreStore",
         "summary": "Restaurar explícitamente una tienda archivada.",
-        "description": "Nueva intención solo administrador; membership vigente antes de replay. Restaurar exige plaza activa; sin plaza 409 store_limit_reached. Ya activa confirma 200 sin comprobar otra plaza. Conserva ID, nombre, clave normalizada e historial. Éxito y 409 de estado/cupo quedan en recibo exacto. Replay autorizado no reevalúa rol, estado o cupo ni aplica otra transición. Refrescar después; no instalar el Store histórico.",
+        "description": "Nueva intención solo administrador; membership vigente antes de replay. Restaurar exige plaza activa; sin plaza 409 store_limit_reached. Ya activa confirma 200 sin comprobar otra plaza. Conserva ID, nombre, clave normalizada e historial. Éxito y 409 de estado/cupo quedan en recibo exacto. Replay autorizado no reevalúa rol, estado o cupo ni aplica otra transición. Refrescar después; no instalar el Store histórico. Desde 0.5 una intención nueva requiere uso ordinario del solicitante en el grupo: 409 group_access_restricted, sin mutación. El recibo confirmado se recupera antes de esta restricción y no vuelve a ejecutar la escritura.",
         "security": [
           {
             "bearerSession": []
@@ -1741,6 +1744,191 @@
           }
         }
       }
+    },
+    "/v1/account/subscription": {
+      "get": {
+        "operationId": "getAccountSubscription",
+        "summary": "Consultar suscripción y catálogo permitido.",
+        "description": "Sesión y cuenta del servicio. Consulta autoridad verificada; sin configuración devuelve isConfigured false, catálogo vacío y ningún derecho nuevo. Un derecho de Production ya acreditado conserva solo su final previamente verificado, sin extensión por ausencia de conexión/configuración. Nunca concede premium a partir del cliente.",
+        "security": [
+          {
+            "bearerSession": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Resultado confirmado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Subscription"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        }
+      }
+    },
+    "/v1/account/subscription/transactions": {
+      "post": {
+        "operationId": "submitAppStoreTransaction",
+        "summary": "Verificar y reconocer una transacción StoreKit.",
+        "description": "Verifica firma/cadena Apple, aplicación, entorno, producto, cuenta y estado actual. appAccountToken debe corresponder a la sesión; cadena original vinculada de manera exclusiva. Reconoce la transacción presentada; no reactiva por una transacción vieja ni por orden de llegada. No acepta otro plan de cliente.",
+        "security": [
+          {
+            "bearerSession": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Resultado confirmado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppStoreTransactionAcknowledgement"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "413": {
+            "$ref": "#/components/responses/Error413"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppStoreTransactionRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/account/free-group": {
+      "post": {
+        "operationId": "selectFreeGroup",
+        "summary": "Elegir el grupo de uso gratuito completo.",
+        "description": "Solo pertenencia vigente en grupo abierto. Primer cambio manual desde fallback disponible; cambios efectivos cada treinta días móviles, salvo pérdida de selección sin reset. Mismo grupo es no-op y no renueva plazo. Recibo por cuenta/ruta/cuerpo/operationId; replay exacto antes de nueva política. iOS refresca autoridad y grupos tras respuesta histórica.",
+        "security": [
+          {
+            "bearerSession": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Resultado confirmado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountCapabilities"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "413": {
+            "$ref": "#/components/responses/Error413"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FreeGroupSelectionRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/app-store/notifications": {
+      "post": {
+        "operationId": "receiveAppStoreNotification",
+        "summary": "Recibir una notificación Apple V2 firmada.",
+        "description": "Ruta pública HTTPS con verificación criptográfica y contexto de aplicación/entorno. Persistir/deduplicar por notificationUUID y reconciliar mediante la API actual de Apple antes de reconocer. 204 sin body tras éxito; 400 evidencia inválida; 503 ausencia de configuración o fallo temporal permite reintento de Apple. Llegada duplicada o fuera de orden no reactiva un estado viejo. No concede derecho a una cuenta por un token arbitrario.",
+        "security": [],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppStoreNotificationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Notificación verificada, reconciliada y reconocida; sin body."
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "413": {
+            "$ref": "#/components/responses/Error413"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1792,6 +1980,9 @@
           },
           "administratorUserId": {
             "$ref": "#/components/schemas/UUID"
+          },
+          "capabilities": {
+            "$ref": "#/components/schemas/GroupAccessCapabilities"
           }
         },
         "required": [
@@ -1802,7 +1993,7 @@
           "administratorUserId"
         ],
         "additionalProperties": false,
-        "description": "Grupo activo. creatorUserId es histórico e inmutable; administratorUserId identifica al administrador vigente, miembro del grupo. Un grupo cerrado no es accesible como Group."
+        "description": "Grupo activo. creatorUserId es histórico e inmutable; administratorUserId identifica al administrador vigente, miembro del grupo. Un grupo cerrado no es accesible como Group. Consultas nuevas 0.5 incluyen capabilities. Es opcional estructuralmente para recibos históricos exactos 0.2–0.4; ausencia no acredita permisos y obliga a consultar autoridad vigente."
       },
       "User": {
         "type": "object",
@@ -2710,7 +2901,14 @@
               "store_limit_reached",
               "pending_item_limit_reached",
               "store_archived",
-              "store_not_empty"
+              "store_not_empty",
+              "invalid_app_store_transaction",
+              "transaction_account_mismatch",
+              "transaction_already_bound",
+              "free_group_change_cooldown",
+              "group_access_restricted",
+              "subscription_unavailable",
+              "invalid_app_store_notification"
             ]
           },
           "message": {
@@ -2744,7 +2942,7 @@
           "requestId"
         ],
         "additionalProperties": false,
-        "description": "Conflictos definitivos persistidos cuando la operación tiene operationId. Cupos y estado de archivo no eliminan datos ni crean altas parciales. Liberar capacidad requiere otra intención explícita; replay conserva status/body. already_in_group solo para recibos históricos."
+        "description": "Conflictos definitivos persistidos cuando la operación tiene operationId. Cupos y estado de archivo no eliminan datos ni crean altas parciales. Liberar capacidad requiere otra intención explícita; replay conserva status/body. already_in_group solo para recibos históricos. Los 409 de cambio gratuito y acceso restringido son definitivos y se conservan en operaciones con operationId. Fallo temporal de compras usa subscription_unavailable sin conceder premium."
       },
       "PendingItem": {
         "allOf": [
@@ -3225,7 +3423,7 @@
           "enforced"
         ],
         "additionalProperties": false,
-        "description": "Cupo de admisión personal: free1, premium5. Esta unidad solo resuelve free en producción; premium se inyecta en pruebas. No restringe uso ordinario de pertenencias existentes ni hereda el plan del administrador."
+        "description": "Cupo personal: gratuito 1, premium verificado 5. No hereda el plan del administrador. El máximo puede ser menor que membershipCount porque perder premium conserva las pertenencias. canCreateGroup/canJoinGroup incorporan la transición sin admisiones."
       },
       "AccountCapabilities": {
         "type": "object",
@@ -3252,16 +3450,68 @@
               "groupsPerAccount"
             ],
             "additionalProperties": false
+          },
+          "premiumActive": {
+            "type": "boolean"
+          },
+          "premiumExpiresAt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Timestamp"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "transitionEndsAt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Timestamp"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "freeGroupId": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UUID"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "freeGroupChangeAvailableAt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Timestamp"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "canChangeFreeGroup": {
+            "type": "boolean"
           }
         },
         "required": [
           "membershipCount",
           "canCreateGroup",
           "canJoinGroup",
-          "limits"
+          "limits",
+          "premiumActive",
+          "premiumExpiresAt",
+          "transitionEndsAt",
+          "freeGroupId",
+          "freeGroupChangeAvailableAt",
+          "canChangeFreeGroup"
         ],
         "additionalProperties": false,
-        "description": "Pertenencias vigentes a grupos abiertos y capacidad para crear o incorporarse a uno adicional. Ambas acciones son posibles si membershipCount es menor que maximum. Aceptar una invitación al propio grupo no consume plaza aunque canJoinGroup sea false. Se reevalúa cada admisión en el servidor."
+        "description": "Pertenencias y admisión personal evaluadas por servidor. Premium vigente 5; gratuito 1. Durante transición ordinaria de siete días conserva uso de pertenencias existentes pero no admite otra, aun con cero. freeGroupId es elección persistida por cuenta, distinta del selector local. Primer fallback no consume elección manual; cambios efectivos cada treinta días, salvo sustitución del grupo perdido sin reset del plazo. transitionEndsAt es null mientras premium está activo. Capacidad informativa revalidada al escribir."
       },
       "GroupPage": {
         "type": "object",
@@ -3357,7 +3607,7 @@
           "canCreateStore"
         ],
         "additionalProperties": false,
-        "description": "Snapshot informativo del grupo abierto. capacityOwnerUserId es su administrador actual. canCreateStore equivale a activeStoreCount menor que el máximo de tiendas; no crea una ruta independiente de alta. Cuenta real aunque exceda el límite; cada escritura revalida."
+        "description": "Snapshot del grupo abierto con conteo real y límites del administrador vigente. canCreateStore requiere acceso ordinario del solicitante y plaza activa; no autoriza por sí solo ni crea ruta independiente. Un grupo restringido conserva consulta y recuperación sin crecimiento."
       },
       "StoreCapabilities": {
         "type": "object",
@@ -3378,7 +3628,7 @@
           "canRestore"
         ],
         "additionalProperties": false,
-        "description": "canAddItems: activa y pendientes menores que el máximo, sin depender del cupo de tiendas. canArchive: administrador, activa y cero pendientes. canRestore: administrador, archivada y plaza activa. No bloquea correcciones sin crecimiento, compras ni cancelaciones."
+        "description": "canAddItems: acceso ordinario, activa y pendientes menores que el máximo. canArchive: administrador, activa y cero pendientes, incluso restringido. canRestore: administrador, acceso ordinario, archivada y plaza activa. Consulta/cancelación permanecen disponibles; editar y nueva compra requieren uso ordinario del grupo."
       },
       "StoreStateRequest": {
         "type": "object",
@@ -3391,6 +3641,170 @@
           "operationId"
         ],
         "additionalProperties": false
+      },
+      "GroupAccessCapabilities": {
+        "type": "object",
+        "properties": {
+          "canUseShopping": {
+            "type": "boolean"
+          },
+          "isFreeGroup": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "canUseShopping",
+          "isFreeGroup"
+        ],
+        "additionalProperties": false,
+        "description": "Acceso ordinario del solicitante y elección gratuita de su cuenta. Las consultas y acciones para traspasar/salir/cerrar/cancelar/archivar/revocar siguen disponibles según su rol aunque canUseShopping sea false."
+      },
+      "FreeGroupSelectionRequest": {
+        "type": "object",
+        "properties": {
+          "operationId": {
+            "$ref": "#/components/schemas/UUID"
+          },
+          "groupId": {
+            "$ref": "#/components/schemas/UUID"
+          }
+        },
+        "required": [
+          "operationId",
+          "groupId"
+        ],
+        "additionalProperties": false
+      },
+      "SubscriptionState": {
+        "type": "string",
+        "enum": [
+          "free",
+          "subscribed",
+          "in_grace_period",
+          "expired",
+          "revoked"
+        ]
+      },
+      "Subscription": {
+        "type": "object",
+        "properties": {
+          "appAccountToken": {
+            "$ref": "#/components/schemas/UUID"
+          },
+          "isConfigured": {
+            "type": "boolean"
+          },
+          "productIDs": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "maxItems": 2,
+            "uniqueItems": true
+          },
+          "state": {
+            "$ref": "#/components/schemas/SubscriptionState"
+          },
+          "expiresAt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Timestamp"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "gracePeriodExpiresAt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Timestamp"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "autoRenewEnabled": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "verifiedAt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Timestamp"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "appAccountToken",
+          "isConfigured",
+          "productIDs",
+          "state",
+          "expiresAt",
+          "gracePeriodExpiresAt",
+          "autoRenewEnabled",
+          "verifiedAt"
+        ],
+        "additionalProperties": false,
+        "description": "Estado de la cuenta del servicio tras verificación del servidor. appAccountToken estable vincula la compra StoreKit a esta cuenta. Catálogo permitido mensual/anual; precios se obtienen de StoreKit. isConfigured no acredita disponibilidad comercial. Fechas RFC3339 del servidor/Apple; ausencias explícitas null."
+      },
+      "AppStoreTransactionRequest": {
+        "type": "object",
+        "properties": {
+          "signedTransaction": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 65536
+          }
+        },
+        "required": [
+          "signedTransaction"
+        ],
+        "additionalProperties": false,
+        "description": "JWS de StoreKit. Límite estructural, sin implicar validez criptográfica. No acepta isPremium, fecha, productID libre, entorno ni token de cuenta suministrado como autoridad independiente."
+      },
+      "AppStoreTransactionAcknowledgement": {
+        "type": "object",
+        "properties": {
+          "subscription": {
+            "$ref": "#/components/schemas/Subscription"
+          },
+          "acknowledgedTransactionId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "subscription",
+          "acknowledgedTransactionId"
+        ],
+        "additionalProperties": false,
+        "description": "Reconocimiento de la transacción presentada, distinto de escoger la renovación más reciente como estado. iOS compara acknowledgedTransactionId antes de finish; la deduplicación y la vinculación se hacen por identidad verificada de Apple, sin operationId de compra ficticio."
+      },
+      "AppStoreNotificationRequest": {
+        "type": "object",
+        "properties": {
+          "signedPayload": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 65536
+          }
+        },
+        "required": [
+          "signedPayload"
+        ],
+        "additionalProperties": false,
+        "description": "JWS de notificación Apple V2. No requiere bearer; la autoridad proviene de verificar la firma/cadena, aplicación y entorno. Nunca se confía en el contenido solo decodificado."
       }
     },
     "responses": {

@@ -29,7 +29,10 @@ struct ShoppingService: Sendable {
             ) {
                 return replay
             }
-            guard try await membershipCount(user: user, on: sql) < accountCapacity.maximum(for: user) else {
+            let access = try await accountCapacity.access(for: user, on: sql)
+            guard access.canAdmitMembership,
+                try await membershipCount(user: user, on: sql) < access.limits.groups
+            else {
                 let conflict = try APIReply(status: .conflict, json: Self.groupLimitReached.json)
                 return try await save(
                     conflict,
@@ -46,7 +49,7 @@ struct ShoppingService: Sendable {
                 VALUES (\(bind: id),\(bind: normalized),\(bind: user),\(bind: user),\(bind: now))
                 """).run()
             try await insertMembership(user, group: id, on: sql)
-            let group = try await loadShoppingGroup(id: id, on: sql)
+            let group = try await loadGroup(id: id, user: user, on: sql)
             return try await save(
                 APIReply(status: .created, json: group.json),
                 user: user,
@@ -78,6 +81,14 @@ struct ShoppingService: Sendable {
                 on: sql
             ) {
                 return replay
+            }
+            if let restriction = try await restrictedGroupReply(
+                user: user,
+                group: group,
+                operation: operation,
+                on: sql
+            ) {
+                return restriction
             }
             try items.forEach { try $0.validateNewWriteLimits() }
             let plan: StoreWritePlan
@@ -127,6 +138,7 @@ struct ShoppingService: Sendable {
         return try await database.transaction { transaction in
             let sql = try shoppingSQL(transaction)
             try await requireAdministrator(user, group: group, on: sql)
+            guard try await canUseShopping(user: user, group: group, on: sql) else { throw Self.groupAccessRestricted }
             let id = UUID()
             let secret = ShoppingSecret.generate()
             let now = try await databaseClock(sql)
@@ -194,7 +206,10 @@ struct ShoppingService: Sendable {
                 guard expires > now else { throw Self.invitationProblem("invitation_expired") }
                 if accepting {
                     if !member {
-                        guard try await membershipCount(user: user, on: sql) < accountCapacity.maximum(for: user) else {
+                        let access = try await accountCapacity.access(for: user, on: sql)
+                        guard access.canAdmitMembership,
+                            try await membershipCount(user: user, on: sql) < access.limits.groups
+                        else {
                             throw Self.groupLimitReached
                         }
                         try await insertMembership(user, group: groupID, on: sql)
@@ -204,7 +219,7 @@ struct ShoppingService: Sendable {
                         """).run()
                 }
             }
-            let group = try await loadShoppingGroup(id: groupID, on: sql)
+            let group = try await loadGroup(id: groupID, user: user, on: sql)
             if accepting {
                 return try APIReply(status: .ok, json: group.json)
             }
@@ -269,7 +284,7 @@ extension ShoppingService {
     func requireAdministrator(_ user: UUID, group: UUID, on sql: any SQLDatabase) async throws {
         try await lockGroup(group, on: sql)
         try await requireMembership(user, group: group, on: sql)
-        let actual = try await loadShoppingGroup(id: group, on: sql)
+        let actual = try await loadGroup(id: group, user: user, on: sql)
         guard actual.administratorUserId == user.uuidString.lowercased() else {
             throw APIProblem(
                 status: .forbidden,
@@ -377,6 +392,14 @@ extension ShoppingService {
             ) {
                 return replay
             }
+            if let restriction = try await restrictedGroupReply(
+                user: user,
+                group: group,
+                operation: operation,
+                on: sql
+            ) {
+                return restriction
+            }
             var conflicts: [APIJSON] = []
             // Stable row locking prevents inverted selections from deadlocking across buyers.
             for item in ordered {
@@ -461,6 +484,14 @@ extension ShoppingService {
                 on: sql
             ) {
                 return replay
+            }
+            if replacement != nil, let restriction = try await restrictedGroupReply(
+                user: user,
+                group: group,
+                operation: operation,
+                on: sql
+            ) {
+                return restriction
             }
             try replacement?.validateNewWriteLimits()
             guard let row = try await sql.raw("""

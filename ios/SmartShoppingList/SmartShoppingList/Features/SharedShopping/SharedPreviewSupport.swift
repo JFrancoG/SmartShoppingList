@@ -34,6 +34,11 @@ extension PreviewTrait where T == Preview.ViewTraits {
 enum SharedPreviewState: CaseIterable, Hashable {
     case group
     case multipleGroups
+    case premiumTransition
+    case premiumRestricted
+    case premiumActive
+    case premiumGrace
+    case premiumVerification
     case signedOut
     case signInUnavailable
     case invitation
@@ -79,6 +84,10 @@ struct SharedPreviewPresentation {
     let isReviewPresented: Bool
     let isInvitationsPresented: Bool
     let reviewSnapshot: ShoppingDraftSnapshot?
+    let subscriptionStatus: SharedSubscriptionStatus?
+    let subscriptionProducts: [SharedSubscriptionProduct]
+    let subscriptionVerification: PendingSubscriptionVerification?
+    let subscriptionNotice: LocalizedStringResource?
 }
 
 extension SharedPreviewPresentation {
@@ -110,6 +119,10 @@ extension SharedPreviewPresentation {
         isReviewPresented = model.isReviewPresented
         isInvitationsPresented = model.isInvitationsPresented
         reviewSnapshot = state == .review ? fixture.draft : nil
+        subscriptionStatus = model.premium.status
+        subscriptionProducts = model.premium.products
+        subscriptionVerification = model.premium.pendingVerification
+        subscriptionNotice = model.premium.notice
     }
 }
 
@@ -294,13 +307,19 @@ enum SharedPreviewSupport {
             ),
             sourceDraft: fixture.draft
         ) : nil
-        if state == .multipleGroups {
+        let isPremiumPreview = [.premiumActive, .premiumGrace, .premiumVerification].contains(state)
+        if state == .multipleGroups || state == .premiumTransition || state == .premiumRestricted || isPremiumPreview {
             session.activeGroupID = fixture.group.id
         }
         let credentials = MemorySharedCredentialStore(
             session: state == .signedOut || state == .signInUnavailable || state == .unconfigured ? nil : session,
             invitation: state == .invitation || state == .signedOut ? fixture.pendingInvitation : nil,
-            operation: pending
+            operation: pending,
+            subscriptionVerification: state == .premiumVerification ? PendingSubscriptionVerification(
+                userID: session.user.id,
+                transactionID: "1001",
+                request: VerifySharedSubscriptionRequest(signedTransaction: "preview-verification-only")
+            ) : nil
         )
         let managementScenario: GroupManagementPreviewScenario = switch state {
         case .groupManagementOwner: .owner
@@ -313,15 +332,17 @@ enum SharedPreviewSupport {
             signInUnavailable: state == .signInUnavailable,
             managementScenario: managementScenario
         )
-        if state == .multipleGroups {
+        if state == .multipleGroups || state == .premiumTransition || state == .premiumRestricted || isPremiumPreview {
+            api?.premiumScenario = state == .multipleGroups ? nil : state
             api?.additionalGroups = [SharedGroup(
                 id: fixture.invitation.id,
-                name: fixture.group.name,
+                name: state == .multipleGroups ? fixture.group.name : "Familia",
                 creatorUserId: session.user.id,
                 createdAt: fixture.group.createdAt
             )]
         }
         let configuration = state == .unconfigured ? nil : fixture.configuration
+        let subscriptionStore: (any SharedSubscriptionStore)? = isPremiumPreview ? PreviewPremiumStore() : nil
         #if DEBUG
         if let presentation {
             return SharedShoppingViewModel(
@@ -330,7 +351,8 @@ enum SharedPreviewSupport {
                 configuration: configuration,
                 credentials: credentials,
                 draft: draft,
-                storeQuery: StoreQueryViewModel(speech: PreviewStoreQuerySpeech())
+                storeQuery: StoreQueryViewModel(speech: PreviewStoreQuerySpeech()),
+                subscriptionStore: subscriptionStore
             )
         }
         #endif
@@ -339,7 +361,8 @@ enum SharedPreviewSupport {
             configuration: configuration,
             credentials: credentials,
             draft: draft,
-            storeQuery: StoreQueryViewModel(speech: PreviewStoreQuerySpeech())
+            storeQuery: StoreQueryViewModel(speech: PreviewStoreQuerySpeech()),
+            subscriptionStore: subscriptionStore
         )
     }
 
@@ -349,8 +372,12 @@ enum SharedPreviewSupport {
         state: SharedPreviewState
     ) async {
         await model.load()
+        if [.premiumActive, .premiumGrace, .premiumVerification].contains(state) {
+            await model.loadPremium()
+        }
         switch state {
-        case .group, .multipleGroups:
+        case .group, .multipleGroups, .premiumTransition, .premiumRestricted,
+             .premiumActive, .premiumGrace, .premiumVerification:
             model.selectedStoreID = fixture.stores.first?.id
             await model.loadSelectedStore()
             if let first = model.items.first {
@@ -379,6 +406,8 @@ private final class PreviewSharedShoppingAPI: SharedShoppingAPI {
     let user: SharedUser
     let signInUnavailable: Bool
     var additionalGroups: [SharedGroup] = []
+    var premiumScenario: SharedPreviewState? = nil
+    private var premiumIsActive: Bool { premiumScenario == .premiumActive || premiumScenario == .premiumGrace }
     private let managementScenario: GroupManagementPreviewScenario
     private var storedStores: [SharedStore]
     private var storedArchivedStores: [SharedStore]
@@ -414,21 +443,81 @@ private final class PreviewSharedShoppingAPI: SharedShoppingAPI {
     func currentUser(token: String) async throws -> SharedUser {
         var result = user
         let count = (user.group == nil ? 0 : 1) + additionalGroups.count
+        let maximum = premiumIsActive ? 5 : (premiumScenario != nil || additionalGroups.isEmpty ? 1 : 3)
+        let permitsGrowth = premiumIsActive || premiumScenario == nil
         result.accountCapabilities = try SharedAccountCapabilities(
             membershipCount: count,
-            canCreateGroup: count < (additionalGroups.isEmpty ? 1 : 3),
-            canJoinGroup: count < (additionalGroups.isEmpty ? 1 : 3),
-            limits: SharedAccountLimits(groupsPerAccount: SharedResourceLimit(
-                maximum: additionalGroups.isEmpty ? 1 : 3,
-                enforced: true
-            ))
+            canCreateGroup: permitsGrowth && count < maximum,
+            canJoinGroup: permitsGrowth && count < maximum,
+            limits: SharedAccountLimits(groupsPerAccount: SharedResourceLimit(maximum: maximum, enforced: true)),
+            membershipAccess: premiumScenario.map { scenario in
+                let premiumExpiry: Date
+                let transitionEnd: Date?
+                if premiumIsActive {
+                    let expiryTimestamp = scenario == .premiumGrace ? 1_792_800_000.0 : 1_792_972_800.0
+                    premiumExpiry = Date(timeIntervalSince1970: expiryTimestamp)
+                    transitionEnd = nil
+                } else if scenario == .premiumTransition {
+                    premiumExpiry = Date(timeIntervalSince1970: 1_791_417_600)
+                    transitionEnd = Date(timeIntervalSince1970: 1_792_022_400)
+                } else {
+                    premiumExpiry = fixture.group.createdAt
+                    transitionEnd = fixture.group.createdAt.addingTimeInterval(7 * 86_400)
+                }
+                return SharedMembershipAccess(
+                    premiumActive: premiumIsActive,
+                    premiumExpiresAt: premiumExpiry,
+                    transitionEndsAt: transitionEnd,
+                    freeGroupId: additionalGroups.first?.id,
+                    freeGroupChangeAvailableAt: scenario == .premiumRestricted
+                        ? Date(timeIntervalSince1970: 1_792_022_400) : nil,
+                    canChangeFreeGroup: scenario != .premiumRestricted
+                )
+            }
         )
         return result
     }
     @MainActor
     func groups(token: String) async throws -> [SharedGroup] {
-        (user.group.map { [$0] } ?? []) + additionalGroups
+        ((user.group.map { [$0] } ?? []) + additionalGroups).map(projectedGroup)
     }
+    private func projectedGroup(_ original: SharedGroup) -> SharedGroup {
+        guard let premiumScenario else { return original }
+        var group = original
+        group.capabilities = SharedGroupAccess(
+            canUseShopping: premiumIsActive || premiumScenario == .premiumTransition
+                || group.id == additionalGroups.first?.id,
+            isFreeGroup: group.id == additionalGroups.first?.id
+        )
+        return group
+    }
+
+    @MainActor
+    func subscription(token: String) async throws -> SharedSubscriptionStatus {
+        guard let scenario = premiumScenario,
+              [.premiumActive, .premiumGrace, .premiumVerification].contains(scenario) else {
+            throw SharedAPIError.configuration
+        }
+        let inGrace = premiumScenario == .premiumGrace
+        return SharedSubscriptionStatus(
+            appAccountToken: user.id,
+            isConfigured: true,
+            productIDs: ["preview.premium.monthly", "preview.premium.annual"],
+            state: inGrace ? .inGracePeriod : premiumIsActive ? .subscribed : .free,
+            expiresAt: premiumIsActive ? Date(timeIntervalSince1970: inGrace ? 1_791_417_600 : 1_792_972_800) : nil,
+            gracePeriodExpiresAt: inGrace ? Date(timeIntervalSince1970: 1_792_800_000) : nil,
+            autoRenewEnabled: premiumIsActive ? true : nil,
+            verifiedAt: premiumIsActive ? Date(timeIntervalSince1970: 1_791_504_000) : nil
+        )
+    }
+
+    func verifySubscription(
+        _ request: VerifySharedSubscriptionRequest,
+        token: String
+    ) async throws -> SharedSubscriptionAcknowledgement {
+        throw SharedAPIError.server(status: 503, code: "subscription_unavailable", requestID: nil, retryAfter: nil)
+    }
+
     func logout(token: String) async throws {}
     func createGroup(_ request: CreateGroupRequest, token: String) async throws -> SharedGroup {
         throw SharedAPIError.configuration
@@ -443,6 +532,7 @@ private final class PreviewSharedShoppingAPI: SharedShoppingAPI {
             SharedGroupMember(id: fixture.invitation.id, displayName: nil)
         ]
     }
+    @MainActor
     func groupAdministration(groupID: UUID, token: String) async throws -> SharedGroupAdministration {
         let isRecipient = managementScenario == .recipient
         let transfer = isRecipient ? SharedGroupTransfer(
@@ -456,7 +546,7 @@ private final class PreviewSharedShoppingAPI: SharedShoppingAPI {
             resolvedAt: nil
         ) : nil
         return SharedGroupAdministration(
-            group: fixture.group,
+            group: projectedGroup(fixture.group),
             memberCount: managementScenario == .solo ? 1 : 3,
             pendingTransfer: transfer,
             capabilities: SharedGroupCapabilities(
@@ -657,4 +747,35 @@ private struct PreviewStoreQuerySpeech: SpeechCapturing {
     }
     func finish() async throws {}
     func cancel() async {}
+}
+
+/// Preview metadata is explicitly illustrative; no StoreKit or API call is made by this service.
+private struct PreviewPremiumStore: SharedSubscriptionStore {
+    func products(ids: [String]) async throws -> [SharedSubscriptionProduct] {
+        [
+            SharedSubscriptionProduct(
+                id: "preview.premium.monthly",
+                displayName: String(localized: "Example monthly premium"),
+                displayPrice: String(localized: "Example price"),
+                period: .monthly,
+                subscriptionGroupID: "preview-only"
+            ),
+            SharedSubscriptionProduct(
+                id: "preview.premium.annual",
+                displayName: String(localized: "Example annual premium"),
+                displayPrice: String(localized: "Example price"),
+                period: .annual,
+                subscriptionGroupID: "preview-only"
+            )
+        ]
+    }
+    func purchase(id: String, appAccountToken: UUID) async throws -> SharedSubscriptionPurchaseResult { .cancelled }
+    func restore() async throws {}
+    func transactions() async throws -> [SharedStoreTransaction] { [] }
+    func updates() async -> AsyncStream<SharedStoreTransaction> {
+        AsyncStream { continuation in
+            continuation.finish()
+        }
+    }
+    func finish(transactionID: String) async {}
 }

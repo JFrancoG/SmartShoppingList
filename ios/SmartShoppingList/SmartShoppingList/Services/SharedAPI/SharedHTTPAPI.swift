@@ -83,7 +83,38 @@ actor SharedHTTPAPI: SharedShoppingAPI {
     }
 
     func groups(token: String) async throws -> [SharedGroup] {
-        try await pages(GroupPage.self, path: "v1/groups", token: token)
+        let groups = try await pages(GroupPage.self, path: "v1/groups", token: token)
+        guard groups.allSatisfy({ $0.capabilities != nil }) else { throw SharedAPIError.invalidResponse }
+        return groups
+    }
+
+    func selectFreeGroup(_ request: SelectFreeGroupRequest, token: String) async throws -> SharedAccountCapabilities {
+        let result: SharedAccountCapabilities = try await send(
+            path: "v1/account/free-group",
+            method: "POST",
+            body: request,
+            token: token,
+            status: 200
+        )
+        guard result.membershipAccess?.freeGroupId == request.groupId else { throw SharedAPIError.invalidResponse }
+        return result
+    }
+
+    func subscription(token: String) async throws -> SharedSubscriptionStatus {
+        try await get(path: "v1/account/subscription", token: token)
+    }
+
+    func verifySubscription(
+        _ request: VerifySharedSubscriptionRequest,
+        token: String
+    ) async throws -> SharedSubscriptionAcknowledgement {
+        try await send(
+            path: "v1/account/subscription/transactions",
+            method: "POST",
+            body: request,
+            token: token,
+            status: 200
+        )
     }
 
     func logout(token: String) async throws {

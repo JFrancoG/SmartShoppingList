@@ -21,6 +21,11 @@ struct SharedGroupSelector: View {
                     ForEach(viewModel.groups) { group in
                         VStack(alignment: .leading) {
                             Text(group.name)
+                            if group.capabilities?.isFreeGroup == true {
+                                Text("Free group").font(.caption).foregroundStyle(.secondary)
+                            } else if group.capabilities?.canUseShopping == false {
+                                Text("Consultation only").font(.caption).foregroundStyle(.secondary)
+                            }
                             if viewModel.groupNeedsIdentifier(group) {
                                 Text(group.id.uuidString)
                                     .font(.caption)
@@ -36,6 +41,9 @@ struct SharedGroupSelector: View {
                 .disabled(!viewModel.canSelectGroup)
                 .accessibilityHint("Choose the group for shopping and new submissions. Your local draft is kept.")
             } footer: {
+                if viewModel.hasRestrictedGroup {
+                    Text("Choose this as your free group or renew premium to use its shopping list. Your group and draft are kept.")
+                }
                 if viewModel.pendingOperation != nil {
                     Text("Resolve the saved submission before changing groups. It keeps its original destination.")
                 } else if viewModel.group == nil {
