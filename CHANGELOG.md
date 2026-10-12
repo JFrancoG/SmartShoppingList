@@ -68,6 +68,8 @@
 
 ### Fixed
 
+- 2026-10-12 | 🐛 fix(server): diagnose invalid Apple startup configuration safely
+
 - 2026-10-12 | 🐛 fix(server): preserve resource bundles in server image
 
 - 2026-10-12 | 🐛 fix(server): restrict todo routes to local environments

@@ -42,7 +42,7 @@ Railway [sustituye el ENTRYPOINT al definir ese comando](https://docs.railway.co
 
 La imagen debe conservar los bundles de recursos generados por SwiftPM junto al ejecutable. Swift 6.4 genera `SmartShoppingListServer_SmartShoppingListServer.bundle` en Linux; el certificado público `AppleRootCA-G3.cer` debe permanecer dentro de ese bundle. El Dockerfile copia los directorios `.bundle` y `.resources` y rechaza la construcción si falta el certificado obligatorio. No copiarlo suelto ni sustituir la raíz de confianza para resolver un error de arranque.
 
-El job `Server runtime image (Linux amd64)` comprueba la imagen Release final con las nueve variables de compras completas, una clave P-256 temporal y PostgreSQL aislado. La red de la prueba es interna: no usa secretos reales ni contacta con Apple. Comprueba carga de recursos, migraciones, respuesta de `/hello`, autenticación requerida y cierre de `/todos`. Se puede ejecutar desde la raíz del repositorio:
+El job `Server runtime image (Linux amd64)` comprueba la imagen Release final con las nueve variables de compras completas, Sign in with Apple y el cifrado de tokens configurados mediante una clave P-256 y una clave AES de 32 bytes temporales, además de PostgreSQL aislado. La red de la prueba es interna: no usa secretos reales ni contacta con Apple. Comprueba carga de recursos, carga de las dos familias de identidad, migraciones, respuesta de `/hello`, autenticación requerida y cierre de `/todos`. Se puede ejecutar desde la raíz del repositorio:
 
 ```sh
 docker build --tag smartshoppinglistserver:smoke server

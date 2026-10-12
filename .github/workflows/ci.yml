@@ -96,7 +96,7 @@ jobs:
         run: |
           mkdir -p ci-logs
           docker build --tag smartshoppinglistserver:ci server 2>&1 | tee ci-logs/image-build.log
-      - name: Verify image startup with App Store enabled
+      - name: Verify image startup with Apple configuration enabled
         run: bash scripts/check_server_image.sh smartshoppinglistserver:ci 2>&1 | tee ci-logs/image-startup.log
       - name: Preserve image logs
         if: ${{ !cancelled() }}

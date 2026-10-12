@@ -1,4 +1,5 @@
 import Foundation
+import Logging
 import Vapor
 
 struct RefreshTokenVault: Sendable {
@@ -10,32 +11,79 @@ struct RefreshTokenVault: Sendable {
     private let activeVersion: String
     private let keys: [String: SymmetricKey]
 
-    init(activeVersion: String, keyData: [String: Data]) throws {
-        guard !activeVersion.isEmpty, keyData[activeVersion] != nil,
-            keyData.allSatisfy({ !$0.key.isEmpty && $0.value.count == 32 })
-        else {
-            throw AppleGatewayError.invalidConfiguration
+    init(activeVersion: String, keyData: [String: Data], logger: Logger? = nil) throws {
+        guard !activeVersion.isEmpty else {
+            throw AppleStartupDiagnostics.invalidConfiguration(
+                logger,
+                field: "APPLE_REFRESH_ACTIVE_KEY_VERSION",
+                rule: "must not be empty."
+            )
+        }
+        guard keyData[activeVersion] != nil else {
+            throw AppleStartupDiagnostics.invalidConfiguration(
+                logger,
+                field: "APPLE_REFRESH_ACTIVE_KEY_VERSION",
+                rule: "must identify a key present in APPLE_REFRESH_KEYS_JSON."
+            )
+        }
+        guard keyData.keys.allSatisfy({ !$0.isEmpty }) else {
+            throw AppleStartupDiagnostics.invalidConfiguration(
+                logger,
+                field: "APPLE_REFRESH_KEYS_JSON",
+                rule: "key versions must not be empty."
+            )
+        }
+        guard keyData.values.allSatisfy({ $0.count == 32 }) else {
+            throw AppleStartupDiagnostics.invalidConfiguration(
+                logger,
+                field: "APPLE_REFRESH_KEYS_JSON",
+                rule: "each decoded key must contain exactly 32 bytes."
+            )
         }
         self.activeVersion = activeVersion
         self.keys = keyData.mapValues { SymmetricKey(data: $0) }
     }
 
-    static func load(environment: (String) -> String? = Environment.get) throws -> Self? {
+    static func load(
+        logger: Logger? = nil,
+        environment: (String) -> String? = Environment.get
+    ) throws -> Self? {
         guard let version = environment("APPLE_REFRESH_ACTIVE_KEY_VERSION") else {
-            guard environment("APPLE_REFRESH_KEYS_JSON") == nil else { throw AppleGatewayError.invalidConfiguration }
+            guard environment("APPLE_REFRESH_KEYS_JSON") == nil else {
+                throw AppleStartupDiagnostics.invalidConfiguration(
+                    logger,
+                    field: "APPLE_REFRESH_ACTIVE_KEY_VERSION",
+                    rule: "is required when APPLE_REFRESH_KEYS_JSON is present."
+                )
+            }
             return nil
         }
-        guard let json = environment("APPLE_REFRESH_KEYS_JSON"),
-            let encodedKeys = try? JSONDecoder().decode([String: String].self, from: Data(json.utf8))
-        else {
-            throw AppleGatewayError.invalidConfiguration
+        guard let json = environment("APPLE_REFRESH_KEYS_JSON") else {
+            throw AppleStartupDiagnostics.invalidConfiguration(
+                logger,
+                field: "APPLE_REFRESH_KEYS_JSON",
+                rule: "is required when APPLE_REFRESH_ACTIVE_KEY_VERSION is present."
+            )
+        }
+        guard let encodedKeys = try? JSONDecoder().decode([String: String].self, from: Data(json.utf8)) else {
+            throw AppleStartupDiagnostics.invalidConfiguration(
+                logger,
+                field: "APPLE_REFRESH_KEYS_JSON",
+                rule: "must be a JSON object mapping key versions to Base64 strings."
+            )
         }
         var decoded: [String: Data] = [:]
         for (version, encoded) in encodedKeys {
-            guard let bytes = Data(base64Encoded: encoded) else { throw AppleGatewayError.invalidConfiguration }
+            guard let bytes = Data(base64Encoded: encoded) else {
+                throw AppleStartupDiagnostics.invalidConfiguration(
+                    logger,
+                    field: "APPLE_REFRESH_KEYS_JSON",
+                    rule: "must contain only valid Base64-encoded keys."
+                )
+            }
             decoded[version] = bytes
         }
-        return try Self(activeVersion: version, keyData: decoded)
+        return try Self(activeVersion: version, keyData: decoded, logger: logger)
     }
 
     /// Bind ciphertext to its grant as well as its version, preventing database-row substitution.
