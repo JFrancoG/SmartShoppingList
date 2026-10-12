@@ -71,6 +71,37 @@ Configurar App Store Server Notifications **V2** con el origen HTTPS del entorno
 
 La integración distingue renovación cancelada de caducidad, gracia acreditada de transición de grupos y reembolso/revocación de fin ordinario. La política propia de siete días y treinta días se aplica en el servidor, con fechas persistidas compartidas entre dispositivos. No depende de configurar la gracia en Apple para conservar correctamente el grupo gratuito.
 
+## Instalación iOS para el catálogo real de Sandbox
+
+El target conserva `com.plusprojects.SmartShoppingList` y el equipo de firma de Apple. **Debug** usa
+`https://smartshoppinglistsandbox-sandbox.up.railway.app` para API e invitaciones y se muestra como **Smart List Sandbox**.
+**Release** conserva el origen de producción y el nombre **Smart List**. `SHARED_ASSOCIATED_DOMAIN` selecciona el dominio
+correspondiente en los entitlements. Los valores pertenecen al artefacto compilado: abrir desde el icono o mediante Siri
+no depende de variables temporales de ejecución de Xcode.
+
+La fábrica separa sesión, ambas invitaciones, operación pendiente, verificación premium y borrador según los orígenes
+normalizados de API e invitaciones. Producción conserva su servicio Keychain y archivo anterior sin migrarlos ni borrarlos.
+Cada origen distinto utiliza un namespace estable; una configuración ausente usa uno separado y no conecta como respaldo a
+producción. Mantener el mismo bundle ID sustituye el binario instalado; no permite conservar dos apps simultáneamente.
+No eliminar la aplicación para cambiar de entorno: reinstalar una compilación Release recupera sus datos locales anteriores.
+StoreKit mantiene su propia cuenta e historial de Apple; el namespace local no reinicia esos datos.
+
+Para comprobar primero identidad y catálogo:
+
+1. Conectar y desbloquear el iPhone elegido, completar confianza y activar modo desarrollador si iOS lo solicita.
+2. Ejecutar el scheme `SmartShoppingList` con Debug, sin archivo `.storekit` seleccionado: necesitamos el catálogo real de Apple.
+3. En **Ajustes** de la app, completar el botón nativo **Iniciar sesión con Apple** usando la cuenta Apple del dispositivo.
+   El tester de compras Sandbox es una cuenta distinta, destinada a las compras de prueba.
+4. Abrir **Premium** desde Ajustes. Deben aparecer las alternativas mensual y anual con nombres y precios de StoreKit.
+   No comprar ni restaurar en esta primera comprobación. Si falta el catálogo, conservar el error y revisar configuración
+   antes de iniciar una transacción.
+5. Contrastar las respuestas de inicio de sesión y `/v1/account/subscription` en Railway **sandbox**, sin registrar tokens,
+   códigos de autorización, cuerpos de autenticación ni claves privadas. Registrar por separado el resultado del catálogo.
+
+La [guía de pruebas de Apple](https://developer.apple.com/documentation/storekit/testing-in-app-purchases-with-sandbox)
+describe el inicio de sesión del tester para compras. No cambiar la cuenta iCloud del dispositivo por ese tester.
+Estas comprobaciones no acreditan aún compra, restauración o ciclo de renovación.
+
 ## Validación y activación separadas
 
 1. Verificar configuración, criptografía, vinculación por cuenta, persistencia y recuperación con pruebas locales aisladas. Registrar los límites de las fuentes sintéticas y de StoreKit local.

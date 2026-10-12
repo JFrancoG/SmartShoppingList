@@ -152,3 +152,44 @@ La prueba de la imagen se amplía para activar compras, Sign in with Apple y el 
 La imagen `smartshoppinglistserver:issue39-identity-diagnostics` es Linux arm64, digest `sha256:14685104b15961390111ac985e53a78fd067650a93e6699c3eee1dadc3ae407e`. Los logs locales se conservan fuera de Git en `/tmp/smartshoppinglist-issue39-identity-build.log`, `/tmp/smartshoppinglist-issue39-identity-tests.log`, `/tmp/smartshoppinglist-issue39-identity-image-build.log` y `/tmp/smartshoppinglist-issue39-identity-image-startup.log`.
 
 Al finalizar esta validación local, la publicación, CI de esta nueva revisión y otro despliegue alojado permanecían pendientes; la issue registra su entrega posterior. La prueba local no determina cuál de los valores sellados falla en Railway; el nuevo diagnóstico permitirá identificarlo en el siguiente arranque. El intento alojado actual no acredita conexión/migraciones de la base Railway, TLS, login, compras ni notificaciones. #39 permanece abierta.
+
+## Seguimiento del 12 de octubre: instalación física Sandbox, identidad y catálogo
+
+La preparación continúa en `codex/issue-39-ios-sandbox`, desde `main` sincronizado en `12169fb`. Debug selecciona
+API, invitaciones, dominio asociado y nombre visible de Sandbox; Release conserva producción. El bundle ID y Team ID
+permanecen iguales. La fábrica conserva las ubicaciones locales originales de producción y separa los demás orígenes
+normalizados, incluida la configuración ausente, sin migrar o borrar credenciales ni borradores.
+
+| Comprobación | Resultado y límite |
+|---|---|
+| Build Debug para iPhone 11 | PASS; primera compilación 9,544 s y compilación/instalación final 4,416 s. |
+| Build con pruebas para iPhone 17 Simulator, iOS 27.2 | PASS, 12,956 s; recompilación final tras revisión 9,313 s. |
+| Plan Integration final antes de entrega | 12 funciones / 20 ejecuciones aprobadas, 0 fallos, omitidas o fallos esperados; 3,824 s. Incluye los dos casos nuevos de aislamiento y conservación. El resultado nativo acredita Passed y ningún runtime warning. |
+| Diagnósticos de compilación | Sin warnings ni errores en los logs de los builds y en GetBuildLog. |
+| Revisión independiente final | Tres Swift, proyecto, entitlements, guías y changelog; sin hallazgos. `git diff --check` limpio. |
+| Artefacto Debug firmado | `Smart List Sandbox`, bundle `com.plusprojects.SmartShoppingList`, Team `NWN8JUE438`, ambos orígenes Sandbox, Sign in with Apple y único dominio asociado Sandbox. Firma de desarrollo con `get-task-allow=true`. |
+| Instalación física | RunProject confirmó lanzamiento en el iPhone 11, PID 1400. No se eliminó la app ni sus datos. |
+| Identidad real | Railway Sandbox: POST `/v1/auth/challenges` 201 a las 23:43:55 CEST; POST `/v1/auth/apple` 200 a las 23:44:20, 540 ms; GET `/v1/me` 200 a la misma hora. |
+| Estado y catálogo | GET `/v1/account/subscription` 200 a las 23:44:29, 20 ms. El propietario confirma el acceso y aporta captura de Premium a las 23:45:28: Premium Mensual 5,99 € al mes y Premium Anual 49,99 € al año, con plan gratuito. |
+
+GetTestList marcó incorrectamente las pruebas como deshabilitadas y RunSomeTests rechazó la selección. RunAllTests con el
+plan Integration sí ejecutó las pruebas. La primera copia `.xcresult` de ActionArtifacts estaba incompleta y la consola
+terminaba con resultado indeterminado; el original de DerivedData conserva un resultado nativo Passed. La pasada final de
+las 23:51:20, posterior al ajuste del inicializador y sus accessors, cerró correctamente también la copia de ActionArtifacts.
+`xcresulttool get test-results summary` confirma 12 funciones / 20 ejecuciones, cero fallos y cero runtime warnings.
+No se ejecutaron las 228 pruebas de otros planes.
+
+Artefactos fuera de Git: el resultado final es
+`/var/folders/wt/r327qtw12_s5tbbcnx9dzqv80000gn/T/ActionArtifacts/default/RunAllTests/Test-SmartShoppingList-2026.10.12_23-51-20-+0200.xcresult`;
+en ese directorio se conservan el resumen `7C7D477C-B419-4AEE-991A-7D6D95C94EC7.txt` y la consola
+`test-console-log-2026-10-12T23-51-20+02-00.txt`. La recompilación con targets de prueba de esa pasada fue incremental
+(0,121 s), sin warnings/errores en su log ni en GetBuildLog. Se restauraron el plan Fast y el destino iPhone 11.
+
+La captura es evidencia del catálogo mostrado por StoreKit en ese dispositivo y storefront, no aprobación de precios
+definitivos para lanzamiento. No se compró ni restauró, ni se validaron renovación, gracia, caducidad o revocación.
+El namespace local no separa el historial o la cuenta propios de StoreKit. No se cambiaron secretos ni se desplegó servidor.
+El dominio asociado está en la firma; no se acredita Universal Links: el GET de AASA observado devuelve 503 y ese recorrido
+queda fuera de la comprobación de identidad y catálogo. Release conserva sus ajustes, pero no se recompiló en esta sesión.
+
+La captura y los logs completos permanecen fuera de Git. La issue registra la entrega Git y sus resultados de CI por
+separado de esta validación local. #39 permanece abierta para la matriz comercial real.
