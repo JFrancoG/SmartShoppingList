@@ -93,3 +93,19 @@ Artefactos temporales, disponibles únicamente en esta máquina:
 La unidad queda implementada y validada localmente. No se realizaron commit, push, PR, CI, merge, despliegue, migración de producción ni cobros. No se ejecutó Release ni un recorrido real de StoreKit/App Store Sandbox, restauración entre dispositivos físicos o notificaciones Apple. Los recibos y contratos previos se conservan; los clientes anteriores requieren actualización para interpretar las nuevas capacidades/restricciones y recuperar las nuevas operaciones.
 
 Quedan por configurar y validar externamente los productos, grupo de suscripciones Apple, precios, credenciales, gracia de cobro, notificaciones y distribución conforme a la guía. Tampoco se han activado regalos/códigos de oferta ni el programa Small Business. La solicitud de Small Business es independiente de esta implementación y su presentación no acredita aceptación o comisión efectiva. La issue registra esos límites y la entrega Git cuando se autorice.
+
+## Seguimiento del 12 de octubre: preparación del backend Sandbox
+
+La implementación anterior está integrada mediante [PR #40](https://github.com/JFrancoG/SmartShoppingList/pull/40) en `f03a6ae`, con CI de la PR y de `main` superado. #39 permanece abierta por decisión del propietario hasta completar las pruebas Apple Sandbox. La preparación externa y sus resultados concretos se registran en la issue; no convierten esta evidencia local en una compra o despliegue validado.
+
+La preparación de un entorno Vapor `sandbox` detectó que la condición anterior, distinta de `production`, publicaba las rutas de infraestructura `/todos` sin autenticación. El ajuste en `codex/issue-39-sandbox-backend` registra esas rutas únicamente en `development` y `testing`, conservando `/hello` y las rutas de producto. La guía concreta raíz Docker, comando de arranque completo, PostgreSQL persistente propio con TLS verificado, configuración independiente de identidad/compras y aislamiento del cliente.
+
+| Comprobación del ajuste | Resultado | Alcance |
+|---|---|---|
+| Demostración previa | 4 fallos esperados, únicamente en Sandbox | GET, POST y DELETE publicados, además de cambios de persistencia; producción ya los rechazaba. |
+| Regresión tras el ajuste | 1 función parametrizada, 2 casos: PASS, 0,342 s | GET/POST/DELETE devuelven 404 en Sandbox y producción, conservan datos y mantienen healthcheck y autorización de rutas de producto. |
+| Suite completa | 146 funciones en 9 suites: PASS, 37,767 s | Servidor nativo y PostgreSQL aislado; HTTP en memoria, sin TCP ni alojamiento. |
+| Compilación | Build limpio: PASS, 88,69 s; incremental final: PASS, 3,32 s | Sin warnings propios; el build limpio conserva únicamente EXC-001 del manifiesto JWTKit. |
+| Revisiones independientes | PASS | Ambos Swift, comportamiento/persistencia, serialización de la suite, estilo y guía; `git diff --check` limpio. |
+
+Las fuentes y la prueba permanecen sin cambios desde esta validación. Se reutilizan estos resultados para la entrega; CI verificará por separado la revisión publicada en Linux. El contenedor y volumen exclusivos de esta prueba se retiraron sin alterar los preexistentes. No se ejecutaron compras Apple, login real, notificaciones ni despliegue desde estas pruebas. La publicación Git y el resultado de CI quedan en #39; Deploy permanece pendiente por instrucción del propietario.

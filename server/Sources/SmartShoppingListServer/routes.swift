@@ -16,7 +16,7 @@ func routes(
     }
 
     // Keep the original infrastructure probe local; it has no product authorization model.
-    if app.environment != .production {
+    if app.environment == .development || app.environment == .testing {
         try app.register(collection: TodoController(databases: databases))
     }
 
