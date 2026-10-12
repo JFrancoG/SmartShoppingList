@@ -28,6 +28,30 @@ Con todas ausentes, una cuenta sin concesión de producción conserva el plan gr
 
 Los registros de concesión y las cadenas originales mantienen el entorno. Sandbox y Production no comparten derechos: cambiar o retirar variables no convierte el ensayo en una compra de producción. Sin configuración, la autoridad consulta únicamente el entorno Production. Antes de desplegar migraciones con datos reales, conservar la copia autorizada de PostgreSQL y verificar las guardas de reversión; no borrar elecciones, plazos o vínculos para volver al esquema anterior.
 
+## Backend Sandbox separado en Railway
+
+Usar un entorno persistente vacío llamado `sandbox`, con su propia API `SmartShoppingListSandbox` y PostgreSQL con volumen. El producto **Sandbox** del menú de servicios de Railway no sustituye a este entorno. No duplicar la base, variables ni credenciales de producción. El usuario puede configurar ambos servicios dentro del mismo proyecto; comprobar el selector de entorno antes de cada cambio. El presupuesto y las alertas se acuerdan antes de activar recursos de pago, conforme a la [guía de alojamiento](shared-shopping.md#https-y-alojamiento).
+
+Conectar la API al repositorio y a una revisión que incluya el cierre de las rutas de infraestructura en entornos alojados. Configurar la raíz `server/` y su Dockerfile, una sola réplica, `PORT=8080`, el puerto del dominio 8080 y el healthcheck `/hello`. El Dockerfile arranca con `--env production` por defecto; para este servicio definir el **Custom Start Command** completo:
+
+```sh
+./SmartShoppingListServer serve --env sandbox --hostname 0.0.0.0 --port 8080
+```
+
+Railway [sustituye el ENTRYPOINT al definir ese comando](https://docs.railway.com/deployments/start-command), por lo que debe incluir el ejecutable. `sandbox` es el nombre del entorno de Vapor; `APP_STORE_ENVIRONMENT=Sandbox` selecciona el entorno de Apple. Ambos son necesarios: el servidor rechaza credenciales Sandbox cuando ejecuta en producción. No modificar esa guarda para conseguir que arranque. Las rutas de ejemplo `/todos` se registran únicamente en desarrollo y testing; GET, POST y DELETE deben devolver `404` en `sandbox` y producción.
+
+Completar tres familias de variables antes del primer despliegue:
+
+- **Base de datos:** `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_USERNAME`, `DATABASE_PASSWORD` y `DATABASE_NAME` referencian exclusivamente el PostgreSQL de `sandbox`. `DATABASE_CA_CERTIFICATE_PEM` contiene su CA pública, con verificación de cadena y del dominio privado conforme a la [guía de PostgreSQL](shared-shopping.md#https-y-alojamiento). No copiar claves privadas de la base.
+- **Identidad:** `APPLE_CLIENT_ID`, `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY_PEM`, `APPLE_REFRESH_ACTIVE_KEY_VERSION` y `APPLE_REFRESH_KEYS_JSON`, siguiendo la [configuración de Sign in with Apple](shared-shopping.md). Usar una clave de identidad y claves de cifrado independientes de producción. El `.p8` de In-App Purchase no autentica usuarios. Configurar `INVITATION_ORIGIN` con el nuevo origen HTTPS y `LOG_LEVEL=info`.
+- **Compras:** las nueve variables `APP_STORE_*` de la tabla anterior, con `APP_STORE_ENVIRONMENT=Sandbox` y los productos reales. Sellar los secretos multilínea con saltos de línea reales; el servidor no admite `APP_STORE_PRIVATE_KEY_PATH`.
+
+Conservar la base Sandbox después de las compras: los UUID de cuenta, `appAccountToken` y vínculos verificados deben sobrevivir a renovaciones y restauraciones. El arranque aplica las migraciones; un servicio vacío o PostgreSQL Online todavía no acredita que la API esté desplegada.
+
+Tras arrancar, comprobar `/hello`, el cierre de `/todos`, autenticación y catálogo. Configurar expresamente la **Sandbox Server URL** de App Store Connect con `https://<dominio-sandbox>/v1/app-store/notifications` y versión V2 antes de solicitar una notificación TEST. Apple puede [enviar notificaciones Sandbox a la URL de producción si falta la específica](https://developer.apple.com/help/app-store-connect/configure-in-app-purchase-settings/enter-server-urls-for-app-store-server-notifications/).
+
+Preparar después una instalación iOS aislada que use el nuevo origen HTTPS en `SHARED_API_BASE_URL` y `SHARED_INVITATION_ORIGIN`. Cambiar solo la URL conserva el Keychain y operaciones pendientes de la instalación habitual; no reutilizar ni borrar esos datos para un ensayo. La configuración concreta de aislamiento y su validación se registran antes de la primera compra. Las renovaciones Apple son aceleradas en Sandbox; los plazos propios de siete y treinta días siguen siendo días reales y se verifican por separado.
+
 ## Gracia de cobro y notificaciones
 
 En App Store Connect, acordamos **16 días**, **Only Paid to Paid Renewals** y primero **Only Sandbox Environment** para Billing Grace Period. Tras validar, el titular podrá activar Production and Sandbox. La configuración afecta a la app y las fechas de sandbox son aceleradas; el servidor sigue el final acreditado por Apple. Un fallo de cobro sin gracia verificada no genera dieciséis días por cálculo local.
