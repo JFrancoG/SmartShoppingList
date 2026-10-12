@@ -77,6 +77,11 @@ En el target `SmartShoppingList`, añadir en **Build Settings → User-Defined**
 
 `Info.plist` ya referencia estos ajustes. Los dominios `.example`, valores vacíos, marcadores sin expandir, HTTP, credenciales en URL y rutas de base se rechazan. Los nombres de dominio no son secretos; no guardar ninguna clave Apple o de cifrado en estos ajustes.
 
+En este checkout Debug apunta al backend Sandbox y Release conserva producción. El nombre visible y
+`SHARED_ASSOCIATED_DOMAIN` también se seleccionan por configuración; la fábrica separa credenciales y borrador por origen.
+La [guía de instalación Sandbox](premium-subscriptions.md#instalación-ios-para-el-catálogo-real-de-sandbox) conserva el
+procedimiento y sus límites. No cambiar solo la URL de una instalación antigua con almacenamiento compartido.
+
 Cuando se conozca el dominio real, añadir **Signing & Capabilities → Associated Domains** con `applinks:<dominio-real>`, sin `https://` ni ruta, y actualizar el perfil de firma. No se ha introducido un dominio ficticio en el entitlement. El servidor AASA permite `/invite/*` y no excluye el fragmento `#token=…`.
 
 Compilar e instalar de nuevo tras configurar los dominios. Comprobar la asociación efectiva desde Mail o Mensajes: abrir una URL en el navegador o pasarla directamente a un simulador no acredita la entrega de un Universal Link real.
