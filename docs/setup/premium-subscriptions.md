@@ -40,6 +40,17 @@ Conectar la API al repositorio y a una revisión que incluya el cierre de las ru
 
 Railway [sustituye el ENTRYPOINT al definir ese comando](https://docs.railway.com/deployments/start-command), por lo que debe incluir el ejecutable. `sandbox` es el nombre del entorno de Vapor; `APP_STORE_ENVIRONMENT=Sandbox` selecciona el entorno de Apple. Ambos son necesarios: el servidor rechaza credenciales Sandbox cuando ejecuta en producción. No modificar esa guarda para conseguir que arranque. Las rutas de ejemplo `/todos` se registran únicamente en desarrollo y testing; GET, POST y DELETE deben devolver `404` en `sandbox` y producción.
 
+La imagen debe conservar los bundles de recursos generados por SwiftPM junto al ejecutable. Swift 6.4 genera `SmartShoppingListServer_SmartShoppingListServer.bundle` en Linux; el certificado público `AppleRootCA-G3.cer` debe permanecer dentro de ese bundle. El Dockerfile copia los directorios `.bundle` y `.resources` y rechaza la construcción si falta el certificado obligatorio. No copiarlo suelto ni sustituir la raíz de confianza para resolver un error de arranque.
+
+El job `Server runtime image (Linux amd64)` comprueba la imagen Release final con las nueve variables de compras completas, una clave P-256 temporal y PostgreSQL aislado. La red de la prueba es interna: no usa secretos reales ni contacta con Apple. Comprueba carga de recursos, migraciones, respuesta de `/hello`, autenticación requerida y cierre de `/todos`. Se puede ejecutar desde la raíz del repositorio:
+
+```sh
+docker build --tag smartshoppinglistserver:smoke server
+bash scripts/check_server_image.sh smartshoppinglistserver:smoke
+```
+
+Esta comprobación local no acredita las credenciales selladas del alojamiento, su conexión TLS a PostgreSQL, login de Apple, compras ni notificaciones Sandbox.
+
 Completar tres familias de variables antes del primer despliegue:
 
 - **Base de datos:** `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_USERNAME`, `DATABASE_PASSWORD` y `DATABASE_NAME` referencian exclusivamente el PostgreSQL de `sandbox`. `DATABASE_CA_CERTIFICATE_PEM` contiene su CA pública, con verificación de cadena y del dominio privado conforme a la [guía de PostgreSQL](shared-shopping.md#https-y-alojamiento). No copiar claves privadas de la base.

@@ -108,4 +108,24 @@ La preparación de un entorno Vapor `sandbox` detectó que la condición anterio
 | Compilación | Build limpio: PASS, 88,69 s; incremental final: PASS, 3,32 s | Sin warnings propios; el build limpio conserva únicamente EXC-001 del manifiesto JWTKit. |
 | Revisiones independientes | PASS | Ambos Swift, comportamiento/persistencia, serialización de la suite, estilo y guía; `git diff --check` limpio. |
 
-Las fuentes y la prueba permanecen sin cambios desde esta validación. Se reutilizan estos resultados para la entrega; CI verificará por separado la revisión publicada en Linux. El contenedor y volumen exclusivos de esta prueba se retiraron sin alterar los preexistentes. No se ejecutaron compras Apple, login real, notificaciones ni despliegue desde estas pruebas. La publicación Git y el resultado de CI quedan en #39; Deploy permanece pendiente por instrucción del propietario.
+Las fuentes y la prueba permanecen sin cambios desde esta validación. Se reutilizan estos resultados para la entrega; CI verificará por separado la revisión publicada en Linux. El contenedor y volumen exclusivos de esta prueba se retiraron sin alterar los preexistentes. No se ejecutaron compras Apple, login real, notificaciones ni despliegue desde estas pruebas. La publicación Git y el resultado de CI quedan en #39; en el momento de esta validación, Deploy permanecía pendiente por instrucción del propietario.
+
+## Seguimiento del 12 de octubre: recursos en la imagen Linux
+
+El propietario inició los despliegues Sandbox tras completar los permisos GitHub de Railway. El primer intento terminó con `AppStoreGatewayError.invalidConfiguration`. Tras volver a pegar la clave, el segundo alcanzó un punto diferente: `resource_bundle_accessor.swift:44: Fatal error: unable to find bundle named SmartShoppingListServer_SmartShoppingListServer`. No se atribuye este segundo fallo a las claves.
+
+La reproducción aislada utiliza Swift 6.4.0-noble y su runtime slim fijados por digest, Linux arm64, Release y el mismo nombre de paquete y declaración `.process`. SwiftPM genera un bundle plano `.bundle` con el certificado público en su raíz. El staging anterior, que copiaba solo `.resources`, reproduce el fatal con salida 133. Con ambos sufijos, el runtime encuentra y lee el certificado de 583 bytes, idéntico al original, con salida 0. El runtime solo tiene acceso a `/app`, sin el árbol de compilación; ambos contenedores se ejecutan sin red y se retiran.
+
+La corrección conserva los bundles completos y comprueba el certificado obligatorio durante el build. El verificador Swift, las raíces de confianza, las claves y las guardas de entorno permanecen sin cambios. Se incorpora un job de imagen final Release Linux amd64 y `scripts/check_server_image.sh`: compras configuradas con P-256 temporal, red Docker interna, PostgreSQL propio, healthcheck, autenticación y `/todos` cerrado. Así la comprobación ejercita la carga real del bundle fuera del árbol de compilación.
+
+| Comprobación | Resultado | Alcance |
+|---|---|---|
+| Reproducción mínima anterior/corregida | Salidas 133 / 0 | Release Linux arm64 y runtime slim, sin árbol de compilación ni red; mismo fatal antes y certificado leído tras conservar el bundle. |
+| Build de la imagen completa | PASS; compilación 113,33 s | Dockerfile real, Release Linux arm64; solo el warning previamente aceptado EXC-001 de JWTKit, sin warnings propios. |
+| Arranque de la imagen completa | PASS | Configuración de compras activa con clave efímera, carga del certificado, migraciones PostgreSQL reales, `/hello` con cuerpo esperado, rutas de cuenta sin sesión 401 y GET/POST `/todos` 404. |
+| Aislamiento y limpieza | PASS | Red interna sin puertos publicados; contenedores, volúmenes anónimos y red propios retirados; los tres contenedores anteriores siguen detenidos. |
+| Sintaxis y revisión | PASS | Shell, YAML, propagación de fallos del pipeline y diff; revisión independiente del staging y smoke, con límites de conexión/respuesta incorporados. |
+
+La imagen local `smartshoppinglistserver:issue39-resources` es Linux arm64, digest `sha256:3e3532af9a5f74ffd329d051196b6d5dd9367d9322e8eddcfb5a9fc1bdf0ab78`. Los logs de build y arranque están fuera del repositorio en `/tmp/smartshoppinglist-issue39-resources-image-build.log` y `/tmp/smartshoppinglist-issue39-resources-image-startup.log`. La reproducción mínima conserva su resultado y logs sanitizados fuera de Git.
+
+No cambia código Swift ni el contrato; no se repite la suite nativa previamente validada por este ajuste de empaquetado. La publicación y el nuevo job CI deben confirmar por separado la imagen Linux amd64; todavía no se acredita CI nuevo, arranque remoto, TLS con la base Railway, identidad, compras ni notificaciones Apple. #39 permanece abierta.
