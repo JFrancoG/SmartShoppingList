@@ -27,6 +27,8 @@ Generar la clave de cifrado con un generador criptográfico, guardarla en el ges
 
 Vapor carga `.env` desde su directorio de trabajo. Con todas las variables Apple ausentes, el bootstrap local arranca, pero el acceso real devuelve indisponibilidad. La configuración de firma y la de cifrado se validan como familias independientes: una familia parcial, dos fuentes de clave simultáneas o una clave inválida impiden arrancar; activar ambas familias completas para habilitar el acceso. El PEM directo se consume en memoria, sin materializar un archivo. No existe una autenticación alternativa de producción.
 
+Un rechazo durante el arranque registra el nombre de la variable y una regla fija: identificador inválido, fuente de clave ausente o en conflicto, PEM no interpretable, JSON inválido, base64 inválido, longitud distinta de 32 bytes o versión activa sin entrada. El error sigue siendo `AppleGatewayError.invalidConfiguration`; los mensajes no incluyen valores, contenido de secretos, rutas ni errores internos del parser. Consultar la línea de diagnóstico anterior al fatal para distinguir la firma de Sign in with Apple del cifrado de sus tokens. Las variables selladas del alojamiento no se validan por comprobar únicamente sus copias locales.
+
 Para el contenedor local con identidad, fijar `APPLE_PRIVATE_KEY_PATH=/run/secrets/apple-sign-in.p8` y `APPLE_PRIVATE_KEY_HOST_PATH` a la ruta privada del host. La clave debe ser legible por el usuario del contenedor mediante permisos acotados o un montaje de secretos adecuado; no hacerla pública. Ejecutar desde `server/`:
 
 ```bash

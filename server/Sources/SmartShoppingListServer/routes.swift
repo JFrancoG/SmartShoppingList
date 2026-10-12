@@ -21,7 +21,7 @@ func routes(
     }
 
     let gateway: any AppleGateway
-    if let configuration = try AppleSignInConfiguration.load() {
+    if let configuration = try AppleSignInConfiguration.load(logger: app.logger) {
         gateway = LiveAppleGateway(configuration: configuration)
     } else {
         gateway = UnconfiguredAppleGateway()
@@ -29,7 +29,7 @@ func routes(
     let authentication = AppleAuthenticationService(
         databases: databases,
         gateway: gateway,
-        vault: try RefreshTokenVault.load(),
+        vault: try RefreshTokenVault.load(logger: app.logger),
         accountCapacity: accountCapacity
     )
     try app.register(collection: AppleAuthenticationRoutes(service: authentication))

@@ -1,5 +1,6 @@
 import Foundation
 import JWTKit
+import Logging
 import Vapor
 
 struct AppleSignInConfiguration: Sendable {
@@ -12,12 +13,30 @@ struct AppleSignInConfiguration: Sendable {
         clientID: String,
         teamID: String,
         keyID: String,
-        privateKeyPEM: String
+        privateKeyPEM: String,
+        privateKeyField: StaticString = "APPLE_PRIVATE_KEY_PEM",
+        logger: Logger? = nil
     ) throws {
-        guard clientID == "com.plusprojects.SmartShoppingList", Self.isAppleIdentifier(teamID),
-            Self.isAppleIdentifier(keyID)
-        else {
-            throw AppleGatewayError.invalidConfiguration
+        guard clientID == "com.plusprojects.SmartShoppingList" else {
+            throw AppleStartupDiagnostics.invalidConfiguration(
+                logger,
+                field: "APPLE_CLIENT_ID",
+                rule: "must equal the app bundle identifier."
+            )
+        }
+        guard Self.isAppleIdentifier(teamID) else {
+            throw AppleStartupDiagnostics.invalidConfiguration(
+                logger,
+                field: "APPLE_TEAM_ID",
+                rule: "must contain exactly 10 uppercase ASCII letters or digits."
+            )
+        }
+        guard Self.isAppleIdentifier(keyID) else {
+            throw AppleStartupDiagnostics.invalidConfiguration(
+                logger,
+                field: "APPLE_KEY_ID",
+                rule: "must contain exactly 10 uppercase ASCII letters or digits."
+            )
         }
         self.clientID = clientID
         self.teamID = teamID
@@ -25,11 +44,18 @@ struct AppleSignInConfiguration: Sendable {
         do {
             signingKey = try ES256PrivateKey(pem: privateKeyPEM)
         } catch {
-            throw AppleGatewayError.invalidConfiguration
+            throw AppleStartupDiagnostics.invalidConfiguration(
+                logger,
+                field: privateKeyField,
+                rule: "must contain a readable P-256 private key in PEM format."
+            )
         }
     }
 
-    static func load(environment: (String) -> String? = Environment.get) throws -> Self? {
+    static func load(
+        logger: Logger? = nil,
+        environment: (String) -> String? = Environment.get
+    ) throws -> Self? {
         let names = [
             "APPLE_CLIENT_ID",
             "APPLE_TEAM_ID",
@@ -39,34 +65,67 @@ struct AppleSignInConfiguration: Sendable {
         ]
         let values = names.map(environment)
         guard values.contains(where: { $0 != nil }) else { return nil }
-        guard let clientID = values[0], let teamID = values[1], let keyID = values[2] else {
-            throw AppleGatewayError.invalidConfiguration
+        guard let clientID = values[0] else {
+            throw AppleStartupDiagnostics.invalidConfiguration(logger, field: "APPLE_CLIENT_ID", rule: "is required.")
         }
-        do {
-            let key: String
-            switch (values[3], values[4]) {
-            case (let path?, nil):
-                guard !path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-                    throw AppleGatewayError.invalidConfiguration
-                }
-                key = try String(contentsOfFile: path, encoding: .utf8)
-            case (nil, let pem?):
-                guard !pem.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-                    throw AppleGatewayError.invalidConfiguration
-                }
-                key = pem
-            default:
-                throw AppleGatewayError.invalidConfiguration
+        guard let teamID = values[1] else {
+            throw AppleStartupDiagnostics.invalidConfiguration(logger, field: "APPLE_TEAM_ID", rule: "is required.")
+        }
+        guard let keyID = values[2] else {
+            throw AppleStartupDiagnostics.invalidConfiguration(logger, field: "APPLE_KEY_ID", rule: "is required.")
+        }
+        let key: String
+        let privateKeyField: StaticString
+        switch (values[3], values[4]) {
+        case (let path?, nil):
+            privateKeyField = "APPLE_PRIVATE_KEY_PATH"
+            guard !path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                throw AppleStartupDiagnostics.invalidConfiguration(
+                    logger,
+                    field: "APPLE_PRIVATE_KEY_PATH",
+                    rule: "must not be empty."
+                )
             }
-            return try Self(
-                clientID: clientID,
-                teamID: teamID,
-                keyID: keyID,
-                privateKeyPEM: key
+            do {
+                key = try String(contentsOfFile: path, encoding: .utf8)
+            } catch {
+                throw AppleStartupDiagnostics.invalidConfiguration(
+                    logger,
+                    field: "APPLE_PRIVATE_KEY_PATH",
+                    rule: "must refer to a readable UTF-8 private-key file."
+                )
+            }
+        case (nil, let pem?):
+            privateKeyField = "APPLE_PRIVATE_KEY_PEM"
+            guard !pem.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                throw AppleStartupDiagnostics.invalidConfiguration(
+                    logger,
+                    field: "APPLE_PRIVATE_KEY_PEM",
+                    rule: "must not be empty."
+                )
+            }
+            key = pem
+        case (nil, nil):
+            throw AppleStartupDiagnostics.invalidConfiguration(
+                logger,
+                field: "APPLE_PRIVATE_KEY_PEM",
+                rule: "is required when APPLE_PRIVATE_KEY_PATH is absent."
             )
-        } catch {
-            throw AppleGatewayError.invalidConfiguration
+        case (.some, .some):
+            throw AppleStartupDiagnostics.invalidConfiguration(
+                logger,
+                field: "APPLE_PRIVATE_KEY_PEM",
+                rule: "must not coexist with APPLE_PRIVATE_KEY_PATH."
+            )
         }
+        return try Self(
+            clientID: clientID,
+            teamID: teamID,
+            keyID: keyID,
+            privateKeyPEM: key,
+            privateKeyField: privateKeyField,
+            logger: logger
+        )
     }
 
     func clientSecret(now: Date) async throws -> String {

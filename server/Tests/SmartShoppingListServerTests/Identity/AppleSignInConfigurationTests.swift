@@ -1,5 +1,6 @@
 @testable import SmartShoppingListServer
 import Foundation
+import Logging
 import Testing
 import Vapor
 
@@ -102,6 +103,124 @@ struct AppleSignInConfigurationTests {
         #expect(throws: AppleGatewayError.invalidConfiguration) {
             _ = try AppleSignInConfiguration.load { environment[$0] }
         }
+    }
+
+    @Test(arguments: [
+        ("APPLE_CLIENT_ID", nil as String?, "is required."),
+        ("APPLE_TEAM_ID", nil, "is required."),
+        ("APPLE_KEY_ID", nil, "is required."),
+        ("APPLE_CLIENT_ID", "", "must equal the app bundle identifier."),
+        ("APPLE_CLIENT_ID", "DIAGNOSTIC_SENTINEL_SECRET", "must equal the app bundle identifier."),
+        ("APPLE_TEAM_ID", "", "must contain exactly 10 uppercase ASCII letters or digits."),
+        ("APPLE_TEAM_ID", "DIAGNOSTIC_SENTINEL_SECRET", "must contain exactly 10 uppercase ASCII letters or digits."),
+        ("APPLE_KEY_ID", "key1234567", "must contain exactly 10 uppercase ASCII letters or digits."),
+        ("APPLE_KEY_ID", "KEY1234567 ", "must contain exactly 10 uppercase ASCII letters or digits."),
+        ("APPLE_PRIVATE_KEY_PEM", nil, "is required when APPLE_PRIVATE_KEY_PATH is absent."),
+        ("APPLE_PRIVATE_KEY_PEM", " \n\t", "must not be empty."),
+        (
+            "APPLE_PRIVATE_KEY_PEM",
+            "DIAGNOSTIC_SENTINEL_SECRET",
+            "must contain a readable P-256 private key in PEM format."
+        ),
+        (
+            "APPLE_PRIVATE_KEY_PEM",
+            AppleSigningFixture.privateKey.replacingOccurrences(of: "\n", with: "\\n"),
+            "must contain a readable P-256 private key in PEM format."
+        )
+    ])
+    func `rejected signing inputs identify their rule without exposing supplied values`(
+        field: String,
+        value: String?,
+        rule: String
+    ) throws {
+        var environment = AppleSigningFixture.environment
+        environment[field] = value
+        let capture = AppleStartupDiagnosticLogCapture()
+        #expect(throws: AppleGatewayError.invalidConfiguration) {
+            _ = try AppleSignInConfiguration.load(logger: capture.logger) { environment[$0] }
+        }
+        try capture.expectSingleDiagnostic(field: field, rule: rule)
+    }
+
+    @Test(arguments: ["", " \n\t"])
+    func `empty mounted paths identify the path variable without logging its contents`(path: String) throws {
+        var environment = AppleSigningFixture.environment
+        environment.removeValue(forKey: "APPLE_PRIVATE_KEY_PEM")
+        environment["APPLE_PRIVATE_KEY_PATH"] = path
+        let capture = AppleStartupDiagnosticLogCapture()
+        #expect(throws: AppleGatewayError.invalidConfiguration) {
+            _ = try AppleSignInConfiguration.load(logger: capture.logger) { environment[$0] }
+        }
+        try capture.expectSingleDiagnostic(field: "APPLE_PRIVATE_KEY_PATH", rule: "must not be empty.")
+    }
+
+    @Test
+    func `an unreadable key file hides its path and underlying filesystem error`() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        var environment = AppleSigningFixture.environment
+        environment.removeValue(forKey: "APPLE_PRIVATE_KEY_PEM")
+        environment["APPLE_PRIVATE_KEY_PATH"] = directory.appendingPathComponent("DIAGNOSTIC_SENTINEL_SECRET.p8").path
+        let capture = AppleStartupDiagnosticLogCapture()
+        #expect(throws: AppleGatewayError.invalidConfiguration) {
+            _ = try AppleSignInConfiguration.load(logger: capture.logger) { environment[$0] }
+        }
+        try capture.expectSingleDiagnostic(
+            field: "APPLE_PRIVATE_KEY_PATH",
+            rule: "must refer to a readable UTF-8 private-key file."
+        )
+    }
+
+    @Test
+    func `invalid mounted PEM identifies its configured path source without exposing the file`() throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let file = directory.appendingPathComponent("DIAGNOSTIC_SENTINEL_SECRET.p8")
+        try "DIAGNOSTIC_SENTINEL_SECRET".write(to: file, atomically: true, encoding: .utf8)
+        var environment = AppleSigningFixture.environment
+        environment.removeValue(forKey: "APPLE_PRIVATE_KEY_PEM")
+        environment["APPLE_PRIVATE_KEY_PATH"] = file.path
+        let capture = AppleStartupDiagnosticLogCapture()
+        #expect(throws: AppleGatewayError.invalidConfiguration) {
+            _ = try AppleSignInConfiguration.load(logger: capture.logger) { environment[$0] }
+        }
+        try capture.expectSingleDiagnostic(
+            field: "APPLE_PRIVATE_KEY_PATH",
+            rule: "must contain a readable P-256 private key in PEM format."
+        )
+    }
+
+    @Test(arguments: ["", AppleSigningFixture.privateKey])
+    func `conflicting key sources report only their exclusion rule`(pem: String) throws {
+        var environment = AppleSigningFixture.environment
+        environment["APPLE_PRIVATE_KEY_PATH"] = "/DIAGNOSTIC_SENTINEL_SECRET/AuthKey.p8"
+        environment["APPLE_PRIVATE_KEY_PEM"] = pem
+        let capture = AppleStartupDiagnosticLogCapture()
+        #expect(throws: AppleGatewayError.invalidConfiguration) {
+            _ = try AppleSignInConfiguration.load(logger: capture.logger) { environment[$0] }
+        }
+        try capture.expectSingleDiagnostic(
+            field: "APPLE_PRIVATE_KEY_PEM",
+            rule: "must not coexist with APPLE_PRIVATE_KEY_PATH."
+        )
+    }
+
+    @Test
+    func `valid credentials sign normally with diagnostics enabled and emit no configuration error`() async throws {
+        let capture = AppleStartupDiagnosticLogCapture()
+        let configuration = try #require(AppleSignInConfiguration.load(logger: capture.logger) {
+            AppleSigningFixture.environment[$0]
+        })
+        try await verifyClientSecret(configuration)
+        #expect(capture.isEmpty)
+    }
+
+    @Test
+    func `absent signing credentials remain unconfigured without a diagnostic`() throws {
+        let capture = AppleStartupDiagnosticLogCapture()
+        let configuration = try AppleSignInConfiguration.load(logger: capture.logger) { _ in nil }
+        #expect(configuration == nil)
+        #expect(capture.isEmpty)
     }
 
     private func makeTemporaryDirectory() throws -> URL {

@@ -129,3 +129,26 @@ La corrección conserva los bundles completos y comprueba el certificado obligat
 La imagen local `smartshoppinglistserver:issue39-resources` es Linux arm64, digest `sha256:3e3532af9a5f74ffd329d051196b6d5dd9367d9322e8eddcfb5a9fc1bdf0ab78`. Los logs de build y arranque están fuera del repositorio en `/tmp/smartshoppinglist-issue39-resources-image-build.log` y `/tmp/smartshoppinglist-issue39-resources-image-startup.log`. La reproducción mínima conserva su resultado y logs sanitizados fuera de Git.
 
 No cambia código Swift ni el contrato; no se repite la suite nativa previamente validada por este ajuste de empaquetado. La publicación y el nuevo job CI deben confirmar por separado la imagen Linux amd64; todavía no se acredita CI nuevo, arranque remoto, TLS con la base Railway, identidad, compras ni notificaciones Apple. #39 permanece abierta.
+
+## Seguimiento del 12 de octubre: diagnóstico de identidad al arrancar
+
+La corrección de recursos quedó integrada mediante PR #42 en `670ed11`, con CI de PR y `main` superado, incluidas 146 pruebas en 9 suites y el arranque de la imagen Release Linux amd64. El propietario lanzó después **Deploy latest commit** en Railway Sandbox. El despliegue `74a271d3-5111-4f38-b6bb-121b77dc96b3` usa exactamente esa revisión, construye la imagen en 6 min 29 s y falla al arrancar: los logs repiten `AppleGatewayError.invalidConfiguration` desde las 20:50:35 hasta las 20:52:44 CEST. El fallo de healthcheck es consecuencia de ese rechazo; ya no aparece el fallo de empaquetado anterior.
+
+Las variables públicas de identidad, su versión activa `v1` y la ausencia de `APPLE_PRIVATE_KEY_PATH` se comprobaron en el despliegue y en el servicio. Sus valores coinciden exactamente, sin caracteres sobrantes. El archivo local de Sign in with Apple supera la comprobación de OpenSSL; el JSON local es un objeto con entrada `v1`, base64 válido y claves de 32 bytes. Se imprimieron solo resultados de validación, nunca los contenidos. El propietario confirma que pegó el PEM y el JSON completos. Los valores sellados alojados no se pueden deducir de esas comprobaciones.
+
+El error actual también identifica el rechazo de `RefreshTokenVault`, por lo que el log genérico no distingue firma y cifrado. El ajuste en `codex/issue-39-apple-startup-diagnostics` conserva el mismo error y las reglas existentes y añade diagnósticos fijos con variable y motivo. No incorpora valores, versiones o rutas suministradas, secretos ni errores internos del parser. Las familias ausentes siguen permitiendo el bootstrap local no configurado.
+
+La prueba de la imagen se amplía para activar compras, Sign in with Apple y el vault con claves desechables, en la red interna y base aislada existentes. Esa activación comprueba el arranque de las tres familias y no representa un login o una transacción de Apple.
+
+| Comprobación del diagnóstico | Resultado | Alcance |
+|---|---|---|
+| Compilación nativa del servidor y pruebas | PASS, 29,85 s | Swift 6.4, warnings como errores en targets propios; únicamente EXC-001 del manifiesto JWTKit. |
+| Suite completa | 156 pruebas en 9 suites: PASS, 45,815 s | PostgreSQL 18.6 propio con tmpfs y puerto loopback 50855; rechazo previo, diagnóstico único y seguro, firma y cifrado válidos. |
+| Imagen Release completa | PASS, compilación 115,77 s | Dockerfile real, Linux arm64; las tres familias Apple se activan en el smoke con claves temporales. |
+| Arranque de la imagen | PASS | Recursos IAP, firma de identidad y vault cargados, migraciones, `/hello` esperado, cuentas sin sesión 401 y GET/POST `/todos` 404. |
+| Revisión independiente y sintaxis | PASS | Siete Swift, script, workflow, documentación y changelog; sin hallazgos, shell/YAML y `git diff --check` correctos. |
+| Limpieza | PASS | Contenedores y red propios del smoke retirados, base nativa tmpfs retirada; los tres contenedores preexistentes siguen detenidos. |
+
+La imagen `smartshoppinglistserver:issue39-identity-diagnostics` es Linux arm64, digest `sha256:14685104b15961390111ac985e53a78fd067650a93e6699c3eee1dadc3ae407e`. Los logs locales se conservan fuera de Git en `/tmp/smartshoppinglist-issue39-identity-build.log`, `/tmp/smartshoppinglist-issue39-identity-tests.log`, `/tmp/smartshoppinglist-issue39-identity-image-build.log` y `/tmp/smartshoppinglist-issue39-identity-image-startup.log`.
+
+Al finalizar esta validación local, la publicación, CI de esta nueva revisión y otro despliegue alojado permanecían pendientes; la issue registra su entrega posterior. La prueba local no determina cuál de los valores sellados falla en Railway; el nuevo diagnóstico permitirá identificarlo en el siguiente arranque. El intento alojado actual no acredita conexión/migraciones de la base Railway, TLS, login, compras ni notificaciones. #39 permanece abierta.
