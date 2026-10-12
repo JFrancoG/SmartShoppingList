@@ -33,10 +33,14 @@ RUN mkdir /staging
 RUN swift build -c release --jobs "$SWIFT_JOBS" --force-resolved-versions \
         --product SmartShoppingListServer \
         -Xlinker -ljemalloc && \
+    bin_path="$(swift build -c release --show-bin-path)" && \
     # Copy main executable to staging area
-    cp "$(swift build -c release --show-bin-path)/SmartShoppingListServer" /staging && \
-    # Copy resources bundled by SPM to staging area
-    find -L "$(swift build -c release --show-bin-path)" -regex '.*\.resources$' -exec cp -Ra {} /staging \;
+    cp "$bin_path/SmartShoppingListServer" /staging && \
+    # Swift 6.4 uses .bundle; preserve .resources from any dependency as well.
+    find -L "$bin_path" -mindepth 1 -maxdepth 1 \
+        -type d \( -name '*.bundle' -o -name '*.resources' \) -exec cp -Ra {} /staging \; && \
+    # An image without the pinned Apple trust root must fail before deployment.
+    test -s /staging/SmartShoppingListServer_SmartShoppingListServer.bundle/AppleRootCA-G3.cer
 
 
 # Switch to the staging area

@@ -80,3 +80,29 @@ jobs:
           path: server/ci-logs/*.log
           if-no-files-found: ignore
           retention-days: 7
+
+  server-image:
+    name: Server runtime image (Linux amd64)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build final Release image
+        run: |
+          mkdir -p ci-logs
+          docker build --tag smartshoppinglistserver:ci server 2>&1 | tee ci-logs/image-build.log
+      - name: Verify image startup with App Store enabled
+        run: bash scripts/check_server_image.sh smartshoppinglistserver:ci 2>&1 | tee ci-logs/image-startup.log
+      - name: Preserve image logs
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: server-image-ci-logs
+          path: ci-logs/*.log
+          if-no-files-found: ignore
+          retention-days: 7
