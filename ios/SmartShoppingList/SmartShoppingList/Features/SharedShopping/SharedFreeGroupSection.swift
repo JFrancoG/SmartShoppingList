@@ -1,58 +1,102 @@
 import SwiftUI
 
 struct SharedFreeGroupSection: View {
+    @ScaledMetric(relativeTo: .footnote) private var footerSpacing = 8.0
     let viewModel: SharedShoppingViewModel
     @State private var proposedGroup: SharedGroup?
     @State private var confirmsChange = false
 
+    var date = Date()
+
     var body: some View {
-        if let access = viewModel.membershipAccess {
+        switch viewModel.freeGroupPresentation(at: date) {
+        case .loading:
             Section {
-                LabeledContent("Free group") {
-                    Text(viewModel.freeGroupName ?? String(localized: "No group selected"))
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                if !access.premiumActive, let transition = access.transitionEndsAt {
-                    LabeledContent("Group transition ends") {
-                        Text(transition, format: .dateTime.day().month().year().hour().minute())
+                ProgressView("Loading your groups…")
+            }
+            .listRowBackground(Color.surface)
+        case .unavailable:
+            Section {
+                Text("Your groups could not be verified. Refresh to see your free group.")
+                Button("Refresh") {
+                    Task {
+                        await viewModel.refresh()
                     }
                 }
-                if let nextChange = access.freeGroupChangeAvailableAt {
-                    LabeledContent("Next free group change") {
-                        Text(nextChange, format: .dateTime.day().month().year().hour().minute())
-                    }
+                .buttonStyle(ShoppingActionButtonStyle(widthFraction: 1, minimumHeight: 48, usesCapsule: true))
+                .disabled(viewModel.isBusy)
+            }
+            .listRowBackground(Color.surface)
+        case .empty:
+            Section {
+                Text("You have no groups yet")
+                    .font(.headline)
+                Text("Create a group or accept an invitation from Settings. With the free plan you can use one group.")
+            }
+            .listRowBackground(Color.surface)
+        case .single(let group):
+            Section {
+                Text(group.name).font(.headline)
+                Text("This is your only group. You do not need to choose: it is your group for use with the free plan.")
+            }
+            .listRowBackground(Color.surface)
+        case let .multiple(selected, premiumActive, transitionEnd, nextChange, alternatives):
+            Section {
+                if let selected {
+                    Text("Your free group: \(viewModel.groupConfirmationName(selected))")
+                        .font(.headline)
+                } else {
+                    Text("Choose your free group").font(.headline)
                 }
-                ForEach(viewModel.groups) { group in
-                    if group.id != access.freeGroupId {
-                        Button {
-                            proposedGroup = group
-                            confirmsChange = true
-                        } label: {
-                            Label {
-                                Text("Use \(group.name) as free group")
-                                    .fixedSize(horizontal: false, vertical: true)
-                                if viewModel.groupNeedsIdentifier(group) {
-                                    Text(group.id.uuidString).font(.caption)
-                                }
-                            } icon: {
-                                Image(systemName: "person.2.badge.gearshape")
-                            }
-                        }
-                        .buttonStyle(ShoppingActionButtonStyle(
-                            widthFraction: 1,
-                            minimumHeight: 48,
-                            isProminent: false,
-                            usesCapsule: true
-                        ))
-                        .disabled(!viewModel.canSelectFreeGroup)
-                        .accessibilityHint("Changes the account's free group on all devices. Your active shopping group stays selected.")
+                if premiumActive {
+                    Text("Premium gives you access to all your groups. Choose which one to keep using if your subscription ends.")
+                } else if let transitionEnd {
+                    Text("Premium has ended. You can keep shopping in your existing groups until \(transitionEnd, format: .dateTime.day().month(.wide).year().hour().minute()).")
+                    Text("After that, you can shop in your free group. Your other groups and their data remain available to consult.")
+                    Text("Store and product limits already follow each administrator’s current plan.")
+                        .foregroundStyle(.textSecondary)
+                } else {
+                    Text("With the free plan you can shop in your free group. Your other groups and their data remain available to consult.")
+                }
+                if selected == nil {
+                    Text("If you do not choose, we keep your previous valid choice or use the group you joined first.")
+                        .foregroundStyle(.textSecondary)
+                }
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            .listRowBackground(Color.surface)
+
+            Section {
+                ForEach(alternatives) { group in
+                    Button {
+                        proposedGroup = group
+                        confirmsChange = true
+                    } label: {
+                        Text("Use \(viewModel.groupConfirmationName(group)) as free group")
+                            .fixedSize(horizontal: false, vertical: true)
                     }
+                    .buttonStyle(ShoppingActionButtonStyle(
+                        widthFraction: 1,
+                        minimumHeight: 48,
+                        isProminent: false,
+                        usesCapsule: true
+                    ))
+                    .disabled(!viewModel.canSelectFreeGroup)
+                    .accessibilityHint("Changes the account's free group on all devices. Your active shopping group stays selected.")
                 }
             } header: {
-                Text("Free group")
+                if selected != nil {
+                    Text("Choose a different group")
+                } else {
+                    Text("Choose your free group")
+                }
             } footer: {
-                Text("Choose one group for full use without premium. You can change it once every 30 days. Leaving or closing it allows a replacement. Your other memberships and data are kept.")
-                    .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: footerSpacing) {
+                    if let nextChange {
+                        Text("You can change your free group again on \(nextChange, format: .dateTime.day().month(.wide).year().hour().minute()).")
+                    }
+                    Text("You can change your choice once every 30 days. If you leave this group or it closes, you can choose a replacement. Changing your free group does not switch the group you are viewing.")
+                }
             }
             .listRowBackground(Color.surface)
             .confirmationDialog(
@@ -60,7 +104,7 @@ struct SharedFreeGroupSection: View {
                 isPresented: $confirmsChange,
                 presenting: proposedGroup
             ) { group in
-                Button("Use \(group.name) as free group") {
+                Button("Use \(viewModel.groupConfirmationName(group)) as free group") {
                     Task {
                         await viewModel.selectFreeGroup(id: group.id)
                     }

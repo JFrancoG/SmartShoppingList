@@ -68,6 +68,8 @@
 
 ### Fixed
 
+- 2026-10-15 | 🐛 fix(premium): separate free-group settings and restore action
+
 - 2026-10-14 | 🐛 fix(premium): clarify premium status and purchase actions
 
 - 2026-10-14 | 🐛 fix(premium): accept renewals signed before period start

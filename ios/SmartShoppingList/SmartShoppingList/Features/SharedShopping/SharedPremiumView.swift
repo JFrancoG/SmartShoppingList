@@ -5,39 +5,36 @@ struct SharedPremiumView: View {
     @Environment(\.usesPreparedShoppingPreview) private var usesPreparedShoppingPreview
     let viewModel: SharedShoppingViewModel
     @State private var showsSubscriptionManagement = false
+    var referenceDate: Date?
 
     var body: some View {
-        Form {
-            SharedPremiumStatusSection(viewModel: viewModel)
+        TimelineView(.periodic(from: .now, by: 60)) { context in
+            Form {
+                SharedPremiumStatusSection(viewModel: viewModel)
+                SharedPremiumGroupNotice(viewModel: viewModel, date: referenceDate ?? context.date)
 
-            if viewModel.membershipAccess?.premiumActive == true {
-                SharedPremiumManagementSection(
-                    viewModel: viewModel,
-                    showsSubscriptionManagement: $showsSubscriptionManagement
-                )
+                if viewModel.membershipAccess?.premiumActive == true {
+                    SharedPremiumManagementSection(
+                        viewModel: viewModel,
+                        showsSubscriptionManagement: $showsSubscriptionManagement
+                    )
+                }
+
+                SharedPremiumBenefitsSection()
+
+                SharedPremiumOptionsSection(viewModel: viewModel)
+
+                if viewModel.membershipAccess?.premiumActive != true {
+                    SharedPremiumManagementSection(
+                        viewModel: viewModel,
+                        showsSubscriptionManagement: $showsSubscriptionManagement
+                    )
+                }
+
+                SharedPremiumRestoreSection(viewModel: viewModel)
             }
-
-            SharedPremiumBenefitsSection()
-
-            SharedPremiumOptionsSection(viewModel: viewModel)
-
-            if viewModel.membershipAccess?.premiumActive != true {
-                SharedPremiumManagementSection(
-                    viewModel: viewModel,
-                    showsSubscriptionManagement: $showsSubscriptionManagement
-                )
-            }
-
-            SharedFreeGroupSection(viewModel: viewModel)
-
-            Section("Free plan limits") {
-                Text("Without premium: one group, 3 active stores and 20 pending products per store. Group store and product limits follow the current administrator's plan.")
-                    .foregroundStyle(.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .listRowBackground(Color.surface)
+            .modifier(ShoppingFormStyle())
         }
-        .modifier(ShoppingFormStyle())
         .navigationTitle("Premium")
         .manageSubscriptionsSheet(isPresented: $showsSubscriptionManagement)
         .task {
