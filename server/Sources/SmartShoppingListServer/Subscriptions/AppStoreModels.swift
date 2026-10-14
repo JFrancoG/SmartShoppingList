@@ -31,10 +31,11 @@ struct AppStoreTransaction: ValidationTimePayload {
     var subscriptionGroupIdentifier: String? = nil
 
     func verify(using algorithm: some JWTAlgorithm) throws {
+        // Apple may sign a renewal before its paid period starts; current Apple status decides access.
         guard algorithm.name == "ES256", Self.isTransactionID(transactionId),
               Self.isTransactionID(originalTransactionId), type == "Auto-Renewable Subscription",
               inAppOwnershipType == "PURCHASED",
-              !bundleId.isEmpty, !productId.isEmpty, expiresDate != nil, purchaseDate <= signedDate
+              !bundleId.isEmpty, !productId.isEmpty, expiresDate != nil
         else {
             throw AppStoreGatewayError.rejected
         }

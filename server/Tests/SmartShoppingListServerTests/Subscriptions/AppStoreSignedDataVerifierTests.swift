@@ -6,6 +6,18 @@ import Testing
 @testable import SmartShoppingListServer
 
 struct AppStoreSignedDataVerifierTests {
+    @Test("An authentic renewal may be signed before its paid period starts", arguments: [false, true])
+    func renewalSignedBeforePeriodStarts(online: Bool) async throws {
+        let certificates = try AppStoreCertificateFixture()
+        let verifier = try certificates.verifier()
+        // Apple's observed Sandbox renewal was signed 53.191 seconds before purchaseDate.
+        let signed = try await certificates.sign(overrides: [
+            "purchaseDate": .integer(1_728_000_053_191),
+            "signedDate": .integer(1_728_000_000_000)
+        ])
+        _ = try await verifier.verify(signed, as: AppStoreTransaction.self, online: online)
+    }
+
     @Test("Receipt certificate chain validates a signed transaction and rejects an altered signed body")
     func signedBodyIntegrity() async throws {
         let certificates = try AppStoreCertificateFixture()
