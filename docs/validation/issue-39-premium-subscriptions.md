@@ -193,3 +193,52 @@ queda fuera de la comprobación de identidad y catálogo. Release conserva sus a
 
 La captura y los logs completos permanecen fuera de Git. La issue registra la entrega Git y sus resultados de CI por
 separado de esta validación local. #39 permanece abierta para la matriz comercial real.
+
+## Seguimiento del 14 de octubre: compra mensual y renovación firmada anticipadamente
+
+El propietario confirma una compra mensual con el tester Sandbox en iPhone 11, seguida de restauración y nuevos
+intentos al recibir el aviso «Apple no ha podido verificar esta compra». Ese texto corresponde al error del servidor
+`invalid_app_store_transaction`; no acredita que StoreKit cancelara la compra. La confirmación inicial de activación
+en la pantalla Premium sigue pendiente.
+
+Railway Sandbox registra la notificación inicial con `204` a las 16:06:48 CEST y el envío del cliente con `400` a las
+16:06:50. Los envíos posteriores a las 16:09:51, 16:10:05 y 16:10:39 devuelven `200`. PostgreSQL conserva una cadena
+mensual Sandbox vinculada al usuario, con el periodo inicial 16:06:46–16:11:46. Una consulta autenticada a App Store
+Server API confirma independientemente la aplicación, producto, grupo, vínculo de cuenta y renovaciones posteriores.
+Los periodos de cinco minutos coinciden con la velocidad de pruebas descrita por
+[Apple](https://developer.apple.com/help/app-store-connect/test-in-app-purchases/manage-sandbox-apple-account-settings/).
+
+El historial original de Apple identifica la notificación `DID_RENEW` del periodo siguiente: `signedDate` es
+`2026-10-14T14:10:52.809Z`, mientras `purchaseDate` es `2026-10-14T14:11:46.000Z`. El periodo empieza **53,191 segundos
+después de firmarse**. La firma JWS y cadena hasta la raíz Apple incluida coinciden; los identificadores de aplicación,
+entorno, producto, grupo y cuenta también. Apple registra `UNSUCCESSFUL_HTTP_RESPONSE_CODE`, que corresponde al `400`
+de Railway a las 16:10:53 CEST. La comprobación local de esas firmas no sustituye la política completa del servidor
+ni acredita el procesamiento de esa renovación.
+
+`AppStoreTransaction.verify` exigía `purchaseDate <= signedDate`, una relación que Apple no declara entre
+[la fecha de compra](https://developer.apple.com/documentation/appstoreserverapi/purchasedate) y
+[la fecha de firma](https://developer.apple.com/documentation/appstoreserverapi/signeddate). Su
+[verificador oficial](https://github.com/apple/app-store-server-library-python/blob/main/appstoreserverlibrary/signed_data_verifier.py)
+tampoco la exige. La regla explica el rechazo de esa renovación auténtica. No se capturó el JWS exacto del primer
+envío del cliente rechazado; no se atribuye concluyentemente ese primer `400` a la misma causa.
+
+La corrección en `codex/issue-39-sandbox-renewal-verification`, desde `main` sincronizado `b25faa8`, elimina únicamente
+esa comparación. Conserva firma, raíz y propósito de los certificados, política OCSP, identidad y propiedad personal,
+comprobaciones de contexto y consulta del estado actual de Apple antes de acreditar acceso. No añade tolerancias
+temporales calculadas por la aplicación ni concede derechos a partir de fechas del dispositivo.
+
+| Validación local | Resultado y límite |
+|---|---|
+| Regresión antes de corregir | Los dos casos, verificación histórica y online, fallan con `.rejected`, como requiere la evidencia observada. |
+| Build de todos los targets del paquete | PASS, 9,55 s tras corregir; sin warnings propios. El primer build conserva únicamente EXC-001 de JWTKit. |
+| Suite del verificador | 8 funciones, incluidas las dos ejecuciones de la nueva regresión: PASS. Los certificados son sintéticos; el caso online no acredita una consulta OCSP real. |
+| Suite completa del servidor | 157 funciones en 9 suites: PASS, 48,159 s; PostgreSQL 18.6 aislado con tmpfs y puerto loopback 59281. |
+| Revisión independiente | Sin hallazgos de seguridad o estilo en los dos Swift modificados; el recall inspecciona 2 archivos y encuentra 0 candidatos. `git diff --check` correcto. |
+
+Los logs y proyecciones sanitizadas permanecen fuera de Git. No se guardan JWS, JWT, claves ni datos de autenticación
+en esta documentación. El backend alojado conserva todavía el código anterior: su fila `account_premium_access`
+seguía acreditando solo el final inicial 16:11:46 e inició transición aunque Apple confirmaba otra renovación activa.
+No se modificó manualmente la concesión ni se borró el historial del tester. Al cerrar esta validación local, la entrega
+Git, CI y despliegue Sandbox de la corrección estaban pendientes; la issue registra su estado posterior. Después del
+despliegue hay que recuperar la compra existente y comprobar Premium activo, la vigencia persistida y las notificaciones
+de renovación. #39 permanece abierta.

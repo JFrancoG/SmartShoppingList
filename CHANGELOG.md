@@ -68,6 +68,8 @@
 
 ### Fixed
 
+- 2026-10-14 | 🐛 fix(premium): accept renewals signed before period start
+
 - 2026-10-12 | 🐛 fix(server): diagnose invalid Apple startup configuration safely
 
 - 2026-10-12 | 🐛 fix(server): preserve resource bundles in server image
