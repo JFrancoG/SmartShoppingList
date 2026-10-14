@@ -38,6 +38,12 @@ struct SharedFreeGroupSection: View {
                                 Image(systemName: "person.2.badge.gearshape")
                             }
                         }
+                        .buttonStyle(ShoppingActionButtonStyle(
+                            widthFraction: 1,
+                            minimumHeight: 48,
+                            isProminent: false,
+                            usesCapsule: true
+                        ))
                         .disabled(!viewModel.canSelectFreeGroup)
                         .accessibilityHint("Changes the account's free group on all devices. Your active shopping group stays selected.")
                     }
