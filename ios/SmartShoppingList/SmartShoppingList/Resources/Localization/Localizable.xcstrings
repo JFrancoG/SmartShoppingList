@@ -1,6 +1,122 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Store and product limits apply to groups you administer. Only active stores and products pending purchase count." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los límites de tiendas y productos se aplican a los grupos que administras. Solo cuentan las tiendas activas y los productos pendientes de comprar."
+          }
+        }
+      }
+    },
+    "Up to 100 products per store" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hasta 100 productos por tienda"
+          }
+        }
+      }
+    },
+    "Up to 10 stores per group" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hasta 10 tiendas por grupo"
+          }
+        }
+      }
+    },
+    "Join or create up to 5 groups" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Únete o crea hasta 5 grupos"
+          }
+        }
+      }
+    },
+    "Change plan" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambiar de plan"
+          }
+        }
+      }
+    },
+    "Free plan limits" : {
+      "comment" : "Heading for the free tier's group, store and pending product limits.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Límites del plan gratuito"
+          }
+        }
+      }
+    },
+    "Premium annual" : {
+      "comment" : "Illustrative preview product name; runtime metadata comes from StoreKit.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premium anual"
+          }
+        }
+      }
+    },
+    "Premium includes" : {
+      "comment" : "Heading for the benefits included in the personal premium subscription, separate from its current verified state.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ventajas de Premium"
+          }
+        }
+      }
+    },
+    "Premium monthly" : {
+      "comment" : "Illustrative preview product name; runtime metadata comes from StoreKit.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premium mensual"
+          }
+        }
+      }
+    },
+    "Subscription management" : {
+      "comment" : "Heading for opening Apple's subscription settings and recovering previous purchases.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gestionar la suscripción"
+          }
+        }
+      }
+    },
+    "Subscription options" : {
+      "comment" : "Heading for the available StoreKit subscription products; it does not identify the user's current purchased product.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opciones de suscripción"
+          }
+        }
+      }
+    },
     "%@ will be your free group on all devices. Ordinary changes follow a 30-day limit; replacing a group keeps the previous change schedule. No membership or content is removed." : {
       "comment" : "Account-wide free group confirmation. An exceptional replacement retains the prior cooldown rather than starting a new 30-day period.",
       "localizations" : {

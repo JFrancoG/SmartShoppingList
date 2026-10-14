@@ -19,8 +19,13 @@ struct SharedPreviewModifier: PreviewModifier {
         SharedPreviewContainer(context: context, state: state) { viewModel in
             content
                 .environment(viewModel)
+                .environment(\.usesPreparedShoppingPreview, true)
         }
     }
+}
+
+extension EnvironmentValues {
+    @Entry var usesPreparedShoppingPreview = false
 }
 
 extension PreviewTrait where T == Preview.ViewTraits {
@@ -36,6 +41,7 @@ enum SharedPreviewState: CaseIterable, Hashable {
     case multipleGroups
     case premiumTransition
     case premiumRestricted
+    case premiumFree
     case premiumActive
     case premiumGrace
     case premiumVerification
@@ -120,7 +126,10 @@ extension SharedPreviewPresentation {
         isInvitationsPresented = model.isInvitationsPresented
         reviewSnapshot = state == .review ? fixture.draft : nil
         subscriptionStatus = model.premium.status
-        subscriptionProducts = model.premium.products
+        // A pending purchase keeps the catalogue loaded before its server acknowledgement failed.
+        subscriptionProducts = state == .premiumVerification
+            ? PreviewPremiumStore.availableProducts
+            : model.premium.products
         subscriptionVerification = model.premium.pendingVerification
         subscriptionNotice = model.premium.notice
     }
@@ -307,7 +316,7 @@ enum SharedPreviewSupport {
             ),
             sourceDraft: fixture.draft
         ) : nil
-        let isPremiumPreview = [.premiumActive, .premiumGrace, .premiumVerification].contains(state)
+        let isPremiumPreview = [.premiumFree, .premiumActive, .premiumGrace, .premiumVerification].contains(state)
         if state == .multipleGroups || state == .premiumTransition || state == .premiumRestricted || isPremiumPreview {
             session.activeGroupID = fixture.group.id
         }
@@ -372,12 +381,12 @@ enum SharedPreviewSupport {
         state: SharedPreviewState
     ) async {
         await model.load()
-        if [.premiumActive, .premiumGrace, .premiumVerification].contains(state) {
+        if [.premiumFree, .premiumActive, .premiumGrace, .premiumVerification].contains(state) {
             await model.loadPremium()
         }
         switch state {
         case .group, .multipleGroups, .premiumTransition, .premiumRestricted,
-             .premiumActive, .premiumGrace, .premiumVerification:
+             .premiumFree, .premiumActive, .premiumGrace, .premiumVerification:
             model.selectedStoreID = fixture.stores.first?.id
             await model.loadSelectedStore()
             if let first = model.items.first {
@@ -495,7 +504,7 @@ private final class PreviewSharedShoppingAPI: SharedShoppingAPI {
     @MainActor
     func subscription(token: String) async throws -> SharedSubscriptionStatus {
         guard let scenario = premiumScenario,
-              [.premiumActive, .premiumGrace, .premiumVerification].contains(scenario) else {
+              [.premiumFree, .premiumActive, .premiumGrace, .premiumVerification].contains(scenario) else {
             throw SharedAPIError.configuration
         }
         let inGrace = premiumScenario == .premiumGrace
@@ -751,23 +760,26 @@ private struct PreviewStoreQuerySpeech: SpeechCapturing {
 
 /// Preview metadata is explicitly illustrative; no StoreKit or API call is made by this service.
 private struct PreviewPremiumStore: SharedSubscriptionStore {
-    func products(ids: [String]) async throws -> [SharedSubscriptionProduct] {
+    static var availableProducts: [SharedSubscriptionProduct] {
         [
             SharedSubscriptionProduct(
                 id: "preview.premium.monthly",
-                displayName: String(localized: "Example monthly premium"),
-                displayPrice: String(localized: "Example price"),
+                displayName: String(localized: "Premium monthly"),
+                displayPrice: 6.99.formatted(.currency(code: "EUR").locale(Locale(identifier: "es_ES"))),
                 period: .monthly,
                 subscriptionGroupID: "preview-only"
             ),
             SharedSubscriptionProduct(
                 id: "preview.premium.annual",
-                displayName: String(localized: "Example annual premium"),
-                displayPrice: String(localized: "Example price"),
+                displayName: String(localized: "Premium annual"),
+                displayPrice: 49.99.formatted(.currency(code: "EUR").locale(Locale(identifier: "es_ES"))),
                 period: .annual,
                 subscriptionGroupID: "preview-only"
             )
         ]
+    }
+    func products(ids: [String]) async throws -> [SharedSubscriptionProduct] {
+        Self.availableProducts
     }
     func purchase(id: String, appAccountToken: UUID) async throws -> SharedSubscriptionPurchaseResult { .cancelled }
     func restore() async throws {}

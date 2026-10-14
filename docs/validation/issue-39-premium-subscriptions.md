@@ -242,3 +242,128 @@ No se modificó manualmente la concesión ni se borró el historial del tester. 
 Git, CI y despliegue Sandbox de la corrección estaban pendientes; la issue registra su estado posterior. Después del
 despliegue hay que recuperar la compra existente y comprobar Premium activo, la vigencia persistida y las notificaciones
 de renovación. #39 permanece abierta.
+
+## Recuperación, nueva mensual y renovación real — 14 de octubre de 2026
+
+El propietario desplegó la corrección. Railway Sandbox confirma el despliegue activo
+`d42ae322-e796-4aa0-b4cc-266a93e4d66c` desde el commit completo
+`4bc01e83d451b4435e97d5f3f101619695e26f47`, arranque en el puerto 8080 y `/hello` con HTTP 200.
+La restauración física en iPhone 11 recuperó la mensual caducada sin el aviso de verificación: las 13 peticiones
+de transacciones observadas devolvieron 200, y PostgreSQL conservó el último periodo 17:01:46–17:06:46 CEST
+como `expired`, verificado de nuevo a las 17:37:13. El plan gratuito era el resultado esperado.
+
+Después, el propietario confirmó otra compra mensual con el mismo tester y Premium activo. Su captura de las
+17:47:38 identifica explícitamente `[Environment: Sandbox]`; la captura posterior está desplazada y no muestra
+la fila superior del estado. La confirmación de Apple no sustituye la verificación del servidor.
+
+| Evidencia real | Resultado |
+|---|---|
+| Nueva compra | Notificación a las 17:47:17 → HTTP 204; envío del cliente a las 17:47:45 → HTTP 200. Apple confirma `SUBSCRIBED/RESUBSCRIBE`, periodo 17:47:14–17:52:14, entrega `SUCCESS` y hash idéntico al recibo persistido. |
+| Primera renovación | Notificación a las 17:51:51 → HTTP 204; PostgreSQL guarda `subscribed`, periodo 17:52:14–17:57:14, renovación habilitada y verificación a las 17:51:51. El acceso personal se amplía hasta las 17:57:14. |
+| Contraste independiente | GET de estado de Apple Sandbox a las 17:55:51 → HTTP 200: misma cadena, cuenta, producto mensual, grupo y bundle; `subscribed`, mismo periodo y renovación habilitada. |
+| Siguiente notificación | HTTP 204 y recibo duradero independiente a las 17:56:29; los envíos posteriores del cliente devuelven 200. |
+
+El historial acotado de Apple permitió correlacionar el UUID y hash de la nueva compra, pero no incluyó el recibo
+de renovación en esa respuesta. La renovación se acredita mediante el callback alojado, el periodo avanzado en
+PostgreSQL y el estado independiente de Apple. La comprobación auxiliar de firmas y cadena hasta la raíz no
+equivale a una auditoría OCSP completa; el backend aplica su propia política de verificación. No se publican claves,
+JWT ni JWS. No se modificaron manualmente derechos, credenciales, historial del tester o producción.
+La mensual y su primera renovación quedan verificadas. La anual, la restauración activa y los demás escenarios
+del ciclo de vida siguen pendientes; #39 permanece abierta.
+
+## Jerarquía y botones de Premium — 14 de octubre de 2026
+
+El propietario solicita distinguir el estado activo y presentar las opciones como botones del color principal.
+La corrección local en `codex/issue-39-premium-ui` separa estado, opciones y gestión en Views declarativas:
+estado con título semántico y par `success`/`successSoft`; compra y gestión con el estilo primario existente a
+ancho completo; restauración como control secundario. Las acciones preceden los párrafos y el grupo gratuito.
+Cuando Premium está activo, la gestión aparece antes del catálogo. Se conserva la autoridad del servidor,
+las llamadas y condiciones de habilitación. No se infiere qué SKU está activo desde la última pulsación.
+
+El estilo compartido admite ancho explícito, conservando los defaults 0,6 y 0,75 en accesibilidad. El trait de
+previews añade un escenario gratuito con catálogo y marca únicamente sus modelos ya preparados, para evitar
+una recarga inicial que capturaba los botones durante `isBusy`. El marcador es falso por defecto y no decide
+estado ni permisos. La verificación pendiente conserva su bloqueo real y productos sintéticos visibles.
+Los cuatro encabezados nuevos están localizados en español e inglés.
+
+| Validación | Resultado y límite |
+|---|---|
+| Build iOS | Xcode MCP estable 27.1, SDK Simulator 27.1: PASS, 5,301 s. GetBuildLog y lectura completa del log confirman cero warnings y errores. |
+| Previews finales | Ocho renders sin errores: gratuito/activo ES Large, gratuito ES XXX Large HC Light y AX5 Dark, activo EN AX5 Light, verificación pendiente ES AX5 Dark, activo ES Large Light y HC Dark. Destino real: iPhone 18 Pro Max con iOS 27.2; no se atribuyen a iPhone 11. Se acredita el contenido visible, no toda la pantalla desplazable ni interacción. |
+| Contraste nominal | Validador del proyecto: 64 pares × 4 modos y 21 assets × 4 variantes, PASS. |
+| Texto de Restaurar nativo | Muestreo de píxeles de los snapshots habilitados: Light 11,90:1, Dark 6,63:1, HC Light 15,26:1 y HC Dark 9,73:1. No acredita todas las mezclas, contornos, pulsación o estados deshabilitados. |
+| Revisión independiente | Sin P1/P2; el único P3 de estilo se resolvió. Seis Swift auditados, recall sin candidatos, catálogo JSON válido y `git diff --check` limpio. |
+
+No se añaden pruebas de lógica que repliquen estilos. Los escenarios sintéticos no son nuevas compras reales.
+No se han instalado estos cambios en el teléfono ni publicado todavía mediante commit/PR/CI.
+VoiceOver físico y las pruebas restantes de comercio siguen pendientes; #39 permanece abierta.
+
+### Refinación de alineación y altura — 14 de octubre, 21:45 CEST
+
+La petición posterior del propietario centra icono/título y coloca la vigencia en una columna inferior,
+con separación escalada. Todas las acciones del Form Premium tienen un mínimo de 48 pt: compra, gestión,
+restauración, reintento y elección de grupo gratuito. Los controles nativos de navegación y confirmación
+conservan su presentación del sistema. Restaurar no tiene icono y utiliza el estilo compartido secundario
+(`textPrimary`/`primarySoft`), sin el padding adicional que hacía más alto el control nativo anterior.
+El estilo conserva los defaults originales para otros usos (mínimo 44 y presentación primaria).
+
+Nombre y precio usan `ViewThatFits`: una fila si cabe, columna con altura flexible en caso contrario.
+No hay reducción de fuente ni límite de líneas. El espaciado escala con Dynamic Type; el valor accesible
+conserva la periodicidad. `6,99 €` y `49,99 €` son exclusivamente datos ilustrativos de `PreviewPremiumStore`.
+En ejecución, también en Sandbox, se siguen usando `Product.displayName` y `Product.displayPrice`.
+No se han cambiado precios de App Store Connect.
+
+Validación de esta refinación: build final con Xcode MCP estable, SDK Simulator 27.1, PASS en 5,682 s;
+GetBuildLog y lectura del log sin warnings ni errores. Renders inspeccionados de estado activo ES normal,
+opciones AX5 y gestión EN AX5 con contraste aumentado: texto visible sin recorte, fila normal y columna
+accesible. Destino real de previews: iPhone 18 Pro Max/iOS 27.2. Los nombres de producto del fixture español
+no cambian al cambiar el idioma del entorno de la View. Esto no acredita el ajuste físico en iPhone 11.
+Validador de diseño PASS (64 pares × 4 modos, 21 assets × 4 variantes). Revisión independiente de ocho Swift
+PASS tras corregir los espaciados escalados; catálogo JSON y diff limpios. La reordenación automática de
+Xcode en el catálogo se eliminó conservando las seis adiciones de esta unidad.
+
+Las medidas anteriores de Restaurar nativo describen la iteración anterior; el secundario actual usa los
+pares semánticos del sistema de diseño. No se repiten pruebas de lógica para estilos. Continúan pendientes
+la instalación física, VoiceOver físico, la entrega Git y las pruebas comerciales restantes de #39.
+
+### Orden por estado y ventajas resumidas — 14 de octubre, 22:57 CEST
+
+Se aplica la decisión del propietario: gratuito (incluida caducidad) muestra estado → ventajas → opciones →
+restauración; Premium activo muestra estado → gestión → ventajas → cambiar de plan. En gratuito se omiten
+el encabezado de gestión y su botón, conservando Restaurar y Reintentar cuando existe verificación pendiente.
+Las ventajas son tres filas: hasta 5 grupos, 10 tiendas activas por grupo y 100 productos pendientes por tienda.
+El pie aclara que los límites de tiendas/productos aplican a los grupos administrados. Cinco claves nuevas ES/EN.
+
+Las acciones de Premium, incluida la elección de grupo, conservan mínimo 48 pt. El redondeo circular de radio
+24 produce cápsula a esa altura y queda acotado cuando crece el contenido. Se descartó Capsule estricta tras
+observar texto fuera del fondo en Gestión AX5; el render corregido confirma texto completo sobre el fondo.
+El estilo compartido conserva sus defaults fuera de Premium. Nombres/precios continúan viniendo de StoreKit;
+no se infiere el SKU activo desde el catálogo ni se modifica el contrato del servidor.
+
+Build final Xcode MCP estable/SDK Simulator 27.1: PASS 4,782 s, GetBuildLog y log sin warnings ni errores.
+El primer build no reconoció el nuevo archivo sincronizado; reabrir el workspace resolvió la indexación.
+Previews inspeccionadas: gratuito ES claro y activo ES oscuro con el orden nuevo; ventajas EN AX5, opciones AX5
+y gestión EN AX5 (incluida la corrección del fondo). La preview de grupo AX5 muestra solo parte del botón por
+el desplazamiento del Form: no se acredita su contenido completo a partir de ese snapshot. Destino real de
+los renders: iPhone 18 Pro Max/iOS 27.2. Sin prueba física ni VoiceOver físico. Validación de diseño PASS;
+revisión independiente de los deltas PASS tras añadir el trait compartido a las nuevas previews. Catálogo
+JSON y diff limpios; se elimina solo la reordenación/metadatos automáticos de extracción de Xcode, conservando
+las traducciones. Sin commit, push, PR, instalación o despliegue; #39 sigue pendiente del resto de pruebas.
+
+### Validación previa a entrega — 14 de octubre, 23:10 CEST
+
+Texto final aprobado: «Únete o crea hasta 5 grupos», «Hasta 10 tiendas por grupo» y «Hasta 100 productos
+por tienda». El pie aclara grupos administrados, tiendas activas y productos pendientes de comprar.
+Se actualizan las cuatro parejas EN/ES y se inspecciona una preview completa gratuita ES con el texto final.
+Se reutilizan los renders de composición/AX5 anteriores para las partes sin cambios.
+
+Revisión independiente final frente a main 4bc01e8: nueve Swift (cinco nuevos), sin hallazgos; recall sin
+candidatos, auditoría manual PASS. Once claves nuevas ES/EN, sin eliminar claves ni cambiar traducciones
+anteriores. Xcode MCP estable, SDK Simulator 27.1: build PASS en 4,759 s, cero warnings/errores en GetBuildLog
+y log completo. Preview final: iPhone 18 Pro Max/iOS 27.2. Validador de contrato PASS (31 operaciones,
+125 ejemplos positivos y 47 negativos); diseño PASS (64 pares × 4 modos, 21 assets × 4 variantes).
+
+El propietario autoriza commit, push, PR, CI, merge y eliminación de rama, manteniendo #39 abierta.
+La entrega y los resultados de CI se registran en la PR y la issue tras verificarlos. No se instala en
+el teléfono ni se despliega como parte de esta entrega. VoiceOver físico y las pruebas Sandbox restantes
+continúan pendientes. No se añaden pruebas que dupliquen la implementación de estilos.
