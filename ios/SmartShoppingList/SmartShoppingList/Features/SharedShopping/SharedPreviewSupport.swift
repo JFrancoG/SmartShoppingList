@@ -42,6 +42,8 @@ enum SharedPreviewState: CaseIterable, Hashable {
     case premiumTransition
     case premiumRestricted
     case premiumFree
+    case premiumNoGroups
+    case premiumSingleGroup
     case premiumActive
     case premiumGrace
     case premiumVerification
@@ -292,7 +294,7 @@ enum SharedPreviewSupport {
     ) -> SharedShoppingViewModel {
         let draft = DraftPreviewSupport.viewModel(snapshot: fixture.draft, state: .content)
         var session = fixture.session
-        if state == .invitation {
+        if state == .invitation || state == .premiumNoGroups {
             session.user.group = nil
         } else if state == .groupTransferRecipient {
             session.user = SharedUser(
@@ -350,6 +352,9 @@ enum SharedPreviewSupport {
                 createdAt: fixture.group.createdAt
             )]
         }
+        if state == .premiumNoGroups || state == .premiumSingleGroup {
+            api?.premiumScenario = state
+        }
         let configuration = state == .unconfigured ? nil : fixture.configuration
         let subscriptionStore: (any SharedSubscriptionStore)? = isPremiumPreview ? PreviewPremiumStore() : nil
         #if DEBUG
@@ -402,7 +407,7 @@ enum SharedPreviewSupport {
         case .groupManagementOwner, .groupTransferRecipient:
             await model.loadGroupManagement()
             model.selectedSuccessorID = PreviewSharedShoppingAPI.successorID
-        case .signedOut, .signInUnavailable, .invitation, .pending, .unconfigured:
+        case .signedOut, .signInUnavailable, .invitation, .pending, .unconfigured, .premiumNoGroups, .premiumSingleGroup:
             break
         }
     }
@@ -477,7 +482,7 @@ private final class PreviewSharedShoppingAPI: SharedShoppingAPI {
                     premiumActive: premiumIsActive,
                     premiumExpiresAt: premiumExpiry,
                     transitionEndsAt: transitionEnd,
-                    freeGroupId: additionalGroups.first?.id,
+                    freeGroupId: additionalGroups.first?.id ?? user.group?.id,
                     freeGroupChangeAvailableAt: scenario == .premiumRestricted
                         ? Date(timeIntervalSince1970: 1_792_022_400) : nil,
                     canChangeFreeGroup: scenario != .premiumRestricted

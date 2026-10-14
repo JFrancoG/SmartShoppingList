@@ -1,6 +1,206 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Loading your groups…" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cargando tus grupos…"
+          }
+        }
+      }
+    },
+    "Your groups could not be verified. Refresh to see your free group." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se han podido comprobar tus grupos. Actualiza para ver tu grupo gratuito."
+          }
+        }
+      }
+    },
+    "You have no groups yet" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Todavía no tienes grupos"
+          }
+        }
+      }
+    },
+    "Create a group or accept an invitation from Settings. With the free plan you can use one group." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crea un grupo o acepta una invitación desde Ajustes. Con el plan gratuito puedes usar un grupo."
+          }
+        }
+      }
+    },
+    "This is your only group. You do not need to choose: it is your group for use with the free plan." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este es tu único grupo. No necesitas elegir: es tu grupo para usar con el plan gratuito."
+          }
+        }
+      }
+    },
+    "Your free group: %@" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tu grupo gratuito: %@"
+          }
+        }
+      }
+    },
+    "Choose your free group" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige tu grupo gratuito"
+          }
+        }
+      }
+    },
+    "Premium gives you access to all your groups. Choose which one to keep using if your subscription ends." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premium te permite usar todos tus grupos. Elige cuál seguirás usando si termina tu suscripción."
+          }
+        }
+      }
+    },
+    "Premium has ended. You can keep shopping in your existing groups until %@." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premium ha terminado. Puedes seguir comprando en tus grupos actuales hasta el %@."
+          }
+        }
+      }
+    },
+    "After that, you can shop in your free group. Your other groups and their data remain available to consult." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Después podrás seguir comprando en tu grupo gratuito. Los demás grupos y sus datos seguirán disponibles para consulta."
+          }
+        }
+      }
+    },
+    "Store and product limits already follow each administrator’s current plan." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los límites de tiendas y productos ya corresponden al plan actual de cada administrador."
+          }
+        }
+      }
+    },
+    "With the free plan you can shop in your free group. Your other groups and their data remain available to consult." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Con el plan gratuito puedes comprar en tu grupo gratuito. Los demás grupos y sus datos siguen disponibles para consulta."
+          }
+        }
+      }
+    },
+    "If you do not choose, we keep your previous valid choice or use the group you joined first." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Si no eliges, mantenemos tu elección anterior válida o usamos el grupo al que te uniste primero."
+          }
+        }
+      }
+    },
+    "Choose a different group" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elegir otro grupo"
+          }
+        }
+      }
+    },
+    "You can change your free group again on %@." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Podrás volver a cambiar tu grupo gratuito el %@."
+          }
+        }
+      }
+    },
+    "You can change your choice once every 30 days. If you leave this group or it closes, you can choose a replacement. Changing your free group does not switch the group you are viewing." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Puedes cambiar tu elección una vez cada 30 días. Si abandonas ese grupo o se cierra, puedes elegir otro. Cambiar tu grupo gratuito no cambia el grupo que estás viendo."
+          }
+        }
+      }
+    },
+    "You can shop in your existing groups until %@. Then only in your free group." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Puedes comprar en tus grupos actuales hasta el %@. Después, solo en tu grupo gratuito."
+          }
+        }
+      }
+    },
+    "Your free plan lets you shop in one group. Review which group you want to use." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tu plan gratuito te permite comprar en un grupo. Revisa cuál quieres usar."
+          }
+        }
+      }
+    },
+    "Review free group" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Revisar grupo gratuito"
+          }
+        }
+      }
+    },
+    "Free plan: 1 group · 3 active stores · 20 pending products per store." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plan gratuito: 1 grupo · 3 tiendas activas · 20 productos pendientes por tienda."
+          }
+        }
+      }
+    },
     "Store and product limits apply to groups you administer. Only active stores and products pending purchase count." : {
       "localizations" : {
         "es" : {

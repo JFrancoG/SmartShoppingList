@@ -5,7 +5,8 @@ struct SharedPremiumManagementSection: View {
     @Binding var showsSubscriptionManagement: Bool
 
     var body: some View {
-        if viewModel.premium.status?.isConfigured == true {
+        if viewModel.premium.status?.isConfigured == true,
+           viewModel.membershipAccess?.premiumActive == true || viewModel.premium.pendingVerification != nil {
             Section {
                 if viewModel.membershipAccess?.premiumActive == true {
                     Button("Manage Apple subscription", systemImage: "creditcard") {
@@ -23,21 +24,6 @@ struct SharedPremiumManagementSection: View {
                     .buttonStyle(ShoppingActionButtonStyle(widthFraction: 1, minimumHeight: 48, usesCapsule: true))
                     .disabled(viewModel.isBusy)
                 }
-                Button {
-                    Task {
-                        await viewModel.restorePremium()
-                    }
-                } label: {
-                    Text("Restore purchases")
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .buttonStyle(ShoppingActionButtonStyle(
-                    widthFraction: 1,
-                    minimumHeight: 48,
-                    isProminent: false,
-                    usesCapsule: true
-                ))
-                .disabled(viewModel.isBusy || !viewModel.premium.canRestore)
             } header: {
                 if viewModel.membershipAccess?.premiumActive == true {
                     Text("Subscription management")

@@ -367,3 +367,27 @@ El propietario autoriza commit, push, PR, CI, merge y eliminación de rama, mant
 La entrega y los resultados de CI se registran en la PR y la issue tras verificarlos. No se instala en
 el teléfono ni se despliega como parte de esta entrega. VoiceOver físico y las pruebas Sandbox restantes
 continúan pendientes. No se añaden pruebas que dupliquen la implementación de estilos.
+
+
+## UI: grupo gratuito separado — 15 de octubre de 2026
+
+Trabajo local sobre `b6287ad`, rama `codex/issue-39-free-group-settings`; #39 continúa abierta para el ciclo Sandbox.
+
+- Ajustes ofrece entradas separadas Premium / Grupo gratuito; esta elección sigue siendo de cuenta y no cambia el grupo
+  activo del dispositivo. No se modifican API, permisos, cupos, transición, confirmación ni persistencia de operaciones.
+- Restaurar compras usa una acción secundaria sin tarjeta exterior ni icono. Se conservan StoreKit, condiciones de
+  habilitación y altura mínima de 48 pt. La comparación gratuita se resume en el pie de ventajas.
+- La presentación distingue carga, verificación fallida, cero, uno y varios grupos. Oculta plazos vencidos y no muestra
+  espera de cambio cuando el servidor autoriza una sustitución excepcional, aunque conserve el plazo ordinario.
+- Previews Xcode MCP estable 27.1, destino real de render iPhone 18 Pro Max / iOS 27.2: Premium, Ajustes y Grupo gratuito
+  en Large, XXX Large y AX 5 con muestras ES/EN. También cero/uno en ES, Premium activo y Restaurar en Large/AX 5.
+  Textos y controles visibles se ajustan sin solapamiento; restauración carece de tarjeta exterior y crece con el texto.
+  Las capturas AX 5 muestran solo el viewport inicial: no acreditan scroll, foco, VoiceOver ni interacción física.
+- Fechas de las previews de grupo fijadas para mantener los estados de transición/cambio reproducibles; los datos y
+  precios son ilustrativos. Las pantallas reales usan la fecha actual para presentar los plazos y el catálogo de StoreKit.
+- No se instala esta revisión en el iPhone ni se realiza compra/restauración durante este cambio. Las pruebas físicas
+  de navegación, selección, restauración activa, compra anual y ciclo restante siguen pendientes.
+- Compilación final `Debug-iphoneos` con Xcode MCP 27.1: correcta (5,731 s), sin errores ni advertencias en el log
+  completo `BuildProject-Log-20261015-000956.txt`. Auditoría SwiftUI/accesibilidad y estilo independiente: sin hallazgos.
+- Validadores locales: contrato (31 operaciones, 125 ejemplos positivos, 47 peticiones negativas) y diseño
+  (64 pares × 4 modos, 21 assets × 4 variantes) correctos. No son pruebas de ejecución del servidor ni de compras.

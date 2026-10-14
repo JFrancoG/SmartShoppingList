@@ -16,7 +16,14 @@ struct SharedSettingsView: View {
                         NavigationLink {
                             SharedPremiumView(viewModel: viewModel)
                         } label: {
-                            Label("Premium and free group", systemImage: "checkmark.seal")
+                            Label("Premium", systemImage: "checkmark.seal")
+                                .frame(minHeight: 48)
+                        }
+                        NavigationLink {
+                            SharedFreeGroupView(viewModel: viewModel)
+                        } label: {
+                            Label("Free group", systemImage: "person.2")
+                                .frame(minHeight: 48)
                         }
                     }
                     .listRowBackground(Color.surface)

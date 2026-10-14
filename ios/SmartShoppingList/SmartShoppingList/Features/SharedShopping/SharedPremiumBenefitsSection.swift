@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct SharedPremiumBenefitsSection: View {
+    @ScaledMetric(relativeTo: .footnote) private var footerSpacing = 8.0
     var body: some View {
         Section {
             Label("Join or create up to 5 groups", systemImage: "person.2")
@@ -9,7 +10,10 @@ struct SharedPremiumBenefitsSection: View {
         } header: {
             Text("Premium includes")
         } footer: {
-            Text("Store and product limits apply to groups you administer. Only active stores and products pending purchase count.")
+            VStack(alignment: .leading, spacing: footerSpacing) {
+                Text("Store and product limits apply to groups you administer. Only active stores and products pending purchase count.")
+                Text("Free plan: 1 group · 3 active stores · 20 pending products per store.")
+            }
         }
         .fixedSize(horizontal: false, vertical: true)
         .listRowBackground(Color.surface)

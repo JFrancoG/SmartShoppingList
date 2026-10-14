@@ -93,3 +93,15 @@ La validación de cada entrega debe probar efectos observables, no solo valores 
 | Rechazo de cuota o cliente antiguo | Borrador conservado; diagnóstico compatible y ninguna confirmación falsa o bloqueo por error desconocido. |
 
 Los contratos de #33 y #35 concretan migración, compatibilidad, traspaso, salida y cierre. La unidad #37 concreta cupos, archivo/restauración, exceso de tiendas/productos y recibos de rechazo. La unidad #39 concreta derechos verificados, transición y elección gratuita; su [matriz de aceptación](../contracts/acceptance.md#suscripción-transición-y-grupo-gratuito) distingue evidencia criptográfica, HTTP/persistencia, carreras y recorrido iOS. Las comprobaciones se distribuyen entre Swift Testing, PostgreSQL aislado, StoreKit y recorridos iOS ES/EN; este documento de decisiones no acredita su ejecución.
+
+## Presentación de la cuenta y suscripción
+
+La revisión de UI del 15 de octubre separa **Ajustes → Premium** de **Ajustes → Grupo gratuito**. Premium conserva
+estado, gestión, ventajas y catálogo StoreKit; «Restaurar compras» es una acción independiente sin tarjeta exterior.
+Solo las cuentas verificadas con varios grupos y sin Premium muestran allí un aviso breve que enlaza a la elección.
+
+La pantalla de grupo gratuito distingue carga/error, cero grupos, un grupo sin selector y varios con elección por cuenta.
+Explica el uso permitido hasta la fecha de transición y la consulta posterior sin borrar datos. Solo muestra fechas futuras;
+la fecha de próximo cambio se oculta también cuando el servidor permite una sustitución excepcional. La presentación no
+recalcula permisos ni selecciona grupos: conserva la autoridad del servidor y el flujo de confirmación existente.
+Los controles nuevos y las acciones Premium mantienen un mínimo de 48 pt y crecimiento con Dynamic Type.
