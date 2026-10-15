@@ -247,7 +247,16 @@ final class SharedShoppingViewModel {
     }
 
     func groupConfirmationName(_ candidate: SharedGroup) -> String {
-        groupNeedsIdentifier(candidate) ? "\(candidate.name) (\(candidate.id.uuidString))" : candidate.name
+        let matchingGroups = groups.filter {
+            $0.name.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
+                == candidate.name.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
+        }.sorted {
+            if $0.createdAt != $1.createdAt { return $0.createdAt < $1.createdAt }
+            return $0.id.uuidString < $1.id.uuidString
+        }
+        guard matchingGroups.count > 1,
+              let index = matchingGroups.firstIndex(where: { $0.id == candidate.id }) else { return candidate.name }
+        return "\(candidate.name) · \(index + 1)"
     }
 
     func selectFreeGroup(id: UUID) async {
