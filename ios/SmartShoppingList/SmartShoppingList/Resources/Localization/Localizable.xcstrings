@@ -460,6 +460,38 @@
         }
       }
     },
+    "Choose as free group" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose as free group"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elegir como grupo gratuito"
+          }
+        }
+      }
+    },
+    "Choose as free group: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose as free group: %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elegir como grupo gratuito: %@"
+          }
+        }
+      }
+    },
     "Choose one group for full use without premium. You can change it once every 30 days. Leaving or closing it allows a replacement. Your other memberships and data are kept." : {
       "comment" : "Premium subscription and account-wide free group management.",
       "localizations" : {
@@ -1457,6 +1489,22 @@
         }
       }
     },
+    "Automatic renewal is turned off. Premium remains active until the current period ends." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatic renewal is turned off. Premium remains active until the current period ends."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La renovación automática está desactivada. Premium sigue activo hasta el final del periodo actual."
+          }
+        }
+      }
+    },
     "Back" : {
       "localizations" : {
         "es" : {
@@ -1842,6 +1890,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Crear invitación"
+          }
+        }
+      }
+    },
+    "Created %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Created %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Creado el %@"
           }
         }
       }

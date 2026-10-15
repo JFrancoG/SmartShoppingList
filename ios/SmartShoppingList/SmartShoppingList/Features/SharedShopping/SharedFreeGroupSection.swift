@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct SharedFreeGroupSection: View {
+    @ScaledMetric(relativeTo: .body) private var choiceSpacing = 12.0
     @ScaledMetric(relativeTo: .footnote) private var footerSpacing = 8.0
     let viewModel: SharedShoppingViewModel
     @State private var proposedGroup: SharedGroup?
@@ -43,8 +44,16 @@ struct SharedFreeGroupSection: View {
         case let .multiple(selected, premiumActive, transitionEnd, nextChange, alternatives):
             Section {
                 if let selected {
-                    Text("Your free group: \(viewModel.groupConfirmationName(selected))")
-                        .font(.headline)
+                    VStack(alignment: .leading) {
+                        Text("Your free group: \(viewModel.groupConfirmationName(selected))")
+                            .font(.headline)
+                        if viewModel.groupNeedsIdentifier(selected) {
+                            Text("Created \(selected.createdAt, format: .dateTime.day().month().year().hour().minute())")
+                                .font(.subheadline)
+                                .foregroundStyle(.textSecondary)
+                        }
+                    }
+                    .accessibilityElement(children: .combine)
                 } else {
                     Text("Choose your free group").font(.headline)
                 }
@@ -68,21 +77,34 @@ struct SharedFreeGroupSection: View {
 
             Section {
                 ForEach(alternatives) { group in
-                    Button {
-                        proposedGroup = group
-                        confirmsChange = true
-                    } label: {
-                        Text("Use \(viewModel.groupConfirmationName(group)) as free group")
-                            .fixedSize(horizontal: false, vertical: true)
+                    VStack(alignment: .leading, spacing: choiceSpacing) {
+                        VStack(alignment: .leading) {
+                            Text(viewModel.groupConfirmationName(group)).font(.headline)
+                            if viewModel.groupNeedsIdentifier(group) {
+                                Text("Created \(group.createdAt, format: .dateTime.day().month().year().hour().minute())")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.textSecondary)
+                            }
+                        }
+                        .accessibilityElement(children: .combine)
+                        Button {
+                            proposedGroup = group
+                            confirmsChange = true
+                        } label: {
+                            Text("Choose as free group")
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .buttonStyle(ShoppingActionButtonStyle(
+                            widthFraction: 1,
+                            minimumHeight: 48,
+                            isProminent: false,
+                            usesCapsule: true
+                        ))
+                        .disabled(!viewModel.canSelectFreeGroup)
+                        .accessibilityLabel("Choose as free group: \(viewModel.groupConfirmationName(group))")
+                        .accessibilityHint("Changes the account's free group on all devices. Your active shopping group stays selected.")
                     }
-                    .buttonStyle(ShoppingActionButtonStyle(
-                        widthFraction: 1,
-                        minimumHeight: 48,
-                        isProminent: false,
-                        usesCapsule: true
-                    ))
-                    .disabled(!viewModel.canSelectFreeGroup)
-                    .accessibilityHint("Changes the account's free group on all devices. Your active shopping group stays selected.")
+                    .fixedSize(horizontal: false, vertical: true)
                 }
             } header: {
                 if selected != nil {
@@ -104,7 +126,7 @@ struct SharedFreeGroupSection: View {
                 isPresented: $confirmsChange,
                 presenting: proposedGroup
             ) { group in
-                Button("Use \(viewModel.groupConfirmationName(group)) as free group") {
+                Button("Choose as free group") {
                     Task {
                         await viewModel.selectFreeGroup(id: group.id)
                     }
@@ -135,4 +157,15 @@ struct SharedFreeGroupSection: View {
     }
     .environment(\.locale, Locale(identifier: "en"))
     .environment(\.dynamicTypeSize, .accessibility5)
+}
+
+#Preview("Duplicate groups · ES", traits: .sharedShopping(.premiumRestricted)) {
+    @Previewable @Environment(SharedShoppingViewModel.self) var viewModel
+    NavigationStack {
+        Form {
+            SharedFreeGroupSection(viewModel: viewModel)
+        }
+        .modifier(ShoppingFormStyle())
+    }
+    .environment(\.locale, Locale(identifier: "es"))
 }

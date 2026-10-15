@@ -5,6 +5,28 @@ import Testing
 @Suite(.tags(.fast))
 @MainActor
 struct MultipleGroupTests {
+    @Test
+    func `Duplicate group labels remain distinct without UUIDs after membership order changes`() async throws {
+        let fixture = try MembershipFixture()
+        let api = MembershipAPI(fixture: fixture)
+        let model = fixture.model(api: api)
+        await model.load()
+        let firstLabel = model.groupConfirmationName(fixture.first)
+        let secondLabel = model.groupConfirmationName(fixture.second)
+        #expect(Set([firstLabel, secondLabel]) == ["Casa · 1", "Casa · 2"])
+        #expect(!firstLabel.contains(fixture.first.id.uuidString))
+        #expect(!secondLabel.contains(fixture.second.id.uuidString))
+
+        await api.setMemberships([fixture.second, fixture.third, fixture.first])
+        await model.refresh()
+        #expect(model.groupConfirmationName(fixture.first) == firstLabel)
+        #expect(model.groupConfirmationName(fixture.second) == secondLabel)
+        #expect(model.groupConfirmationName(fixture.third) == "Trabajo")
+        await model.selectGroup(id: fixture.second.id)
+        #expect(model.group?.id == fixture.second.id)
+        #expect(model.stores.map(\.groupId) == [fixture.second.id])
+    }
+
     @Test(arguments: ["purchase", "restore", "verification"])
     func `Explicit premium action failures use the native notice while background status remains inline`(
         action: String

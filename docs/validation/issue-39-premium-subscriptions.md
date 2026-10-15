@@ -391,3 +391,38 @@ Trabajo local sobre `b6287ad`, rama `codex/issue-39-free-group-settings`; #39 co
   completo `BuildProject-Log-20261015-000956.txt`. Auditoría SwiftUI/accesibilidad y estilo independiente: sin hallazgos.
 - Validadores locales: contrato (31 operaciones, 125 ejemplos positivos, 47 peticiones negativas) y diseño
   (64 pares × 4 modos, 21 assets × 4 variantes) correctos. No son pruebas de ejecución del servidor ni de compras.
+
+
+## 2026-10-15 — Duplicate group labels and precise subscription deadlines
+
+Owner-approved UI follow-up on `codex/issue-39-group-labels-expiry`, based on `dc79869`.
+Duplicate names now use short ordinal labels (for example `Casa · 1`, `Casa · 2`) consistently in the active-group
+selector, free-group screen and confirmation. Creation date/time appears as secondary text for duplicates. Sorting by
+creation time and internal ID keeps labels consistent when the membership response is reordered, including identical
+creation timestamps. Ordinals are presentation only and can change when the set of names changes; mutations still use
+exact group IDs. The free-group action is now “Elegir como grupo gratuito”, separate from its group identity, with a
+48-point minimum and a group-specific accessible label. Existing cooldown and confirmation rules are unchanged.
+
+Premium expiry and billing-grace deadlines include local date and time. The renewal message says “La renovación
+automática está desactivada”, without attributing the change to the user. At accessibility text sizes the active-status
+icon is above its title to avoid the overlap found during preview inspection. Four ES/EN catalogue additions preserve
+all prior translations; StoreKit names/prices and backend policy are unchanged.
+
+Validation:
+- Xcode stable MCP: Debug build passed; build-for-testing passed (10.589 s), with no warnings in its log.
+- The new Swift Testing regression loads equal-name/equal-timestamp memberships, reverses server order, verifies
+  distinct short labels and unchanged labels after refresh, then verifies selection still loads the intended group.
+- GetTestList/RunSomeTests again incorrectly classified the tag-filtered Fast tests as disabled (previously documented
+  in this file). RunAllTests with the unchanged Fast plan succeeded: native xcresult Passed, 228 functions / 389
+  executions, zero failures/skips/runtime warnings. The MCP's 13 “not run” entries belong outside Fast; they were not
+  counted as passing. Result: `Test-SmartShoppingList-2026.10.15_08-04-31-+0200.xcresult` in ActionArtifacts/RunAllTests.
+- Preview snapshots inspected on iPhone 18 Pro Max / iOS 27.2: duplicate-group screen in Spanish Large/XXX Large/AX5;
+  Premium in Spanish Large/XXX Large and English AX5. The corrected AX5 Premium snapshot at 08:04:07 has no title/icon
+  overlap. Group actions below the initial AX5 viewport and physical VoiceOver remain unverified.
+- Independent read-only SwiftUI/accessibility review: no remaining findings. Design-system validator passed;
+  contract validator passed 31 operations / 125 positive examples / 47 negative requests. Swift source-style recall
+  scan reviewed; git diff whitespace check passed.
+
+Fast and the original iPhone 11 destination were preserved/restored; the task's Xcode workspace was closed.
+No commit, push, PR, deployment or device installation is included in this implementation step. Issue #39 stays open
+for the remaining Sandbox tests.

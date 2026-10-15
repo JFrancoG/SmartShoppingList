@@ -45,6 +45,7 @@ enum SharedPreviewState: CaseIterable, Hashable {
     case premiumNoGroups
     case premiumSingleGroup
     case premiumActive
+    case premiumRenewalOff
     case premiumGrace
     case premiumVerification
     case signedOut
@@ -318,7 +319,9 @@ enum SharedPreviewSupport {
             ),
             sourceDraft: fixture.draft
         ) : nil
-        let isPremiumPreview = [.premiumFree, .premiumActive, .premiumGrace, .premiumVerification].contains(state)
+        let isPremiumPreview = [
+            SharedPreviewState.premiumFree, .premiumActive, .premiumRenewalOff, .premiumGrace, .premiumVerification
+        ].contains(state)
         if state == .multipleGroups || state == .premiumTransition || state == .premiumRestricted || isPremiumPreview {
             session.activeGroupID = fixture.group.id
         }
@@ -347,7 +350,7 @@ enum SharedPreviewSupport {
             api?.premiumScenario = state == .multipleGroups ? nil : state
             api?.additionalGroups = [SharedGroup(
                 id: fixture.invitation.id,
-                name: state == .multipleGroups ? fixture.group.name : "Familia",
+                name: state == .multipleGroups || state == .premiumRestricted ? fixture.group.name : "Familia",
                 creatorUserId: session.user.id,
                 createdAt: fixture.group.createdAt
             )]
@@ -386,12 +389,12 @@ enum SharedPreviewSupport {
         state: SharedPreviewState
     ) async {
         await model.load()
-        if [.premiumFree, .premiumActive, .premiumGrace, .premiumVerification].contains(state) {
+        if [.premiumFree, .premiumActive, .premiumRenewalOff, .premiumGrace, .premiumVerification].contains(state) {
             await model.loadPremium()
         }
         switch state {
         case .group, .multipleGroups, .premiumTransition, .premiumRestricted,
-             .premiumFree, .premiumActive, .premiumGrace, .premiumVerification:
+             .premiumFree, .premiumActive, .premiumRenewalOff, .premiumGrace, .premiumVerification:
             model.selectedStoreID = fixture.stores.first?.id
             await model.loadSelectedStore()
             if let first = model.items.first {
@@ -421,7 +424,9 @@ private final class PreviewSharedShoppingAPI: SharedShoppingAPI {
     let signInUnavailable: Bool
     var additionalGroups: [SharedGroup] = []
     var premiumScenario: SharedPreviewState? = nil
-    private var premiumIsActive: Bool { premiumScenario == .premiumActive || premiumScenario == .premiumGrace }
+    private var premiumIsActive: Bool {
+        premiumScenario == .premiumActive || premiumScenario == .premiumRenewalOff || premiumScenario == .premiumGrace
+    }
     private let managementScenario: GroupManagementPreviewScenario
     private var storedStores: [SharedStore]
     private var storedArchivedStores: [SharedStore]
@@ -509,7 +514,7 @@ private final class PreviewSharedShoppingAPI: SharedShoppingAPI {
     @MainActor
     func subscription(token: String) async throws -> SharedSubscriptionStatus {
         guard let scenario = premiumScenario,
-              [.premiumFree, .premiumActive, .premiumGrace, .premiumVerification].contains(scenario) else {
+              [.premiumFree, .premiumActive, .premiumRenewalOff, .premiumGrace, .premiumVerification].contains(scenario) else {
             throw SharedAPIError.configuration
         }
         let inGrace = premiumScenario == .premiumGrace
@@ -520,7 +525,7 @@ private final class PreviewSharedShoppingAPI: SharedShoppingAPI {
             state: inGrace ? .inGracePeriod : premiumIsActive ? .subscribed : .free,
             expiresAt: premiumIsActive ? Date(timeIntervalSince1970: inGrace ? 1_791_417_600 : 1_792_972_800) : nil,
             gracePeriodExpiresAt: inGrace ? Date(timeIntervalSince1970: 1_792_800_000) : nil,
-            autoRenewEnabled: premiumIsActive ? true : nil,
+            autoRenewEnabled: premiumIsActive ? premiumScenario != .premiumRenewalOff : nil,
             verifiedAt: premiumIsActive ? Date(timeIntervalSince1970: 1_791_504_000) : nil
         )
     }

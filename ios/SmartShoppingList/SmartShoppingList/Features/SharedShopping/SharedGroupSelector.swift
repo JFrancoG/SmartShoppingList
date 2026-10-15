@@ -20,14 +20,14 @@ struct SharedGroupSelector: View {
                     }
                     ForEach(viewModel.groups) { group in
                         VStack(alignment: .leading) {
-                            Text(group.name)
+                            Text(viewModel.groupConfirmationName(group))
                             if group.capabilities?.isFreeGroup == true {
                                 Text("Free group").font(.caption).foregroundStyle(.secondary)
                             } else if group.capabilities?.canUseShopping == false {
                                 Text("Consultation only").font(.caption).foregroundStyle(.secondary)
                             }
                             if viewModel.groupNeedsIdentifier(group) {
-                                Text(group.id.uuidString)
+                                Text("Created \(group.createdAt, format: .dateTime.day().month().year().hour().minute())")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
