@@ -39,13 +39,12 @@ struct SharedStoreManagementRow: View {
                     .foregroundStyle(.textSecondary)
             }
         }
-        .alert(confirmationTitle, isPresented: $confirmsChange) {
-            Button(actionTitle) {
+        .shoppingAlert(Text(confirmationTitle), isPresented: $confirmsChange) {
+            ShoppingAlertActions(primaryTitle: action == .archive ? Text("Archive") : Text("Restore")) {
                 Task {
                     await viewModel.changeStoreState(store, action: action)
                 }
-            }
-            Button("Cancel", role: .cancel) {}
+            } cancel: {}
         } message: {
             if action == .archive {
                 Text("Archive \(store.name)? It will stop appearing in shopping lists and will keep its history.")

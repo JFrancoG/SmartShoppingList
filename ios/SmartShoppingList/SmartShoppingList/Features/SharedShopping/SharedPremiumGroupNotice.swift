@@ -17,7 +17,7 @@ struct SharedPremiumGroupNotice: View {
                 } label: {
                     Text("Review free group")
                         .fixedSize(horizontal: false, vertical: true)
-                        .frame(minHeight: 48)
+                        .frame(minHeight: ShoppingControlMetrics.minimumTargetSize)
                 }
 
             }

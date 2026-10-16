@@ -19,7 +19,7 @@ struct SharedPremiumOptionsSection: View {
                     } label: {
                         SharedPremiumProductLabel(product: product)
                     }
-                    .buttonStyle(ShoppingActionButtonStyle(widthFraction: 1, minimumHeight: 48, usesCapsule: true))
+                    .buttonStyle(ShoppingActionButtonStyle(widthFraction: 1, usesCapsule: true))
                     .disabled(viewModel.isBusy || !viewModel.premium.canPurchase)
                 }
                 Text("Payment is charged to your Apple Account. The subscription renews automatically unless you cancel in Apple's subscription settings.")

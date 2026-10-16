@@ -31,6 +31,7 @@ struct SharedItemEditorView: View {
                         }
                         Text("New store").tag(nil as UUID?)
                     }
+                    .tint(.appPrimary)
                     if viewModel.editStoreID == nil {
                         VStack(alignment: .leading, spacing: 6) {
                             TextField("New store name", text: $viewModel.editNewStore, axis: .vertical)
@@ -64,6 +65,7 @@ struct SharedItemEditorView: View {
                             Button("I have reviewed the current product") {
                                 viewModel.reviewLatestItem()
                             }
+                            .tint(.appPrimary)
                             .disabled(!viewModel.canMutate)
                         } else {
                             Text("This product is no longer in this store. Close the editor and refresh the list.")

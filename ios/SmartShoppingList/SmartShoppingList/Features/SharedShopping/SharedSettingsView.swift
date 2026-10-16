@@ -17,13 +17,13 @@ struct SharedSettingsView: View {
                             SharedPremiumView(viewModel: viewModel)
                         } label: {
                             Label("Premium", systemImage: "checkmark.seal")
-                                .frame(minHeight: 48)
+                                .frame(minHeight: ShoppingControlMetrics.minimumTargetSize)
                         }
                         NavigationLink {
                             SharedFreeGroupView(viewModel: viewModel)
                         } label: {
                             Label("Free group", systemImage: "person.2")
-                                .frame(minHeight: 48)
+                                .frame(minHeight: ShoppingControlMetrics.minimumTargetSize)
                         }
                     }
                     .listRowBackground(Color.surface)

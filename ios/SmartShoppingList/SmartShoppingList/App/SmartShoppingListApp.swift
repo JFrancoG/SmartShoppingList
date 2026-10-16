@@ -1,5 +1,6 @@
 import AppIntents
 import SwiftUI
+import UIKit
 
 @main
 struct SmartShoppingListApp: App {
@@ -8,6 +9,18 @@ struct SmartShoppingListApp: App {
     @State private var shopping: SharedShoppingViewModel?
 
     init() {
+        // Scope the adaptive selection tint to tab bars; alerts use the global NativeAccent.
+        let tabAppearance = UITabBarAppearance()
+        for itemAppearance in [
+            tabAppearance.stackedLayoutAppearance,
+            tabAppearance.inlineLayoutAppearance,
+            tabAppearance.compactInlineLayoutAppearance
+        ] {
+            itemAppearance.selected.iconColor = UIColor(resource: .appPrimary)
+            itemAppearance.selected.titleTextAttributes = [.foregroundColor: UIColor(resource: .appPrimary)]
+        }
+        UITabBar.appearance().standardAppearance = tabAppearance
+        UITabBar.appearance().scrollEdgeAppearance = tabAppearance
         let shopping = Self.makeShopping()
         _shopping = State(initialValue: shopping)
         if let shopping {
@@ -37,17 +50,24 @@ struct SmartShoppingListApp: App {
 
     var body: some Scene {
         WindowGroup {
-            #if DEBUG
-            if let shopping {
-                AppRootView(viewModel: shopping.draft, shared: shopping)
-            } else {
-                ShoppingNoticeValidationView()
+            Group {
+                #if DEBUG
+                if let shopping {
+                    AppRootView(viewModel: shopping.draft, shared: shopping)
+                } else {
+                    ShoppingNoticeValidationView()
+                }
+                #else
+                if let shopping {
+                    AppRootView(viewModel: shopping.draft, shared: shopping)
+                }
+                #endif
             }
-            #else
-            if let shopping {
-                AppRootView(viewModel: shopping.draft, shared: shopping)
+            .background {
+                ShoppingWindowAccent()
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
             }
-            #endif
         }
         .onChange(of: scenePhase, initial: true) { _, phase in
             Task { await iconController.sceneDidChange(to: phase) }

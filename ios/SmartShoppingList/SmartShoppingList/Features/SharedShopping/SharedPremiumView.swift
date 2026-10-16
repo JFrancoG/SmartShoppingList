@@ -32,6 +32,11 @@ struct SharedPremiumView: View {
                 }
 
                 SharedPremiumRestoreSection(viewModel: viewModel)
+#if DEBUG
+                if viewModel.allowsSandboxRefundTesting {
+                    SharedSandboxRefundSection(viewModel: viewModel)
+                }
+#endif
             }
             .modifier(ShoppingFormStyle())
         }

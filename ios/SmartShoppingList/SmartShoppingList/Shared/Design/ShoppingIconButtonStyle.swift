@@ -5,7 +5,7 @@ struct ShoppingIconButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
     @ScaledMetric(relativeTo: .body) private var symbolSize: CGFloat = 17
     private var sideLength: CGFloat {
-        max(44, symbolSize + 24)
+        max(ShoppingControlMetrics.minimumTargetSize, symbolSize + 24)
     }
 
     func makeBody(configuration: Configuration) -> some View {

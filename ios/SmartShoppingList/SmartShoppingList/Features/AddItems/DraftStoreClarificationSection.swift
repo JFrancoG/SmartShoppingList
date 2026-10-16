@@ -16,6 +16,7 @@ struct DraftStoreClarificationSection: View {
                             }
                         }
                         .pickerStyle(.menu)
+                        .tint(.appPrimary)
                         .disabled(viewModel.isBusy)
                     }
                 }

@@ -36,7 +36,7 @@ enum ShoppingControlPlacement {
             guard division.minX < range.maxX, division.maxX > range.minX else { continue }
             let trailingWidth = max(0, range.maxX - division.maxX)
             let leadingWidth = max(0, division.minX - range.minX)
-            if trailingWidth >= 44 || trailingWidth >= leadingWidth {
+            if trailingWidth >= ShoppingControlMetrics.minimumTargetSize || trailingWidth >= leadingWidth {
                 range = CGRect(x: max(range.minX, division.maxX), y: 0, width: trailingWidth, height: 0)
             } else {
                 range.size.width = leadingWidth

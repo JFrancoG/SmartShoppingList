@@ -2,6 +2,27 @@
 
 Fecha: 10 de octubre de 2026. [Issue #39](https://github.com/JFrancoG/SmartShoppingList/issues/39).
 
+## 16 de octubre — preparación del reembolso Sandbox
+
+Añadida solicitud nativa de reembolso solo Debug + backend Sandbox, con selección de transacción verificada
+del titular actual. No cambia la autoridad de derechos del servidor. La revisión independiente de arquitectura,
+concurrencia, SwiftUI/accesibilidad y estilo terminó sin hallazgos funcionales; se corrigió un bloque `if` de formato.
+
+- Build para tests: PASS, 14,257 s; build iPhone 11: PASS, 7,532 s. Logs completos sin warnings ni errores.
+- Fast: **231 funciones / 402 ejecuciones**, cero fallos, omitidas o runtime warnings según `xcresulttool`.
+  Incluye 13 casos nuevos de selección y configuración. `RunSomeTests` rechazó la selección por metadatos
+  de tests deshabilitados; ejecutar Fast completo sí produjo resultados válidos. Las 13 entradas de otros
+  planes que MCP marca sin resultado no son tests ejecutados ni acreditan Integration.
+- Previews ES Large y AX5 renderizadas e inspeccionadas: etiqueta y pie completos, botón semántico,
+  crecimiento vertical y mínimo 48. No acredita VoiceOver físico ni la hoja de Apple.
+- Xcode instaló y abrió en **iPhone 11** sin desinstalar; proceso 1415, 12:04 CEST. El Info.plist compilado
+  confirma API e invitaciones en el dominio Sandbox dedicado. No se inició ninguna solicitud de reembolso.
+- Evidencia local: `ActionArtifacts/default/RunAllTests/Test-SmartShoppingList-2026.10.16_12-02-19-+0200.xcresult`,
+  `BuildProject-Log-20261016-120417.txt` y `RunProject-Log-20261016-120436.txt`.
+
+Pendiente: envío por el titular, decisión/notificación de Apple y reconciliación del servidor; gracia real
+también sigue pendiente. **#39 permanece abierta**. Sin commit/push, PR ni despliegue de servidor en este paso.
+
 Unidad implementada en la rama local `codex/issue-39-premium-subscriptions`, creada desde `main` limpio y sincronizado en `2ec7f574`. Este informe registra validación local anterior a la entrega Git. La issue conserva el plan operativo y el resultado definitivo de publicación e integración cuando se realicen. El [contrato 0.5](../contracts/premium-subscriptions.md), la [política comercial](../architecture/group-access-and-limits.md) y la [guía de configuración](../setup/premium-subscriptions.md) delimitan comportamiento y activación externa.
 
 ## Alcance comprobado

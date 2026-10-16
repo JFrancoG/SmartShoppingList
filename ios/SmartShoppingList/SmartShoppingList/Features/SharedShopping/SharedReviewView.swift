@@ -37,6 +37,7 @@ struct SharedReviewView: View {
                             }
                         }
                         .pickerStyle(.navigationLink)
+                        .tint(.appPrimary)
                         .disabled(viewModel.isBusy)
                         .accessibilityHint("Choose a store from the group or confirm the name you reviewed.")
                     }
@@ -51,6 +52,7 @@ struct SharedReviewView: View {
                             await viewModel.confirmReviewedBatch()
                         }
                     }
+                    .tint(.appPrimary)
                     .disabled(!viewModel.canConfirmReview)
                     .accessibilityHint("Adds all reviewed products to the group with the chosen stores.")
                 } footer: {

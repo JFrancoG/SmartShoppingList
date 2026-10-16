@@ -30,7 +30,7 @@ struct ShoppingNotice: Equatable {
         case .editor: "Check this product"
         case .storage: "Draft storage"
         case .draftConfirmation: "Confirm products"
-        case .draft, .group: "Shopping list notice"
+        case .draft, .group: "Smart List"
         }
     }
 }

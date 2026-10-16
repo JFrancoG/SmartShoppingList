@@ -37,7 +37,7 @@ struct SharedPremiumProductLabel: View {
             }
         }
     }
-    .buttonStyle(ShoppingActionButtonStyle(widthFraction: 1, minimumHeight: 48))
+    .buttonStyle(ShoppingActionButtonStyle(widthFraction: 1))
     .padding()
     .background(.canvas)
     .environment(\.locale, Locale(identifier: "es"))

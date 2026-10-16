@@ -7,6 +7,14 @@ struct SharedAPIConfiguration: Equatable {
     var baseURL: URL { apiOrigin }
     var invitationOrigin: URL { linkOrigin }
 
+#if DEBUG
+    var allowsSandboxRefundTesting: Bool {
+        let sandboxHost = "smartshoppinglistsandbox-sandbox.up.railway.app"
+        return apiOrigin.host == sandboxHost && linkOrigin.host == sandboxHost &&
+            (apiOrigin.port ?? 443) == 443 && (linkOrigin.port ?? 443) == 443
+    }
+#endif
+
     func invitation(from url: URL) throws(SharedAPIError) -> PendingInvitation {
         guard let parts = URLComponents(url: url, resolvingAgainstBaseURL: false),
               let origin = URLComponents(url: linkOrigin, resolvingAgainstBaseURL: false),

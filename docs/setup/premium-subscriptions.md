@@ -65,6 +65,22 @@ Preparar después una instalación iOS aislada que use el nuevo origen HTTPS en 
 
 ## Gracia de cobro y notificaciones
 
+### Solicitud de reembolso de prueba en iOS
+
+En **Debug**, con ambos orígenes configurados al backend Sandbox dedicado, Ajustes → Premium muestra
+**Pruebas Sandbox → Solicitar reembolso de prueba**. Abre la hoja nativa de Apple para el periodo activo
+más reciente, verificado por StoreKit, de uno de los productos del servidor y vinculado al `appAccountToken`
+de la cuenta autenticada. Descarta Production, Xcode, otras cuentas, caducidad, revocación y periodos sustituidos.
+Si no existe una compra elegible, informa de ello y no abre la hoja. Release excluye este código.
+
+Para el ensayo, comprar primero con el tester Sandbox si el periodo ya caducó, pulsar el botón y enviar la
+solicitud en la hoja de Apple. Anotar la hora. La confirmación de envío no concede ni retira derechos:
+comprobar después la decisión de Apple, la notificación, el estado persistido y el refresco de Premium.
+Cerrar la hoja sin enviar no debe mostrar error ni modificar derechos. Esta herramienta no borra historial
+ni finaliza transacciones y no sustituye la validación real de reembolso/revocación de #39.
+
+### Configuración y comprobaciones
+
 En App Store Connect, acordamos **16 días**, **Only Paid to Paid Renewals** y primero **Only Sandbox Environment** para Billing Grace Period. Tras validar, el titular podrá activar Production and Sandbox. La configuración afecta a la app y las fechas de sandbox son aceleradas; el servidor sigue el final acreditado por Apple. Un fallo de cobro sin gracia verificada no genera dieciséis días por cálculo local.
 
 Configurar App Store Server Notifications **V2** con el origen HTTPS del entorno correspondiente y la ruta `/v1/app-store/notifications`. La ruta no usa bearer del usuario: verifica el `signedPayload`, la cadena de certificados de Apple, aplicación/entorno y evidencia anidada antes de reconciliar. Un `204` confirma procesamiento durable; un fallo temporal no se reconoce como éxito. Verificar el endpoint mediante Request a Test Notification y Get Test Notification Status, además del recorrido real de renovación; una respuesta local sintética no acredita notificaciones configuradas en Apple.

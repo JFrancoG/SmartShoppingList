@@ -48,6 +48,7 @@ struct SharedGroupManagementView: View {
                             }
                         }
                         .pickerStyle(.navigationLink)
+                        .tint(.appPrimary)
                         .disabled(!viewModel.canMutate)
                         Button("Propose transfer", systemImage: "arrow.left.arrow.right") {
                             Task {
@@ -116,23 +117,21 @@ struct SharedGroupManagementView: View {
         .onChange(of: viewModel.group?.id) { _, _ in
             dismiss()
         }
-        .alert("Leave group?", isPresented: $confirmsDeparture) {
-            Button("Leave group", role: .destructive) {
+        .shoppingAlert(Text("Leave group?"), isPresented: $confirmsDeparture) {
+            ShoppingAlertActions(primaryTitle: Text("Leave group"), primaryRole: .destructive) {
                 Task {
                     await viewModel.leaveGroup(confirmClosure: false)
                 }
-            }
-            Button("Cancel", role: .cancel) {}
+            } cancel: {}
         } message: {
             Text("You will lose access to this group. You will need a new invitation to join again. Your draft is kept.")
         }
-        .alert("Close group and leave?", isPresented: $confirmsClosure) {
-            Button("Close group and leave", role: .destructive) {
+        .shoppingAlert(Text("Close group and leave?"), isPresented: $confirmsClosure) {
+            ShoppingAlertActions(primaryTitle: Text("Close group and leave"), primaryRole: .destructive) {
                 Task {
                     await viewModel.leaveGroup(confirmClosure: true)
                 }
-            }
-            Button("Cancel", role: .cancel) {}
+            } cancel: {}
         } message: {
             Text("You are the last member. The group will close and its invitations will stop working. Its history is preserved, but reopening is not available.")
         }

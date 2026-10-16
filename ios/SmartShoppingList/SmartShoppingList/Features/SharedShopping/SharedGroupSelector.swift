@@ -38,6 +38,7 @@ struct SharedGroupSelector: View {
                     }
                 }
                 .pickerStyle(.navigationLink)
+                .tint(.appPrimary)
                 .disabled(!viewModel.canSelectGroup)
                 .accessibilityHint("Choose the group for shopping and new submissions. Your local draft is kept.")
             } footer: {

@@ -4,6 +4,8 @@
 
 ### Added
 
+- 2026-10-16 | ✨ feat(ui): polish controls and Sandbox tools
+
 - 2026-10-10 | ✨ feat(premium): add verified subscriptions and downgrade handling
 
 - 2026-10-10 | ✨ feat(stores): add capacity limits and store archiving

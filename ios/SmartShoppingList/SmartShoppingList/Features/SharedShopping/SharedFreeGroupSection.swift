@@ -24,7 +24,7 @@ struct SharedFreeGroupSection: View {
                         await viewModel.refresh()
                     }
                 }
-                .buttonStyle(ShoppingActionButtonStyle(widthFraction: 1, minimumHeight: 48, usesCapsule: true))
+                .buttonStyle(ShoppingActionButtonStyle(widthFraction: 1, usesCapsule: true))
                 .disabled(viewModel.isBusy)
             }
             .listRowBackground(Color.surface)
@@ -94,12 +94,7 @@ struct SharedFreeGroupSection: View {
                             Text("Choose as free group")
                                 .fixedSize(horizontal: false, vertical: true)
                         }
-                        .buttonStyle(ShoppingActionButtonStyle(
-                            widthFraction: 1,
-                            minimumHeight: 48,
-                            isProminent: false,
-                            usesCapsule: true
-                        ))
+                        .buttonStyle(ShoppingActionButtonStyle(widthFraction: 1, isProminent: false, usesCapsule: true))
                         .disabled(!viewModel.canSelectFreeGroup)
                         .accessibilityLabel("Choose as free group: \(viewModel.groupConfirmationName(group))")
                         .accessibilityHint("Changes the account's free group on all devices. Your active shopping group stays selected.")
@@ -121,16 +116,12 @@ struct SharedFreeGroupSection: View {
                 }
             }
             .listRowBackground(Color.surface)
-            .confirmationDialog(
-                "Change free group?",
-                isPresented: $confirmsChange,
-                presenting: proposedGroup
-            ) { group in
-                Button("Choose as free group") {
+            .shoppingAlert(Text("Change free group?"), isPresented: $confirmsChange, presenting: proposedGroup) { group in
+                ShoppingAlertActions(primaryTitle: Text("Choose as free group")) {
                     Task {
                         await viewModel.selectFreeGroup(id: group.id)
                     }
-                }
+                } cancel: {}
             } message: { group in
                 Text("\(viewModel.groupConfirmationName(group)) will be your free group on all devices. Ordinary changes follow a 30-day limit; replacing a group keeps the previous change schedule. No membership or content is removed.")
             }
