@@ -11,10 +11,14 @@ struct SharedPurchaseSection: View {
         Section {
             if viewModel.storeItemsState == .loading {
                 ProgressView("Loading pending products…")
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
             } else if let message = viewModel.storeItemsMessage {
                 Text(message)
                     .foregroundStyle(.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
             }
             ForEach(viewModel.items) { item in
                 SharedPurchaseItemRow(
@@ -108,4 +112,14 @@ struct SharedPurchaseSection: View {
 #Preview("Purchase selection", traits: .sharedShopping) {
     @Previewable @Environment(SharedShoppingViewModel.self) var viewModel
     SharedGroupView(viewModel: viewModel)
+}
+
+#Preview("Empty store · ES", traits: .sharedShopping(.emptyStore)) {
+    @Previewable @Environment(SharedShoppingViewModel.self) var viewModel
+    Form {
+        SharedPurchaseSection(viewModel: viewModel) { _ in }
+        SharedEmptyStoreArchiveSection(viewModel: viewModel)
+    }
+    .modifier(ShoppingFormStyle())
+    .environment(\.locale, Locale(identifier: "es"))
 }

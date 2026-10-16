@@ -19,25 +19,21 @@ struct ShoppingNoticeModifier: ViewModifier {
             .background {
                 if let snapshot = presentedNotice {
                     Color.clear
-                        .alert(
+                        .shoppingAlert(
                             Text(snapshot.title),
                             isPresented: presentationBinding(for: currentPresentationID),
                             presenting: snapshot
                         ) { shownNotice in
                             if shownNotice.draftConfirmation != nil, let confirmDraft, let editDraft {
-                                Button {
+                                ShoppingAlertActions(
+                                    primaryTitle: shownNotice.draftConfirmation?.groupName.map { Text("Add to \($0)") }
+                                        ?? Text("Confirm"),
+                                    secondaryTitle: Text("Edit")
+                                ) {
                                     guard currentPresentationID == presentationID else { return }
                                     acknowledgedNotice = shownNotice
                                     confirmDraft(shownNotice)
-                                } label: {
-                                    if let groupName = shownNotice.draftConfirmation?.groupName {
-                                        Text("Add to \(groupName)")
-                                    } else {
-                                        Text("Confirm")
-                                    }
-                                }
-                                .keyboardShortcut(.defaultAction)
-                                Button("Edit", role: .cancel) {
+                                } cancel: {
                                     guard currentPresentationID == presentationID else { return }
                                     acknowledgedNotice = shownNotice
                                     editDraft(shownNotice)
@@ -45,20 +41,26 @@ struct ShoppingNoticeModifier: ViewModifier {
                             } else {
                                 let hasStoreAction = shownNotice.storeDestination != nil && openStore != nil
                                 if hasStoreAction, let openStore {
-                                    Button("Open list") {
+                                    ShoppingAlertActions(
+                                        primaryTitle: Text("Open list"),
+                                        secondaryTitle: Text("Dismiss notice")
+                                    ) {
                                         guard currentPresentationID == presentationID else { return }
                                         acknowledgedNotice = shownNotice
                                         openStore(shownNotice)
                                         dismiss(shownNotice)
+                                    } cancel: {
+                                        guard currentPresentationID == presentationID else { return }
+                                        acknowledgedNotice = shownNotice
+                                        dismiss(shownNotice)
                                     }
-                                    .keyboardShortcut(.defaultAction)
+                                } else {
+                                    ShoppingAlertActions(primaryTitle: Text("Dismiss notice"), secondaryTitle: nil) {
+                                        guard currentPresentationID == presentationID else { return }
+                                        acknowledgedNotice = shownNotice
+                                        dismiss(shownNotice)
+                                    } cancel: {}
                                 }
-                                Button("Dismiss notice", role: hasStoreAction ? .cancel : nil) {
-                                    guard currentPresentationID == presentationID else { return }
-                                    acknowledgedNotice = shownNotice
-                                    dismiss(shownNotice)
-                                }
-                                .keyboardShortcut(hasStoreAction ? nil : .defaultAction)
                             }
                         } message: { shownNotice in
                             Text(shownNotice.message)

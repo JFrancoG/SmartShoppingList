@@ -213,3 +213,10 @@ La unidad integra StoreKit, verificación de transacciones/estado actual en serv
 Precio y alcance de regalos/promociones siguen abiertos sin bloquear el desarrollo. La inscripción en Small Business, configuración y aprobación real de productos/ofertas, distribución, despliegue y activación de cobros no se ejecutan en esta implementación. No se incorpora esta unidad al hito del MVP del 27 ni se presume su cierre por actualizar este documento; el resultado definitivo permanece en #39.
 
 Tras la validación local, el propietario autoriza commit, push, PR, CI, merge y eliminación de la rama de esta unidad. **#39 permanece abierta hasta comprobar Apple Sandbox**; la entrega Git se registra en la issue sin cierre automático. Esta autorización no activa productos, pagos ni despliegues.
+
+
+### Controles y herramientas Sandbox — 16 de octubre
+
+La unidad UI de [#49](https://github.com/JFrancoG/SmartShoppingList/issues/49) reúne mínimo táctil común de 44 puntos, gestión de suscripción sin tarjeta redundante, archivo de tienda vacía desde Comprar y avisos nativos con acciones coherentes, título genérico Smart List y contraste adaptado. El propietario acepta la revisión física en iPhone 11 y autoriza la entrega Git. El [informe de controles](validation/ui-controls-and-refresh-review.md) separa validación, decisiones y límites.
+
+Se incluye la solicitud de reembolso de prueba limitada a Debug y backend Sandbox para continuar #39; enviar la solicitud no concede ni revoca Premium. #39 sigue abierta para la evidencia comercial pendiente y #49 para medir y corregir refrescos/avisos redundantes pantalla a pantalla. No se despliega servidor ni se activan cobros como parte de esta entrega.

@@ -34,7 +34,7 @@ struct SharedPurchaseItemRow: View {
                     .fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 0)
                 }
-                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                .frame(maxWidth: .infinity, minHeight: ShoppingControlMetrics.minimumTargetSize, alignment: .leading)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)

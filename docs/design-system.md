@@ -1,8 +1,8 @@
 # Sistema de diseño de SmartShoppingList
 
-Versión 3 · 27 de septiembre de 2026 · plataforma mínima: iOS 27. Consolidación de integración y evidencia; tokens y pares sin cambios.
+Versión 4 · 16 de octubre de 2026 · plataforma mínima: iOS 27. Acento nativo separado para las alertas y selección adaptativa en el contenido.
 
-Estado: **base de color #20 integrada en las pantallas mediante [#28 / PR #29](https://github.com/JFrancoG/SmartShoppingList/pull/29), con adaptación Duo [#30 / PR #31](https://github.com/JFrancoG/SmartShoppingList/pull/31); ambas unidades están entregadas**. Los 21 tokens tienen assets de cuatro variantes, acceso semántico y un tinte global compartido; los formularios, acciones y filas usan sus componentes. Las validaciones de [UI](validation/issue-28-shopping-ui.md) y [Duo](validation/issue-30-duo-controls.md) recogen previews, interacción y aceptación focalizada. La comprobación matemática de pares no acredita por sí sola el contraste renderizado, los materiales nativos ni toda la accesibilidad de la app. Este documento no declara conformidad global AA/AAA. Los iconos Brain/Check mantienen su [evidencia propia](validation/issue-16-app-icons.md).
+Estado: **base de color #20 integrada en las pantallas mediante [#28 / PR #29](https://github.com/JFrancoG/SmartShoppingList/pull/29), con adaptación Duo [#30 / PR #31](https://github.com/JFrancoG/SmartShoppingList/pull/31); ambas unidades están entregadas**. Los 23 tokens tienen assets de cuatro variantes, acceso semántico y un acento específico para alertas nativas; los formularios, acciones y filas usan sus componentes. Las validaciones de [UI](validation/issue-28-shopping-ui.md) y [Duo](validation/issue-30-duo-controls.md) recogen previews, interacción y aceptación focalizada. La comprobación matemática de pares no acredita por sí sola el contraste renderizado, los materiales nativos ni toda la accesibilidad de la app. Este documento no declara conformidad global AA/AAA. Los iconos Brain/Check mantienen su [evidencia propia](validation/issue-16-app-icons.md).
 
 Documentos relacionados: [fuentes y novedades verificadas](research/design-system-sources.md), [matriz de contraste generada](validation/design-system-contrast.md), [evidencia de la base visual #20](validation/issue-20-visual-foundation.md), [criterios y ensayo de accesibilidad](accessibility.md), [spec](mvp-spec.md) y [plan](implementation-plan.md).
 
@@ -43,6 +43,8 @@ Valores **sRGB de 8 bits, opacos**, escritos como `#RRGGBB`. Esta tabla es la fu
 | text-tertiary | #526656 | #A6BBAA | #344E3B | #CBDDCE |
 | primary | #006B3C | #78DEA0 | #004D29 | #9AF3B7 |
 | on-primary | #FFFFFF | #082113 | #FFFFFF | #000000 |
+| native-accent | #437C5A | #437C5A | #345F45 | #345F45 |
+| on-native-accent | #FFFFFF | #FFFFFF | #FFFFFF | #FFFFFF |
 | primary-soft | #DDF1E2 | #173F29 | #E3F4E7 | #102A19 |
 | success | #23632C | #A6DA87 | #214A19 | #C5F2A9 |
 | success-soft | #E3F2E0 | #263C21 | #E7F5E1 | #1A2C13 |
@@ -60,7 +62,7 @@ Valores **sRGB de 8 bits, opacos**, escritos como `#RRGGBB`. Esta tabla es la fu
 
 ### Contrato de assets y acceso desde SwiftUI
 
-La base de [#20](https://github.com/JFrancoG/SmartShoppingList/issues/20), autorizada el 25 de septiembre, conserva los valores aprobados y denomina `primary`, `on-primary` y `primary-soft` a los anteriores tokens `accent`, `on-accent` y `accent-soft`. No hay un `AccentColor` duplicado: el proyecto utiliza `AppPrimary` como tinte global.
+La base de [#20](https://github.com/JFrancoG/SmartShoppingList/issues/20), autorizada el 25 de septiembre, conserva los valores aprobados y denomina `primary`, `on-primary` y `primary-soft` a los anteriores tokens `accent`, `on-accent` y `accent-soft`. No hay un `AccentColor` duplicado: el proyecto utiliza `NativeAccent` como acento global para los botones destacados nativos. Los selectores y botones nativos de contenido usan `.tint(.appPrimary)` local; no se aplica un tinte a Form, NavigationStack o al host de alertas. La selección de pestañas se configura mediante `UITabBarAppearance` para conservar `AppPrimary` sin propagar su tinte a las alertas. Un puente mínimo `UIViewRepresentable` aplica `NativeAccent` a la instancia real de la ventana cuando se incorpora a ella, evitando el fallback azul de UIKit sin usar `UIView.appearance().tintColor` (esa propiedad no admite el proxy de apariencia). No se personalizan los fondos ni los materiales.
 
 Cada token tiene un único colorset en `Resources/Assets.xcassets`. El nombre convierte el token de kebab-case a PascalCase, sin prefijo: `canvas` → `Canvas`, `text-primary` → `TextPrimary` y `surface-muted` → `SurfaceMuted`. Solo `primary` → `AppPrimary` y `separator` → `AppSeparator` conservan `App` por colisiones nativas. Los cuatro registros del asset corresponden a Any/Light, Dark, Any/Light con contraste alto y Dark con contraste alto. Todos usan idiom universal, espacio sRGB, canales RGB en formato byte `0xNN` y alpha `1.000`, sin variantes adicionales.
 
@@ -78,6 +80,7 @@ Cuando corresponde el estilo nativo de SwiftUI, usar `.foregroundStyle(.primary)
 - `canvas`: fondo de contenido propio. `surface`: tarjeta o editor. `surface-muted`: agrupación secundaria. Su diferencia de luminancia no identifica por sí sola una acción.
 - `text-primary`: productos, títulos, datos y mensajes esenciales. `text-secondary`: tienda, cantidad, explicaciones. `text-tertiary`: metadatos de menor jerarquía; también cumple el objetivo de texto normal, sin bajar opacidad.
 - `primary`: acciones y check seleccionado; `on-primary`: texto/símbolo dentro del relleno. El texto del CTA cambia a tinta oscura en Dark y HC Dark.
+- `native-accent`: versión oscurecida del primary Dark (#78DEA0), escalando sus componentes sRGB al 56 % (43 % en alto contraste), con alfa opaca; mantiene aproximadamente su matiz y saturación. Se usa en ambas apariencias para el relleno destacado de la alerta nativa; `on-native-accent` documenta el blanco que aporta iOS, sin intentar forzarlo en cada Button. Su par valida el contraste sólido, no los materiales del sistema.
 - `primary-soft`: fondo de fila seleccionada, acompañado de check y estado accesible. No significa «Comprado».
 - `success`, `warning`, `danger`, `info`: tinta del símbolo, título o texto de estado; cada `*-soft` es su fondo informativo. Una alerta puede usar `text-primary` para el detalle.
 - `border`: perímetros esenciales y anillo de foco sobre superficies base. `separator`: divisores puramente decorativos entre filas ya identificables sin esa línea.
@@ -100,6 +103,7 @@ Cada lista de tokens separada por comas se expande como producto cartesiano. `te
 | danger | danger-soft | text |
 | info | info-soft | text |
 | on-primary | primary | text |
+| on-native-accent | native-accent | text |
 | on-yellow | brand-yellow | text |
 | border | canvas, surface, surface-muted, primary-soft, success-soft, warning-soft, danger-soft, info-soft | ui |
 | primary, success, warning, danger, info | canvas, surface, surface-muted | ui |
@@ -200,7 +204,9 @@ Decisión contrastada el 26 de septiembre con las HIG actuales: [Toolbars](https
 
 Cuando Apple Intelligence no está disponible, un mensaje estático con `info.circle` bajo la entrada manual explica el motivo concreto. No repite la acción manual ni añade un botón genérico de disponibilidad. El texto de compra conservado, si existe, tiene su propia sección identificada.
 
-Los avisos comparten presentación y roles nativos: «Ver lista» es la acción principal, «Cerrar aviso» es secundaria cuando hay otra acción y la eliminación mantiene el rol destructivo. Un aviso con una sola acción destaca su único botón de cierre con primary, manteniendo el rol normal. El sistema decide orden y disposición horizontal o vertical según espacio y tipografía; no se fuerzan anchos ni una pila propia. Se usa el accent global `AppPrimary` y se retiran los overrides de tint de Form y del host de avisos: el override interfería con el contraste de la acción nativa destacada. En el simulador iOS 27.2 se verificó «Ver lista» verde con texto blanco y «Cerrar aviso» gris con texto negro. La presentación mantiene sus instantáneas y su identidad para evitar avisos vacíos o repetidos. Referencia: [HIG Alerts](https://developer.apple.com/design/human-interface-guidelines/alerts).
+Los avisos y confirmaciones comparten `ShoppingAlertActions` y `shoppingAlert`, que presenta una `.alert` nativa desde un host sin tinte personalizado: una acción normal principal usa `.defaultAction`, Cancelar tiene rol `.cancel` y las operaciones destructivas conservan `.destructive` sin asignarles la tecla Return. Los avisos de un botón destacan su cierre. El título genérico es «Smart List»; se conservan los títulos específicos de errores y confirmaciones. iOS decide alineación, orden, foco y disposición según espacio y tipografía.
+
+Desde el ajuste de #49 del 16 de octubre, `NativeAccent` mantiene verde oscuro con texto blanco en claro y oscuro: el blanco del botón destacado lo aporta iOS y no respeta el `foregroundStyle` de su Label. El contenido mantiene `AppPrimary` y las cápsulas propias siguen usando `on-primary`; los hosts de alertas usan `.tint(nil)` sin overrides en Form o NavigationStack para no recolorear Cancelar. Se conserva la identidad e instantánea de los avisos para que cerrar uno antiguo no descarte el siguiente. Referencia: [HIG Alerts](https://developer.apple.com/design/human-interface-guidelines/alerts).
 
 Ajustes presenta Cerrar como `xmark` en la toolbar leading y Refrescar en trailing, ambos con nombre accesible localizado. Comprar centra el contador, usa «Confirmar compra · N» en la acción y omite el encabezado duplicado; la ayuda inferior incorpora `info.circle`. Los editores muestran en `danger` la explicación de longitud sólo bajo cada campo que excede su límite (producto 60, tienda nueva 40, cantidad 80), sin recortar lo escrito ni mostrar límites permanentes. La explicación textual evita depender únicamente del rojo.
 
@@ -215,3 +221,15 @@ El bloque de entrada conserva juntos título, micrófono, texto, estado y accion
 El botón nativo de Apple tiene un máximo de 375 pt dentro del ancho disponible, con altura escalable. El SDK mínimo de compilación pasa a 27.1; la app sigue ejecutándose desde iOS 27.0 y allí no consulta regiones reservadas. Xcode 27.2 contiene las mismas APIs. La [validación de #30](validation/issue-30-duo-controls.md) separa compilación, fixtures e interacción real.
 
 Referencias de Apple: [diseñar para iPhone Duo](https://developer.apple.com/design/human-interface-guidelines/designing-for-iphone-duo), [adaptar layouts](https://developer.apple.com/videos/play/tech-talks/111463/), [consulta de regiones](https://developer.apple.com/documentation/swiftui/geometryproxy/reservedregions(kind:options:layoutdirectionbehavior:)) y [frame con márgenes](https://developer.apple.com/documentation/swiftui/reservedregion/frame).
+## Controles: mínimo táctil compartido (16 de octubre de 2026)
+
+Los controles personalizados usan `ShoppingControlMetrics.minimumTargetSize = 44` puntos como suelo común
+de altura y área táctil. Las etiquetas pueden crecer con Dynamic Type y varias líneas; no es una altura fija.
+Las barras y alertas nativas conservan los controles del sistema. Esta decisión sustituye los overrides de
+48 puntos de Premium y Grupo gratuito. Fuente: [Apple HIG — Buttons](https://developer.apple.com/design/human-interface-guidelines/buttons).
+
+Las acciones primarias usan relleno `primary`; las secundarias habilitadas usan texto `primary` sobre
+`surface` y contorno `border` de 2 puntos. Las deshabilitadas usan `text-secondary` sobre `surface-muted`,
+sin contorno: la diferencia no depende solo del color. Archivar una tienda vacía es la acción primaria
+disponible en ese estado. Los mensajes de carga y lista vacía aparecen sin fondo de fila ni separador,
+para que la información no parezca un control pulsable.

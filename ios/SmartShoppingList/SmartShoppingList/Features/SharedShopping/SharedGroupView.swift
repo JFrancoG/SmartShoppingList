@@ -31,6 +31,7 @@ struct SharedGroupView: View {
                                 }
                             }
                             .pickerStyle(.navigationLink)
+                            .tint(.appPrimary)
                             .disabled(viewModel.isBusy || !viewModel.sessionIsVerified || viewModel.storeQuery.activity != .idle)
                             .accessibilityFocused($storeIsFocused)
                             if viewModel.storeQuery.activity == .idle {
@@ -55,6 +56,7 @@ struct SharedGroupView: View {
                             cancellationItem = item
                             confirmsCancellation = true
                         }
+                        SharedEmptyStoreArchiveSection(viewModel: viewModel)
                     }
                 } else if viewModel.hasLoaded && !viewModel.isBusy && viewModel.groups.isEmpty {
                     Section {
@@ -70,13 +72,20 @@ struct SharedGroupView: View {
                 }
             }
             .modifier(ShoppingFormStyle())
-            .alert("Cancel pending product?", isPresented: $confirmsCancellation, presenting: cancellationItem) { item in
-                Button("No longer needed", role: .destructive) {
+            .shoppingAlert(
+                Text("Cancel pending product?"),
+                isPresented: $confirmsCancellation,
+                presenting: cancellationItem
+            ) { item in
+                ShoppingAlertActions(
+                    primaryTitle: Text("No longer needed"),
+                    primaryRole: .destructive,
+                    secondaryTitle: Text("Keep product")
+                ) {
                     Task {
                         await viewModel.cancelItem(item)
                     }
-                }
-                Button("Keep product", role: .cancel) {}
+                } cancel: {}
             } message: { item in
                 Text("Remove \(item.name) from the group’s pending list without recording a purchase?")
             }

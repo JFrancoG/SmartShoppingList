@@ -7,7 +7,7 @@ struct ShoppingActionLayout: Layout {
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         guard let label = subviews.first else { return .zero }
         let available = proposal.width ?? label.sizeThatFits(.unspecified).width
-        let width = min(available, max(44, available * widthFraction))
+        let width = min(available, max(ShoppingControlMetrics.minimumTargetSize, available * widthFraction))
         let size = label.sizeThatFits(ProposedViewSize(width: width, height: nil))
         return CGSize(width: width, height: size.height)
     }

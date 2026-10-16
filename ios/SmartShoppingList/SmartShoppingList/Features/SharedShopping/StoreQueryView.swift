@@ -63,6 +63,7 @@ struct StoreQueryView: View {
                     } label: {
                         Text("Show list for \(store.name)")
                     }
+                    .tint(.appPrimary)
                     .disabled(!shared.canQueryStore || viewModel.activity != .idle)
                 }
             }

@@ -5,6 +5,39 @@ import Testing
 @Suite(.tags(.fast))
 @MainActor
 struct StoreQuotaTests {
+    @Test(arguments: ["unchanged", "occupied", "newAdministrator"])
+    func `Archiving from the empty shopping list rechecks occupancy and authority before writing`(
+        change: String
+    ) async throws {
+        let fixture = try SharedPreviewFixture.sample()
+        let credentials = MemorySharedCredentialStore(session: fixture.session)
+        let api = StoreQuotaAPI(fixture: fixture, credentials: credentials)
+        let model = makeModel(fixture, api: api, credentials: credentials)
+        await model.load()
+        model.selectedStoreID = try #require(model.stores.last).id
+        await model.loadSelectedStore()
+        let store = try #require(model.selectedEmptyStore)
+        if change == "occupied" {
+            await api.fillStores()
+        } else if change == "newAdministrator" {
+            await api.changeAdministrator(to: UUID())
+        }
+
+        await model.archiveEmptyStoreFromShopping(store)
+
+        if change == "unchanged" {
+            #expect(!model.stores.contains { $0.id == store.id })
+            #expect(model.archivedStores.contains { $0.id == store.id })
+            #expect(model.selectedStoreID == nil)
+            #expect(model.pendingOperation == nil)
+        } else {
+            #expect(model.stores.contains { $0.id == store.id })
+            #expect(model.archivedStores.isEmpty)
+            #expect(model.notice != nil)
+        }
+        #expect(model.draft.items == fixture.draft.items)
+    }
+
     @Test(arguments: [false, true])
     func `The management refresh action can reverify a cached session after a temporary lookup failure`(
         failsOnInitialLoad: Bool

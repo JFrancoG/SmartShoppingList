@@ -5,6 +5,9 @@ import Observation
 /// Isolated presentation diagnostics: no app factory, persistence, credentials or network.
 struct ShoppingNoticeValidationView: View {
     @State private var model = ShoppingNoticeValidationModel()
+    @State private var confirmsArchive = false
+    @State private var confirmsClosure = false
+    @State private var lastConfirmation = "none"
 
     var body: some View {
         Form {
@@ -40,6 +43,31 @@ struct ShoppingNoticeValidationView: View {
                 }
             }
             Text(verbatim: model.diagnosticStatus)
+            Button("Archive store") {
+                confirmsArchive = true
+            }
+            Button("Close group and leave") {
+                confirmsClosure = true
+            }
+            Text(verbatim: "Last confirmation: \(lastConfirmation)")
+        }
+        .shoppingAlert(Text("Archive store?"), isPresented: $confirmsArchive) {
+            ShoppingAlertActions(primaryTitle: Text("Archive")) {
+                lastConfirmation = "archive"
+            } cancel: {
+                lastConfirmation = "cancel archive"
+            }
+        } message: {
+            Text("Archive \("T4")? It will stop appearing in shopping lists and will keep its history.")
+        }
+        .shoppingAlert(Text("Close group and leave?"), isPresented: $confirmsClosure) {
+            ShoppingAlertActions(primaryTitle: Text("Close group and leave"), primaryRole: .destructive) {
+                lastConfirmation = "close"
+            } cancel: {
+                lastConfirmation = "cancel close"
+            }
+        } message: {
+            Text("You are the last member. The group will close and its invitations will stop working. Its history is preserved, but reopening is not available.")
         }
         .modifier(ShoppingNoticeModifier(
             notice: model.notice,

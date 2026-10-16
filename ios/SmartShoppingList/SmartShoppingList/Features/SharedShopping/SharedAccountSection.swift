@@ -4,7 +4,7 @@ import SwiftUI
 struct SharedAccountSection: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.scenePhase) private var scenePhase
-    @ScaledMetric(relativeTo: .body) private var appleButtonHeight = 44.0
+    @ScaledMetric(relativeTo: .body) private var appleButtonHeight = ShoppingControlMetrics.minimumTargetSize
     let viewModel: SharedShoppingViewModel
 
     var body: some View {

@@ -4,7 +4,7 @@ import SwiftUI
 struct ShoppingActionButtonStyle: ButtonStyle {
     var widthFraction: CGFloat? = nil
     // This touch-target floor stays independent of Dynamic Type; the label can grow above it.
-    var minimumHeight: CGFloat = 44
+    var minimumHeight: CGFloat = ShoppingControlMetrics.minimumTargetSize
     var isProminent = true
     var usesCapsule = false
     @Environment(\.isEnabled) private var isEnabled
@@ -17,15 +17,21 @@ struct ShoppingActionButtonStyle: ButtonStyle {
         }
         .foregroundStyle(foregroundColor(pressed: configuration.isPressed))
         // A full capsule at the minimum height; keep corners bounded when multiline labels grow.
-        .background(
-            backgroundColor(pressed: configuration.isPressed),
-            in: RoundedRectangle(
-                cornerRadius: usesCapsule ? minimumHeight / 2 : 22,
-                style: usesCapsule ? .circular : .continuous
-            )
-        )
+        .background(backgroundColor(pressed: configuration.isPressed), in: shape)
+        .overlay {
+            if isEnabled && !isProminent {
+                shape.strokeBorder(.border, lineWidth: 2)
+            }
+        }
         .contentShape(Rectangle())
         .frame(maxWidth: .infinity)
+    }
+
+    private var shape: RoundedRectangle {
+        RoundedRectangle(
+            cornerRadius: usesCapsule ? minimumHeight / 2 : 22,
+            style: usesCapsule ? .circular : .continuous
+        )
     }
 
     private func actionLabel(_ configuration: Configuration) -> some View {
@@ -36,14 +42,17 @@ struct ShoppingActionButtonStyle: ButtonStyle {
             .fixedSize(horizontal: false, vertical: true)
             .padding(.horizontal, 20)
             .padding(.vertical, 8)
-            .frame(minWidth: 44, minHeight: minimumHeight)
+            .frame(minWidth: ShoppingControlMetrics.minimumTargetSize, minHeight: minimumHeight)
     }
 
     private func foregroundColor(pressed: Bool) -> Color {
         if !isEnabled {
             return .textSecondary
         }
-        return pressed || !isProminent ? .textPrimary : .onPrimary
+        if !isProminent {
+            return .appPrimary
+        }
+        return pressed ? .textPrimary : .onPrimary
     }
 
     private func backgroundColor(pressed: Bool) -> Color {
@@ -51,7 +60,7 @@ struct ShoppingActionButtonStyle: ButtonStyle {
             return .surfaceMuted
         }
         if !isProminent {
-            return pressed ? .surfaceMuted : .primarySoft
+            return pressed ? .surfaceMuted : .surface
         }
         return pressed ? .primarySoft : .appPrimary
     }
@@ -60,7 +69,12 @@ struct ShoppingActionButtonStyle: ButtonStyle {
 #Preview("Primary actions", traits: .sharedShopping) {
     VStack(spacing: 16) {
         Button("Add products") {}
+        Button("Restore purchases") {}
+            .buttonStyle(ShoppingActionButtonStyle(isProminent: false))
         Button("Confirm purchase") {}
+            .disabled(true)
+        Button("Restore purchases") {}
+            .buttonStyle(ShoppingActionButtonStyle(isProminent: false))
             .disabled(true)
     }
     .buttonStyle(ShoppingActionButtonStyle())

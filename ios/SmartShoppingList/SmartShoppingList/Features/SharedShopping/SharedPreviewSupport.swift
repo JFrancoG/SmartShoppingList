@@ -56,6 +56,7 @@ enum SharedPreviewState: CaseIterable, Hashable {
     case pending
     case unconfigured
     case storeManagement
+    case emptyStore
     case groupManagementOwner
     case groupTransferRecipient
 }
@@ -405,6 +406,9 @@ enum SharedPreviewSupport {
         case .invitations:
             await model.openInvitations()
             await model.createInvitation()
+        case .emptyStore:
+            model.selectedStoreID = fixture.stores.last?.id
+            await model.loadSelectedStore()
         case .storeManagement:
             await model.loadStoreManagement()
         case .groupManagementOwner, .groupTransferRecipient:

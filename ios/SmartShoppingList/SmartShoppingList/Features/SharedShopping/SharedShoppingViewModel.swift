@@ -321,6 +321,48 @@ final class SharedShoppingViewModel {
         }
     }
 
+#if DEBUG
+    var allowsSandboxRefundTesting: Bool { configuration?.allowsSandboxRefundTesting == true }
+
+    func prepareSandboxRefund() async -> SandboxRefundRequest? {
+        guard allowsSandboxRefundTesting, !isBusy, sessionIsVerified, let session,
+              premium.canRestore, let status = premium.status,
+              let refundStore = subscriptionStore as? any SandboxRefundStore else { return nil }
+        var request: SandboxRefundRequest?
+        await performAction {
+            let transactionID = await refundStore.refundableTransactionID(
+                appAccountToken: status.appAccountToken,
+                productIDs: status.productIDs
+            )
+            guard isCurrentSubscriptionSession(session), !Task.isCancelled else { return }
+            if let transactionID {
+                request = SandboxRefundRequest(transactionID: transactionID, userID: session.user.id)
+            } else {
+                notice = "No active Sandbox purchase was found for this account. Buy a test subscription first."
+            }
+        }
+        guard isCurrentSubscriptionSession(session), !Task.isCancelled else { return nil }
+        return request
+    }
+
+    func completeSandboxRefund(_ outcome: SandboxRefundOutcome, userID: UUID) async {
+        guard allowsSandboxRefundTesting, sessionIsVerified, session?.user.id == userID else { return }
+        switch outcome {
+        case .cancelled:
+            return
+        case .submitted:
+            // Submission is not a refund decision. Existing server reconciliation remains authoritative.
+            await loadPremium()
+            guard sessionIsVerified, session?.user.id == userID else { return }
+            notice = "Refund request sent to Apple. Premium changes only after the refund is confirmed."
+        case .duplicate:
+            notice = "Apple has already received a refund request for this purchase."
+        case .failed:
+            notice = "The test refund request could not be sent. Try again."
+        }
+    }
+#endif
+
     private func isCurrentSubscriptionSession(_ candidate: SharedSession) -> Bool {
         sessionIsVerified && session?.user.id == candidate.user.id && session?.accessToken == candidate.accessToken
     }
@@ -1153,6 +1195,25 @@ final class SharedShoppingViewModel {
             }
         }
         return nil
+    }
+
+    var selectedEmptyStore: SharedStore? {
+        guard isAdministrator, storeItemsState == .loaded, loadedStoreID == selectedStoreID,
+              items.isEmpty else { return nil }
+        return stores.first { $0.id == selectedStoreID }
+    }
+
+    func archiveEmptyStoreFromShopping(_ store: SharedStore) async {
+        guard canMutate, selectedEmptyStore?.id == store.id, let context = groupContext else { return }
+        // Recheck current authority and occupancy only on explicit confirmation, never on every render.
+        await loadStoreManagement()
+        guard groupContext == context, selectedStoreID == store.id,
+              let current = stores.first(where: { $0.id == store.id }) else { return }
+        guard canChangeStoreState(current, action: .archive) else {
+            notice = storeActionMessage(current, action: .archive)
+            return
+        }
+        await changeStoreState(current, action: .archive)
     }
 
     func canChangeStoreState(_ store: SharedStore, action: SharedStoreAction) -> Bool {

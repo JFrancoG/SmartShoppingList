@@ -14,12 +14,7 @@ struct SharedPremiumRestoreSection: View {
                     Text("Restore purchases")
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                .buttonStyle(ShoppingActionButtonStyle(
-                    widthFraction: 1,
-                    minimumHeight: 48,
-                    isProminent: false,
-                    usesCapsule: true
-                ))
+                .buttonStyle(ShoppingActionButtonStyle(widthFraction: 1, isProminent: false, usesCapsule: true))
                 .disabled(viewModel.isBusy || !viewModel.premium.canRestore)
             }
             .listRowBackground(Color.clear)

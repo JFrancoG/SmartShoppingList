@@ -2,9 +2,9 @@
 
 Informe generado desde las tablas de [tokens y pares](../design-system.md). No editar a mano.
 
-Resultado: **PASA** · 244/244 comprobaciones con umbral; 12 mediciones decorativas sin umbral.
+Resultado: **PASA** · 248/248 comprobaciones con umbral; 12 mediciones decorativas sin umbral.
 
-Huella SHA-256 de las tablas: `37dd6bd4b1ebe4be724e8352a9f0ec80b72f5a45162f78ca76e90d8fb5b83e55`.
+Huella SHA-256 de las tablas: `40380ff0ac1213efcdc9ce104038a8a898cb2a81b4dcda7a0c14b783d79a6ddb`.
 
 ## Método y alcance
 
@@ -12,7 +12,7 @@ Colores opacos sRGB de 8 bits. Canal c = byte/255; linealización: c/12,92 si c 
 
 `text`: objetivo propio 4,5:1 Light/Dark y 7:1 HC, incluso si el texto es grande. `ui`: 3:1 en los cuatro modos. `decorative`: no se usa para identificar un control o estado. La fórmula y criterios proceden de [WCAG 2.2](https://www.w3.org/TR/WCAG22/#dfn-relative-luminance); el umbral HC es una decisión del proyecto.
 
-El verificador también comprueba los 21 colorsets del catálogo: nombres derivados de los tokens en PascalCase, con prefijo `App` solo en `AppPrimary` y `AppSeparator` para evitar colisiones, cuatro variantes únicas con idiom universal, sRGB opaco y bytes RGB idénticos a la tabla. Rechaza `AccentColor` y colorsets inesperados.
+El verificador también comprueba los 23 colorsets del catálogo: nombres derivados de los tokens en PascalCase, con prefijo `App` solo en `AppPrimary` y `AppSeparator` para evitar colisiones, cuatro variantes únicas con idiom universal, sRGB opaco y bytes RGB idénticos a la tabla. Rechaza `AccentColor` y colorsets inesperados.
 
 Sólo se acreditan estos pares nominales y su correspondencia con los archivos de assets. No se ha ejecutado la app ni medido materiales, antialiasing, resolución de assets en ejecución, controles nativos, Dynamic Type, foco o VoiceOver. No equivale a conformidad AA/AAA del producto.
 
@@ -20,10 +20,10 @@ Sólo se acreditan estos pares nominales y su correspondencia con los archivos d
 
 | Modo | Texto mínimo | Par de texto limitante | UI mínimo |
 |---|---|---|---|
-| Light | 5.43:1 | text-tertiary / surface-muted | 3.73:1 |
-| Dark | 6.23:1 | text-tertiary / surface-muted | 4.58:1 |
-| HC Light | 8.22:1 | text-tertiary / surface-muted | 7.78:1 |
-| HC Dark | 10.66:1 | danger / primary-soft | 10.65:1 |
+| Light | 4.92:1 | on-native-accent / native-accent | 3.73:1 |
+| Dark | 4.92:1 | on-native-accent / native-accent | 4.58:1 |
+| HC Light | 7.32:1 | on-native-accent / native-accent | 7.78:1 |
+| HC Dark | 7.32:1 | on-native-accent / native-accent | 10.65:1 |
 
 ## Todos los pares
 
@@ -68,6 +68,7 @@ Cada celda sin marca de fallo supera su umbral; en filas decorativas el resultad
 | danger | danger-soft | text | 5.50:1 | 7.87:1 | 8.77:1 | 11.34:1 |
 | info | info-soft | text | 5.76:1 | 7.76:1 | 9.27:1 | 12.00:1 |
 | on-primary | primary | text | 6.63:1 | 10.31:1 | 10.03:1 | 15.88:1 |
+| on-native-accent | native-accent | text | 4.92:1 | 4.92:1 | 7.32:1 | 7.32:1 |
 | on-yellow | brand-yellow | text | 8.19:1 | 11.16:1 | 10.67:1 | 16.60:1 |
 | border | canvas | ui | 4.21:1 | 6.98:1 | 8.99:1 | 15.05:1 |
 | border | surface | ui | 4.43:1 | 6.10:1 | 8.99:1 | 13.60:1 |

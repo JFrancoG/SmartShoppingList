@@ -9,10 +9,10 @@ struct SharedPremiumManagementSection: View {
            viewModel.membershipAccess?.premiumActive == true || viewModel.premium.pendingVerification != nil {
             Section {
                 if viewModel.membershipAccess?.premiumActive == true {
-                    Button("Manage Apple subscription", systemImage: "creditcard") {
+                    Button("Manage subscription", systemImage: "creditcard") {
                         showsSubscriptionManagement = true
                     }
-                    .buttonStyle(ShoppingActionButtonStyle(widthFraction: 1, minimumHeight: 48, usesCapsule: true))
+                    .buttonStyle(ShoppingActionButtonStyle(widthFraction: 1, usesCapsule: true))
                     .disabled(viewModel.isBusy)
                 }
                 if viewModel.premium.pendingVerification != nil {
@@ -21,15 +21,12 @@ struct SharedPremiumManagementSection: View {
                             await viewModel.loadPremium(reportsActionErrors: true)
                         }
                     }
-                    .buttonStyle(ShoppingActionButtonStyle(widthFraction: 1, minimumHeight: 48, usesCapsule: true))
+                    .buttonStyle(ShoppingActionButtonStyle(widthFraction: 1, usesCapsule: true))
                     .disabled(viewModel.isBusy)
                 }
-            } header: {
-                if viewModel.membershipAccess?.premiumActive == true {
-                    Text("Subscription management")
-                }
             }
-            .listRowBackground(Color.surface)
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
         }
     }
 }
