@@ -336,7 +336,11 @@ final class SharedShoppingViewModel {
             )
             guard isCurrentSubscriptionSession(session), !Task.isCancelled else { return }
             if let transactionID {
-                request = SandboxRefundRequest(transactionID: transactionID, userID: session.user.id)
+                request = SandboxRefundRequest(
+                    transactionID: transactionID,
+                    userID: session.user.id,
+                    accessToken: session.accessToken
+                )
             } else {
                 notice = "No active Sandbox purchase was found for this account. Buy a test subscription first."
             }
@@ -345,15 +349,17 @@ final class SharedShoppingViewModel {
         return request
     }
 
-    func completeSandboxRefund(_ outcome: SandboxRefundOutcome, userID: UUID) async {
-        guard allowsSandboxRefundTesting, sessionIsVerified, session?.user.id == userID else { return }
+    func completeSandboxRefund(_ outcome: SandboxRefundOutcome, request: SandboxRefundRequest) async {
+        guard allowsSandboxRefundTesting, sessionIsVerified,
+              session?.user.id == request.userID, session?.accessToken == request.accessToken else { return }
         switch outcome {
         case .cancelled:
             return
         case .submitted:
             // Submission is not a refund decision. Existing server reconciliation remains authoritative.
             await loadPremium()
-            guard sessionIsVerified, session?.user.id == userID else { return }
+            guard sessionIsVerified, session?.user.id == request.userID,
+                  session?.accessToken == request.accessToken else { return }
             notice = "Refund request sent to Apple. Premium changes only after the refund is confirmed."
         case .duplicate:
             notice = "Apple has already received a refund request for this purchase."

@@ -1,14 +1,30 @@
 #if DEBUG
 import Foundation
+import OSLog
 import StoreKit
 
 struct SandboxRefundRequest {
+    let id = UUID()
     let transactionID: UInt64
     let userID: UUID
+    let accessToken: String
 }
 
 enum SandboxRefundOutcome {
     case submitted, cancelled, duplicate, failed
+
+    init(_ result: Result<Transaction.RefundRequestStatus, Transaction.RefundRequestError>) {
+        switch result {
+        case .success(.success): self = .submitted
+        case .success(.userCancelled): self = .cancelled
+        case .failure(let error):
+            // Only the SDK error case is logged, never account tokens or signed transaction data.
+            Logger(subsystem: "com.plusprojects.SmartShoppingList", category: "SandboxRefund")
+                .error("Refund sheet failed: \(String(describing: error), privacy: .public)")
+            self = error == .duplicateRequest ? .duplicate : .failed
+        @unknown default: self = .failed
+        }
+    }
 }
 
 protocol SandboxRefundStore: Sendable {

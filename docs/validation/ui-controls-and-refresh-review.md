@@ -91,3 +91,24 @@ Autoriza commit, push, PR, CI, merge y eliminación de rama. #39 permanece abier
 Auditoría independiente de 40 archivos Swift: sin hallazgos funcionales; corregidos dos ajustes de disposición de código antes de la validación final.
 
 Validación final de entrega: plan Fast repetido el 16 de octubre a las 16:43 CEST en iPhone 17/iOS 27.2 Simulator: **232 funciones / 405 ejecuciones**, cero fallos, omitidas, fallos esperados o runtime warnings. Las 13 entradas de otros planes que MCP muestra sin resultado no son pruebas ejecutadas. Build de tests sin warnings. Resultado: `Test-SmartShoppingList-2026.10.16_16-43-03-+0200.xcresult`. Verificador de diseño: 65 pares × 4 modos, 23 assets × 4 variantes, PASS. Auditoría final de estilo: 40 Swift, cero hallazgos pendientes.
+
+## Etiqueta de reconocimiento — 17 de octubre
+
+- Avisos informativos comunes de una acción: «Aceptar» (`OK`); cuando se ofrece «Abrir lista», la alternativa es «Cerrar». Se mantienen roles nativos, identidad, descarte, tamaños y colores.
+- Compilación iOS correcta, sin warnings, a las 10:17 CEST. Catálogo JSON válido y diff sin errores de espacios. Revisión independiente de localización, semántica y estilo: sin hallazgos.
+- Preview de aviso único muestra «Aceptar». Las variantes solicitadas no acreditan por sí solas Dynamic Type: AX5 produjo una captura sin alerta; XXXL mostró la etiqueta pero no permite confirmar que el tamaño se aplicase al diálogo nativo. El preview aislado tampoco reproduce el tinte de la ventana de la app. Sin nueva validación física ni VoiceOver.
+- Cambio local en `codex/issue-49-notice-acknowledgement`, sin commit ni instalación. Se elimina del diff el reordenado automático ajeno de Xcode del catálogo. Sin cambios al comportamiento del reembolso.
+
+## Instalación de «Aceptar» — 17 de octubre, 10:25 CEST
+
+Instalada y abierta la compilación Debug/Sandbox actualizada en iPhone 11 (iOS 27.2), mediante Xcode MCP con esquema SmartShoppingList y SDK 27.1. RunProject correcto, PID 2177, sin warnings ni errores en el log completo `RunProject-Log-20261017-102549.txt`. Backend configurado a Sandbox; pendiente aceptación visual del propietario. El catálogo conserva únicamente el cambio de etiquetas tras retirar el reordenado automático de Xcode.
+
+
+## Aceptación y preparación de entrega — 19 de octubre
+
+El propietario confirmó que «Aceptar» se ve correctamente en el iPhone 11. Se entrega junto a la corrección
+del primer intento de reembolso, probada físicamente a las 05:15 CEST; evidencia de StoreKit en
+`issue-39-premium-subscriptions.md`. Auditoría final de los siete Swift modificados/nuevos sin hallazgos;
+el único candidato del escáner pertenece a código anterior. Se reutilizan Fast (233 funciones / 407 ejecuciones)
+y la instalación/compilación sin warnings de las 05:11, sin cambios de código posteriores. Validador de diseño:
+65 pares × 4 modos y 23 assets × 4 variantes, PASS. #39 y #49 permanecen abiertas para sus pruebas y seguimiento.

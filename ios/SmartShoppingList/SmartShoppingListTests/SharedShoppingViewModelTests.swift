@@ -6,6 +6,48 @@ import Testing
 
 @Suite(.tags(.fast)) @MainActor
 struct SharedShoppingViewModelTests {
+#if DEBUG
+    @Test(arguments: [false, true])
+    func `Refund completion from a previous session cannot replace the current notice`(staleToken: Bool) async throws {
+        let api = SharedFlowAPI()
+        let credentials = MemorySharedCredentialStore(session: api.session)
+        let sandbox = "https://smartshoppinglistsandbox-sandbox.up.railway.app"
+        let model = SharedShoppingViewModel(
+            api: api,
+            configuration: try SharedAPIConfiguration(baseURL: sandbox, invitationOrigin: sandbox),
+            credentials: credentials,
+            draft: ShoppingDraftViewModel(
+                interpreter: UnavailableDraftInterpreter(),
+                speech: UnavailableSpeechCapture(),
+                persistence: MemoryDraftPersistence()
+            ),
+            storeQuery: StoreQueryViewModel(speech: UnavailableSpeechCapture())
+        )
+        await model.load()
+        try #require(model.sessionIsVerified)
+        let session = try #require(model.session)
+        await model.completeSandboxRefund(
+            .failed,
+            request: SandboxRefundRequest(transactionID: 43, userID: session.user.id, accessToken: session.accessToken)
+        )
+        let request = SandboxRefundRequest(
+            transactionID: 42,
+            userID: session.user.id,
+            accessToken: staleToken ? "previous-session-token" : session.accessToken
+        )
+
+        await model.completeSandboxRefund(.duplicate, request: request)
+
+        var notice = try #require(model.notice)
+        notice.locale = Locale(identifier: "en")
+        if staleToken {
+            #expect(String(localized: notice) == "The test refund request could not be sent. Try again.")
+        } else {
+            #expect(String(localized: notice) == "Apple has already received a refund request for this purchase.")
+        }
+    }
+#endif
+
     @Test("Root alerts wait until the presented sheet finishes dismissing")
     func noticesWaitForSheetDismissal() throws {
         let model = try makeModel(api: SharedFlowAPI(), credentials: MemorySharedCredentialStore())

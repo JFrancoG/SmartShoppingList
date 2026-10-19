@@ -37,7 +37,7 @@ struct ShoppingAlertActions: View {
     @Previewable @State var isPresented = true
     Color.canvas
         .shoppingAlert(Text("Smart List"), isPresented: $isPresented) {
-            ShoppingAlertActions(primaryTitle: Text("Dismiss notice"), secondaryTitle: nil) {} cancel: {}
+            ShoppingAlertActions(primaryTitle: Text("OK"), secondaryTitle: nil) {} cancel: {}
         } message: {
             Text("No products were found. You can rephrase the text or add them manually.")
         }
