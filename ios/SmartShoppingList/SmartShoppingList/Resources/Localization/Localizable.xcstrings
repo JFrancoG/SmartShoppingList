@@ -1,6 +1,17 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "OK" : {
+      "comment" : "Acknowledges an informational notice; does not authorize a purchase or another operation.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aceptar"
+          }
+        }
+      }
+    },
     "Manage subscription": {
       "localizations": {
         "es": {
@@ -2075,16 +2086,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Descartar invitación"
-          }
-        }
-      }
-    },
-    "Dismiss notice" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cerrar aviso"
           }
         }
       }

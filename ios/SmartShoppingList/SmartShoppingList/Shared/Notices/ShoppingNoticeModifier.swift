@@ -43,7 +43,7 @@ struct ShoppingNoticeModifier: ViewModifier {
                                 if hasStoreAction, let openStore {
                                     ShoppingAlertActions(
                                         primaryTitle: Text("Open list"),
-                                        secondaryTitle: Text("Dismiss notice")
+                                        secondaryTitle: Text("Close")
                                     ) {
                                         guard currentPresentationID == presentationID else { return }
                                         acknowledgedNotice = shownNotice
@@ -55,7 +55,7 @@ struct ShoppingNoticeModifier: ViewModifier {
                                         dismiss(shownNotice)
                                     }
                                 } else {
-                                    ShoppingAlertActions(primaryTitle: Text("Dismiss notice"), secondaryTitle: nil) {
+                                    ShoppingAlertActions(primaryTitle: Text("OK"), secondaryTitle: nil) {
                                         guard currentPresentationID == presentationID else { return }
                                         acknowledgedNotice = shownNotice
                                         dismiss(shownNotice)

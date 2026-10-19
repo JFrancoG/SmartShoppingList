@@ -70,6 +70,8 @@
 
 ### Fixed
 
+- 2026-10-19 | 🐛 fix(ios): stabilize refunds and acknowledge notices
+
 - 2026-10-15 | 🐛 fix(premium): clarify group labels and premium expiry
 
 - 2026-10-15 | 🐛 fix(premium): separate free-group settings and restore action

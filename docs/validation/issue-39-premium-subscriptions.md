@@ -447,3 +447,58 @@ Validation:
 Fast and the original iPhone 11 destination were preserved/restored; the task's Xcode workspace was closed.
 No commit, push, PR, deployment or device installation is included in this implementation step. Issue #39 stays open
 for the remaining Sandbox tests.
+
+
+## 2026-10-19 — Sandbox refund first-attempt presentation
+
+Local follow-up for #39, preserving the previously accepted, uncommitted notice acknowledgement changes.
+The five-minute refund monitor was deleted at the owner's request. Issue #39 remains open.
+
+Source inspection found an always-mounted `refundRequestSheet` initialized with transaction ID `0`; the real ID
+and presentation flag were changed together when preparation completed. This is a presentation-ordering risk
+consistent with the reported first-attempt failure, not proof that StoreKit internally captured that ID.
+
+- The native modifier now mounts only after verified preparation, with an immutable real transaction ID. Each
+  attempt has a new host identity, including retries of the same transaction; presentation starts in that host's task.
+- Preparation and presentation block repeated taps. Completion checks the attempt identity and the originating
+  user/session token; the view model rechecks the session after refreshing Premium.
+- Debug-only diagnostics record the StoreKit error enum, without account tokens or signed transaction data.
+  There are no automatic retries, arbitrary sleeps, purchase submissions or direct entitlement changes.
+- Build-for-testing passed with no warnings/errors: `BuildProject-Log-20261019-045532.txt`.
+- Unchanged Fast plan passed: 233 test functions / 407 executions, zero failures, skips or runtime warnings in
+  xcresult. This includes existing verified-transaction eligibility tests and the new two-case stale-session
+  completion regression, with a current-token positive control. The 13 entries outside Fast were not counted as
+  passing. `RunSomeTests` again misclassified tagged tests as disabled, so `RunAllTests` was used without plan edits.
+- Result: `Test-SmartShoppingList-2026.10.19_04-55-41-+0200.xcresult` under Xcode ActionArtifacts/RunAllTests.
+- Spanish preview inspected in Large, XXX Large and AX 5 on the actual render destination iPhone 18 Pro Max / iOS
+  27.2; button and explanatory text remain visible without overlap. Preview does not open Apple's refund sheet.
+- Independent SwiftUI/accessibility, session/test and source-style reviews: no remaining findings after collapsing
+  the new short test initializer. The original iPhone 11 run destination was restored.
+
+Physical first-attempt presentation remains unverified. The tests do not prove Apple's UI behavior or session
+rotation during the Premium refresh. No installation, commit, push or deployment is included in this step.
+
+### 2026-10-19 — Installed for the first-attempt refund check
+
+At the owner's request, Xcode MCP RunProject installed and opened the updated Debug/Sandbox app on the physical
+iPhone 11 (iOS 27.2; iOS 27.1 SDK), PID 3268. Build log `RunProject-Log-20261019-051119.txt` contains no warnings
+or errors. The built Info.plist confirms `Smart List Sandbox` and both API/invitation origins point to
+`https://smartshoppinglistsandbox-sandbox.up.railway.app`. Existing app data was not removed. Xcode's automatic
+catalog ordering/extraction-state changes were discarded after comparing them with the pre-build file.
+Issue #39 remains OPEN. User verification of Apple's first-attempt refund sheet is still pending; no purchase
+or refund was initiated by the agent.
+
+### 2026-10-19 — First-attempt refund check on iPhone 11: PASS
+
+Owner reports a new Sandbox purchase at approximately 05:14 CEST and a refund request at 05:15 CEST.
+Apple's reason-selection sheet opened on the first tap; the owner selected a reason and submitted the request.
+Xcode console inspection used the installed app's still-running launch session `7cb0a48900`, PID 3268:
+28 untruncated entries, spanning 05:11:20 through 05:16:33 CEST. No `Refund sheet failed` diagnostic or
+SandboxRefund-category entry was present, and the refund/StoreKit/purchase search returned zero matches.
+The console contains Apple framework diagnostics (CoreAnimation, BoardServices, UIKit snapshotting and
+ManagedConfiguration), with no evidence here tying them to a refund failure. Do not describe the entire console
+as error-free. Successful submission has no dedicated app log; first-attempt success is owner-observed physical
+evidence, supported by the absence of the new failure diagnostic, not a server refund decision.
+
+This validates the first-attempt presentation fix for this run. Apple approval/revocation of this new purchase
+has not been checked in this step. Issue #39 remains open; the deleted five-minute monitor was not recreated.
