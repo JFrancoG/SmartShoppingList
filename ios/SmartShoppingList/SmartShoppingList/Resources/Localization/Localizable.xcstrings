@@ -13,726 +13,8 @@
         }
       }
     },
-    "OK" : {
-      "comment" : "Acknowledges an informational notice; does not authorize a purchase or another operation.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aceptar"
-          }
-        }
-      }
-    },
-    "Manage subscription": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Gestionar suscripción"
-          }
-        }
-      }
-    },
-    "Apple has already received a refund request for this purchase.": {
-      "extractionState": "stale",
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apple ya ha recibido una solicitud de reembolso para esta compra."
-          }
-        }
-      }
-    },
-    "No active Sandbox purchase was found for this account. Buy a test subscription first.": {
-      "extractionState": "stale",
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No hay ninguna compra Sandbox activa para esta cuenta. Compra primero una suscripción de prueba."
-          }
-        }
-      }
-    },
-    "Opens Apple's refund sheet for this account's active test purchase.": {
-      "extractionState": "stale",
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Abre la solicitud de reembolso de Apple para la compra de prueba activa de esta cuenta."
-          }
-        }
-      }
-    },
-    "Refund request sent to Apple. Premium changes only after the refund is confirmed.": {
-      "extractionState": "stale",
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Solicitud de reembolso enviada a Apple. Premium solo cambiará cuando se confirme el reembolso."
-          }
-        }
-      }
-    },
-    "Request test refund": {
-      "extractionState": "stale",
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Solicitar reembolso de prueba"
-          }
-        }
-      }
-    },
-    "Sandbox testing": {
-      "extractionState": "stale",
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pruebas Sandbox"
-          }
-        }
-      }
-    },
-    "The test refund request could not be sent. Try again.": {
-      "extractionState": "stale",
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No se ha podido enviar la solicitud de reembolso de prueba. Inténtalo de nuevo."
-          }
-        }
-      }
-    },
-    "Loading your groups…" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cargando tus grupos…"
-          }
-        }
-      }
-    },
-    "Your groups could not be verified. Refresh to see your free group." : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No se han podido comprobar tus grupos. Actualiza para ver tu grupo gratuito."
-          }
-        }
-      }
-    },
-    "You have no groups yet" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Todavía no tienes grupos"
-          }
-        }
-      }
-    },
-    "Create a group or accept an invitation from Settings. With the free plan you can use one group." : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Crea un grupo o acepta una invitación desde Ajustes. Con el plan gratuito puedes usar un grupo."
-          }
-        }
-      }
-    },
-    "This is your only group. You do not need to choose: it is your group for use with the free plan." : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Este es tu único grupo. No necesitas elegir: es tu grupo para usar con el plan gratuito."
-          }
-        }
-      }
-    },
-    "Your free group: %@" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tu grupo gratuito: %@"
-          }
-        }
-      }
-    },
-    "Choose your free group" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Elige tu grupo gratuito"
-          }
-        }
-      }
-    },
-    "Premium gives you access to all your groups. Choose which one to keep using if your subscription ends." : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Premium te permite usar todos tus grupos. Elige cuál seguirás usando si termina tu suscripción."
-          }
-        }
-      }
-    },
-    "Premium has ended. You can keep shopping in your existing groups until %@." : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Premium ha terminado. Puedes seguir comprando en tus grupos actuales hasta el %@."
-          }
-        }
-      }
-    },
-    "After that, you can shop in your free group. Your other groups and their data remain available to consult." : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Después podrás seguir comprando en tu grupo gratuito. Los demás grupos y sus datos seguirán disponibles para consulta."
-          }
-        }
-      }
-    },
-    "Store and product limits already follow each administrator’s current plan." : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Los límites de tiendas y productos ya corresponden al plan actual de cada administrador."
-          }
-        }
-      }
-    },
-    "With the free plan you can shop in your free group. Your other groups and their data remain available to consult." : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Con el plan gratuito puedes comprar en tu grupo gratuito. Los demás grupos y sus datos siguen disponibles para consulta."
-          }
-        }
-      }
-    },
-    "If you do not choose, we keep your previous valid choice or use the group you joined first." : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Si no eliges, mantenemos tu elección anterior válida o usamos el grupo al que te uniste primero."
-          }
-        }
-      }
-    },
-    "Choose a different group" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Elegir otro grupo"
-          }
-        }
-      }
-    },
-    "You can change your free group again on %@." : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Podrás volver a cambiar tu grupo gratuito el %@."
-          }
-        }
-      }
-    },
-    "You can change your choice once every 30 days. If you leave this group or it closes, you can choose a replacement. Changing your free group does not switch the group you are viewing." : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Puedes cambiar tu elección una vez cada 30 días. Si abandonas ese grupo o se cierra, puedes elegir otro. Cambiar tu grupo gratuito no cambia el grupo que estás viendo."
-          }
-        }
-      }
-    },
-    "You can shop in your existing groups until %@. Then only in your free group." : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Puedes comprar en tus grupos actuales hasta el %@. Después, solo en tu grupo gratuito."
-          }
-        }
-      }
-    },
-    "Your free plan lets you shop in one group. Review which group you want to use." : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tu plan gratuito te permite comprar en un grupo. Revisa cuál quieres usar."
-          }
-        }
-      }
-    },
-    "Review free group" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Revisar grupo gratuito"
-          }
-        }
-      }
-    },
-    "Free plan: 1 group · 3 active stores · 20 pending products per store." : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Plan gratuito: 1 grupo · 3 tiendas activas · 20 productos pendientes por tienda."
-          }
-        }
-      }
-    },
-    "Store and product limits apply to groups you administer. Only active stores and products pending purchase count." : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Los límites de tiendas y productos se aplican a los grupos que administras. Solo cuentan las tiendas activas y los productos pendientes de comprar."
-          }
-        }
-      }
-    },
-    "Up to 100 products per store" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hasta 100 productos por tienda"
-          }
-        }
-      }
-    },
-    "Up to 10 stores per group" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hasta 10 tiendas por grupo"
-          }
-        }
-      }
-    },
-    "Join or create up to 5 groups" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Únete o crea hasta 5 grupos"
-          }
-        }
-      }
-    },
-    "Change plan" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cambiar de plan"
-          }
-        }
-      }
-    },
-    "Free plan limits" : {
-      "comment" : "Heading for the free tier's group, store and pending product limits.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Límites del plan gratuito"
-          }
-        }
-      }
-    },
-    "Premium annual" : {
-      "comment" : "Illustrative preview product name; runtime metadata comes from StoreKit.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Premium anual"
-          }
-        }
-      }
-    },
-    "Premium includes" : {
-      "comment" : "Heading for the benefits included in the personal premium subscription, separate from its current verified state.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ventajas de Premium"
-          }
-        }
-      }
-    },
-    "Premium monthly" : {
-      "comment" : "Illustrative preview product name; runtime metadata comes from StoreKit.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Premium mensual"
-          }
-        }
-      }
-    },
-    "Subscription management" : {
-      "comment" : "Heading for opening Apple's subscription settings and recovering previous purchases.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gestionar la suscripción"
-          }
-        }
-      }
-    },
-    "Subscription options" : {
-      "comment" : "Heading for the available StoreKit subscription products; it does not identify the user's current purchased product.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Opciones de suscripción"
-          }
-        }
-      }
-    },
-    "%@ will be your free group on all devices. Ordinary changes follow a 30-day limit; replacing a group keeps the previous change schedule. No membership or content is removed." : {
-      "comment" : "Account-wide free group confirmation. An exceptional replacement retains the prior cooldown rather than starting a new 30-day period.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ será tu grupo gratuito en todos los dispositivos. Los cambios ordinarios siguen un límite de 30 días; sustituir un grupo conserva el plazo de cambio anterior. No se elimina ninguna pertenencia ni contenido."
-          }
-        }
-      }
-    },
-    "Example monthly premium" : {
-      "comment" : "Illustrative preview metadata only; this is not an approved or real StoreKit offer.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Premium mensual de ejemplo"
-          }
-        }
-      }
-    },
-    "Example annual premium" : {
-      "comment" : "Illustrative preview metadata only; this is not an approved or real StoreKit offer.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Premium anual de ejemplo"
-          }
-        }
-      }
-    },
-    "Example price" : {
-      "comment" : "Illustrative preview metadata only; this is not an approved or real StoreKit offer.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Precio de ejemplo"
-          }
-        }
-      }
-    },
-    "Payment grace ends" : {
-      "comment" : "Apple-verified payment grace deadline, distinct from the past end of the paid subscription period.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fin de la gracia de pago"
-          }
-        }
-      }
-    },
-    "Subscription options could not be loaded. Your existing access and saved purchases are kept. Refresh to try again." : {
-      "comment" : "StoreKit catalogue failure does not invalidate server-confirmed premium rights or saved purchase recovery.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No se han podido cargar las opciones de suscripción. Se conservan tu acceso actual y las compras guardadas. Actualiza para reintentarlo."
-          }
-        }
-      }
-    },
-    "This product is saved on this device until you choose a group with full shopping access." : {
-      "comment" : "Manual product remains local when the active group is restricted after premium expires.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Este producto se guarda en el dispositivo hasta que elijas un grupo con acceso completo a la compra."
-          }
-        }
-      }
-    },
-    "Free group" : {
-      "comment" : "Premium subscription and account-wide free group management.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Grupo gratuito"
-          }
-        }
-      }
-    },
-    "No group selected" : {
-      "comment" : "Premium subscription and account-wide free group management.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ningún grupo seleccionado"
-          }
-        }
-      }
-    },
-    "Group transition ends" : {
-      "comment" : "Premium subscription and account-wide free group management.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fin de la transición de grupos"
-          }
-        }
-      }
-    },
-    "Next free group change" : {
-      "comment" : "Premium subscription and account-wide free group management.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Próximo cambio de grupo gratuito"
-          }
-        }
-      }
-    },
-    "Use %@ as free group" : {
-      "comment" : "Premium subscription and account-wide free group management.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Usar %@ como grupo gratuito"
-          }
-        }
-      }
-    },
-    "Changes the account's free group on all devices. Your active shopping group stays selected." : {
-      "comment" : "Premium subscription and account-wide free group management.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cambia el grupo gratuito de la cuenta en todos los dispositivos. Mantiene tu selección del grupo activo."
-          }
-        }
-      }
-    },
-    "Choose as free group" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choose as free group"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Elegir como grupo gratuito"
-          }
-        }
-      }
-    },
-    "Choose as free group: %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choose as free group: %@"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Elegir como grupo gratuito: %@"
-          }
-        }
-      }
-    },
-    "Choose one group for full use without premium. You can change it once every 30 days. Leaving or closing it allows a replacement. Your other memberships and data are kept." : {
-      "comment" : "Premium subscription and account-wide free group management.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Elige un grupo para usarlo por completo sin premium. Puedes cambiarlo una vez cada 30 días. Si lo abandonas o se cierra, puedes elegir otro. Se conservan tus otros grupos y sus datos."
-          }
-        }
-      }
-    },
-    "Change free group?" : {
-      "comment" : "Premium subscription and account-wide free group management.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "¿Cambiar el grupo gratuito?"
-          }
-        }
-      }
-    },
-    "Premium" : {
-      "comment" : "Premium subscription and account-wide free group management.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Premium"
-          }
-        }
-      }
-    },
-    "Premium and free group" : {
-      "comment" : "Premium subscription and account-wide free group management.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Premium y grupo gratuito"
-          }
-        }
-      }
-    },
-    "Premium active" : {
-      "comment" : "Premium subscription and account-wide free group management.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Premium activo"
-          }
-        }
-      }
-    },
-    "Current period ends" : {
-      "comment" : "Premium subscription and account-wide free group management.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fin del periodo actual"
-          }
-        }
-      }
-    },
-    "Premium remains active while Apple retries your payment. Check your payment method in subscription settings." : {
-      "comment" : "Premium subscription and account-wide free group management.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Premium sigue activo mientras Apple reintenta el cobro. Revisa tu método de pago en los ajustes de suscripciones."
-          }
-        }
-      }
-    },
-    "Renewal is cancelled. Premium remains active until the current period ends." : {
-      "comment" : "Premium subscription and account-wide free group management.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Has cancelado la renovación. Premium sigue activo hasta el final del periodo actual."
-          }
-        }
-      }
-    },
-    "Free plan" : {
-      "comment" : "Premium subscription and account-wide free group management.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Plan gratuito"
-          }
-        }
-      }
-    },
-    "One personal premium subscription includes up to 5 groups. Groups you administer share limits of 10 active stores and 100 pending products per store." : {
-      "comment" : "Premium subscription and account-wide free group management.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Una suscripción premium personal incluye hasta 5 grupos. Los grupos que administras comparten límites de 10 tiendas activas y 100 productos pendientes por tienda."
-          }
-        }
-      }
-    },
-    "Without premium: one group, 3 active stores and 20 pending products per store. Group store and product limits follow the current administrator's plan." : {
-      "comment" : "Premium subscription and account-wide free group management.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sin premium: un grupo, 3 tiendas activas y 20 productos pendientes por tienda. Los límites de tiendas y productos del grupo dependen del plan del administrador actual."
-          }
-        }
-      }
-    },
-    "Checking subscription…" : {
-      "comment" : "Premium subscription and account-wide free group management.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Comprobando la suscripción…"
-          }
-        }
-      }
+    "" : {
+
     },
     "%@ per month" : {
       "comment" : "Premium subscription and account-wide free group management.",
@@ -756,184 +38,16 @@
         }
       }
     },
-    "Retry purchase verification" : {
-      "comment" : "Premium subscription and account-wide free group management.",
+    "%@ will be your free group on all devices. Ordinary changes follow a 30-day limit; replacing a group keeps the previous change schedule. No membership or content is removed." : {
+      "comment" : "Account-wide free group confirmation. An exceptional replacement retains the prior cooldown rather than starting a new 30-day period.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Reintentar verificación de compra"
+            "value" : "%@ será tu grupo gratuito en todos los dispositivos. Los cambios ordinarios siguen un límite de 30 días; sustituir un grupo conserva el plazo de cambio anterior. No se elimina ninguna pertenencia ni contenido."
           }
         }
       }
-    },
-    "Restore purchases" : {
-      "comment" : "Premium subscription and account-wide free group management.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Restaurar compras"
-          }
-        }
-      }
-    },
-    "Manage Apple subscription" : {
-      "comment" : "Premium subscription and account-wide free group management.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gestionar suscripción de Apple"
-          }
-        }
-      }
-    },
-    "Payment is charged to your Apple Account. The subscription renews automatically unless you cancel in Apple's subscription settings." : {
-      "comment" : "Premium subscription and account-wide free group management.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "El pago se carga en tu cuenta de Apple. La suscripción se renueva automáticamente salvo que la canceles en los ajustes de suscripciones de Apple."
-          }
-        }
-      }
-    },
-    "Purchases will be available once premium is ready." : {
-      "comment" : "Premium subscription and account-wide free group management.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Las compras estarán disponibles cuando premium esté listo."
-          }
-        }
-      }
-    },
-    "Consultation only" : {
-      "comment" : "Premium subscription and account-wide free group management.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Solo consulta"
-          }
-        }
-      }
-    },
-    "Choose this as your free group or renew premium to use its shopping list. Your group and draft are kept." : {
-      "comment" : "Premium subscription and account-wide free group management.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Elige este como tu grupo gratuito o renueva premium para usar su lista de la compra. Se conservan el grupo y tu borrador."
-          }
-        }
-      }
-    },
-    "This additional group is available for consultation. You can remove pending products, archive empty stores, transfer administration or leave." : {
-      "comment" : "Premium subscription and account-wide free group management.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Este grupo adicional está disponible para consulta. Puedes retirar productos pendientes, archivar tiendas vacías, traspasar la administración o abandonarlo."
-          }
-        }
-      }
-    },
-    "The free group cannot be changed yet. Refresh to check when the next change is available." : {
-      "comment" : "Premium subscription and account-wide free group management.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Todavía no puedes cambiar el grupo gratuito. Actualiza para comprobar cuándo podrás volver a cambiarlo."
-          }
-        }
-      }
-    },
-    "Apple could not verify this purchase. No premium access has been confirmed." : {
-      "comment" : "Premium subscription and account-wide free group management.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Apple no ha podido verificar esta compra. No se ha confirmado el acceso premium."
-          }
-        }
-      }
-    },
-    "This purchase belongs to another app account. Sign in with its original account." : {
-      "comment" : "Premium subscription and account-wide free group management.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Esta compra pertenece a otra cuenta de la app. Inicia sesión con su cuenta original."
-          }
-        }
-      }
-    },
-    "Subscription verification is unavailable. Your purchase is kept so you can try again." : {
-      "comment" : "Premium subscription and account-wide free group management.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "La verificación de suscripciones no está disponible. Conservamos tu compra para que puedas reintentarlo."
-          }
-        }
-      }
-    },
-    "Sign in with the account that started this purchase to finish verifying it." : {
-      "comment" : "Premium subscription and account-wide free group management.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Inicia sesión con la cuenta que inició esta compra para completar su verificación."
-          }
-        }
-      }
-    },
-    "Apple is awaiting approval of this purchase. Premium starts after verification." : {
-      "comment" : "Premium subscription and account-wide free group management.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Apple está esperando la aprobación de esta compra. Premium comienza después de la verificación."
-          }
-        }
-      }
-    },
-    "The purchase still needs verification, but it could not be saved on this device. Keep the app open and try again." : {
-      "comment" : "Premium subscription and account-wide free group management.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "La compra sigue pendiente de verificación, pero no se ha podido guardar en este dispositivo. Mantén la app abierta y vuelve a intentarlo."
-          }
-        }
-      }
-    },
-    "The purchase could not be verified. No premium access has been confirmed. Try again or restore purchases." : {
-      "comment" : "Premium subscription and account-wide free group management.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No se ha podido verificar la compra. No se ha confirmado el acceso premium. Reinténtalo o restaura las compras."
-          }
-        }
-      }
-    },
-    "" : {
-
     },
     "%lld of %lld" : {
       "localizations" : {
@@ -1032,26 +146,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Añadir"
-          }
-        }
-      }
-    },
-    "Add ${product} at ${store} to the draft" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Añadir ${product} de ${store} al borrador"
-          }
-        }
-      }
-    },
-    "Add ${product}, quantity ${quantity}, at ${store} to my list" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Añadir ${product}, cantidad ${quantity}, de ${store} a mi lista"
           }
         }
       }
@@ -1155,6 +249,26 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "Add ${product} at ${store} to the draft" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Añadir ${product} de ${store} al borrador"
+          }
+        }
+      }
+    },
+    "Add ${product}, quantity ${quantity}, at ${store} to my list" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Añadir ${product}, cantidad ${quantity}, de ${store} a mi lista"
           }
         }
       }
@@ -1446,6 +560,16 @@
         }
       }
     },
+    "After that, you can shop in your free group. Your other groups and their data remain available to consult." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Después podrás seguir comprando en tu grupo gratuito. Los demás grupos y sus datos seguirán disponibles para consulta."
+          }
+        }
+      }
+    },
     "An archived store keeps its identity and history. Restore it before adding products to it again." : {
       "localizations" : {
         "es" : {
@@ -1462,6 +586,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Hay otra invitación guardada. Resuelve o descarta la anterior para revisar el nuevo enlace."
+          }
+        }
+      }
+    },
+    "Apple could not verify this purchase. No premium access has been confirmed." : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple no ha podido verificar esta compra. No se ha confirmado el acceso premium."
+          }
+        }
+      }
+    },
+    "Apple did not return the required credentials. Start signing in again." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple no ha devuelto las credenciales necesarias. Vuelve a iniciar el acceso."
+          }
+        }
+      }
+    },
+    "Apple has already received a refund request for this purchase." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple ya ha recibido una solicitud de reembolso para esta compra."
           }
         }
       }
@@ -1496,12 +652,13 @@
         }
       }
     },
-    "Apple did not return the required credentials. Start signing in again." : {
+    "Apple is awaiting approval of this purchase. Premium starts after verification." : {
+      "comment" : "Premium subscription and account-wide free group management.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Apple no ha devuelto las credenciales necesarias. Vuelve a iniciar el acceso."
+            "value" : "Apple está esperando la aprobación de esta compra. Premium comienza después de la verificación."
           }
         }
       }
@@ -1517,12 +674,12 @@
         }
       }
     },
-    "Archive store: %@" : {
+    "Archive" : {
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Archivar tienda: %@"
+            "value" : "Archivar"
           }
         }
       }
@@ -1547,22 +704,22 @@
         }
       }
     },
-    "Archive" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Archivar"
-          }
-        }
-      }
-    },
     "Archive store" : {
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Archivar tienda"
+          }
+        }
+      }
+    },
+    "Archive store: %@" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Archivar tienda: %@"
           }
         }
       }
@@ -1695,12 +852,44 @@
         }
       }
     },
+    "Change free group?" : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Cambiar el grupo gratuito?"
+          }
+        }
+      }
+    },
+    "Change plan" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambiar de plan"
+          }
+        }
+      }
+    },
     "Changed or unavailable products have been deselected. Review the list and select any products you still want to buy." : {
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Se han desmarcado los productos que cambiaron o ya no están pendientes. Revisa la lista y vuelve a marcar los que quieras comprar."
+          }
+        }
+      }
+    },
+    "Changes the account's free group on all devices. Your active shopping group stays selected." : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambia el grupo gratuito de la cuenta en todos los dispositivos. Mantiene tu selección del grupo activo."
           }
         }
       }
@@ -1754,6 +943,27 @@
         }
       }
     },
+    "Checking subscription…" : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comprobando la suscripción…"
+          }
+        }
+      }
+    },
+    "Choose a different group" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elegir otro grupo"
+          }
+        }
+      }
+    },
     "Choose a group before sharing products. Your local draft has no destination yet." : {
       "localizations" : {
         "es" : {
@@ -1794,6 +1004,50 @@
         }
       }
     },
+    "Choose as free group" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose as free group"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elegir como grupo gratuito"
+          }
+        }
+      }
+    },
+    "Choose as free group: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose as free group: %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elegir como grupo gratuito: %@"
+          }
+        }
+      }
+    },
+    "Choose one group for full use without premium. You can change it once every 30 days. Leaving or closing it allows a replacement. Your other memberships and data are kept." : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "extractionState" : "stale",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige un grupo para usarlo por completo sin premium. Puedes cambiarlo una vez cada 30 días. Si lo abandonas o se cierra, puedes elegir otro. Se conservan tus otros grupos y sus datos."
+          }
+        }
+      }
+    },
     "Choose stores and confirm" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1821,6 +1075,27 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Elige la tienda correspondiente"
+          }
+        }
+      }
+    },
+    "Choose this as your free group or renew premium to use its shopping list. Your group and draft are kept." : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige este como tu grupo gratuito o renueva premium para usar su lista de la compra. Se conservan el grupo y tu borrador."
+          }
+        }
+      }
+    },
+    "Choose your free group" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige tu grupo gratuito"
           }
         }
       }
@@ -1964,6 +1239,17 @@
         }
       }
     },
+    "Consultation only" : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solo consulta"
+          }
+        }
+      }
+    },
     "Could not load this store. Refresh to try again." : {
       "localizations" : {
         "es" : {
@@ -1990,6 +1276,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Crear un grupo"
+          }
+        }
+      }
+    },
+    "Create a group or accept an invitation from Settings. With the free plan you can use one group." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crea un grupo o acepta una invitación desde Ajustes. Con el plan gratuito puedes usar un grupo."
           }
         }
       }
@@ -2057,6 +1353,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Capacidad actual"
+          }
+        }
+      }
+    },
+    "Current period ends" : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fin del periodo actual"
           }
         }
       }
@@ -2205,6 +1512,42 @@
         }
       }
     },
+    "Example annual premium" : {
+      "comment" : "Illustrative preview metadata only; this is not an approved or real StoreKit offer.",
+      "extractionState" : "stale",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premium anual de ejemplo"
+          }
+        }
+      }
+    },
+    "Example monthly premium" : {
+      "comment" : "Illustrative preview metadata only; this is not an approved or real StoreKit offer.",
+      "extractionState" : "stale",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premium mensual de ejemplo"
+          }
+        }
+      }
+    },
+    "Example price" : {
+      "comment" : "Illustrative preview metadata only; this is not an approved or real StoreKit offer.",
+      "extractionState" : "stale",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Precio de ejemplo"
+          }
+        }
+      }
+    },
     "Expires on %@" : {
       "comment" : "Invitation expiration timestamp, formatted using the current locale.",
       "localizations" : {
@@ -2292,6 +1635,50 @@
         }
       }
     },
+    "Free group" : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Grupo gratuito"
+          }
+        }
+      }
+    },
+    "Free plan" : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plan gratuito"
+          }
+        }
+      }
+    },
+    "Free plan limits" : {
+      "comment" : "Heading for the free tier's group, store and pending product limits.",
+      "extractionState" : "stale",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Límites del plan gratuito"
+          }
+        }
+      }
+    },
+    "Free plan: 1 group · 3 active stores · 20 pending products per store." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plan gratuito: 1 grupo · 3 tiendas activas · 20 productos pendientes por tienda."
+          }
+        }
+      }
+    },
     "Group" : {
       "localizations" : {
         "es" : {
@@ -2372,6 +1759,18 @@
         }
       }
     },
+    "Group transition ends" : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "extractionState" : "stale",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fin de la transición de grupos"
+          }
+        }
+      }
+    },
     "I couldn’t find that store in your group. Try again, correct the text or use the Store selector." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2389,6 +1788,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "He revisado el producto actual"
+          }
+        }
+      }
+    },
+    "If you do not choose, we keep your previous valid choice or use the group you joined first." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Si no eliges, mantenemos tu elección anterior válida o usamos el grupo al que te uniste primero."
           }
         }
       }
@@ -2429,6 +1838,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Invitaciones"
+          }
+        }
+      }
+    },
+    "Join or create up to 5 groups" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Únete o crea hasta 5 grupos"
           }
         }
       }
@@ -2519,6 +1938,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cargando tiendas y capacidad…"
+          }
+        }
+      }
+    },
+    "Loading your groups…" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cargando tus grupos…"
+          }
+        }
+      }
+    },
+    "Manage Apple subscription" : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "extractionState" : "stale",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gestionar suscripción de Apple"
+          }
+        }
+      }
+    },
+    "Manage subscription" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gestionar suscripción"
           }
         }
       }
@@ -2663,6 +2114,41 @@
         }
       }
     },
+    "Next free group change" : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "extractionState" : "stale",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Próximo cambio de grupo gratuito"
+          }
+        }
+      }
+    },
+    "No active Sandbox purchase was found for this account. Buy a test subscription first." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No hay ninguna compra Sandbox activa para esta cuenta. Compra primero una suscripción de prueba."
+          }
+        }
+      }
+    },
+    "No group selected" : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "extractionState" : "stale",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ningún grupo seleccionado"
+          }
+        }
+      }
+    },
     "No invitations loaded." : {
       "localizations" : {
         "es" : {
@@ -2789,6 +2275,29 @@
         }
       }
     },
+    "OK" : {
+      "comment" : "Acknowledges an informational notice; does not authorize a purchase or another operation.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aceptar"
+          }
+        }
+      }
+    },
+    "One personal premium subscription includes up to 5 groups. Groups you administer share limits of 10 active stores and 100 pending products per store." : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "extractionState" : "stale",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Una suscripción premium personal incluye hasta 5 grupos. Los grupos que administras comparten límites de 10 tiendas activas y 100 productos pendientes por tienda."
+          }
+        }
+      }
+    },
     "Only the chosen member can accept or decline this transfer." : {
       "localizations" : {
         "es" : {
@@ -2829,6 +2338,16 @@
         }
       }
     },
+    "Open list" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ver lista"
+          }
+        }
+      }
+    },
     "Open Settings" : {
       "localizations" : {
         "es" : {
@@ -2845,16 +2364,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Abre Ajustes para unirte a un grupo o crear uno."
-          }
-        }
-      }
-    },
-    "Open list" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ver lista"
           }
         }
       }
@@ -2876,6 +2385,51 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Accede a tu grupo en Comprar para enviar estos productos."
+          }
+        }
+      }
+    },
+    "Opens Apple's refund sheet for this account's active test purchase." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abre la solicitud de reembolso de Apple para la compra de prueba activa de esta cuenta."
+          }
+        }
+      }
+    },
+    "Payment grace ends" : {
+      "comment" : "Apple-verified payment grace deadline, distinct from the past end of the paid subscription period.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fin de la gracia de pago"
+          }
+        }
+      }
+    },
+    "Payment is charged to your Apple Account. The subscription renews automatically unless you cancel in Apple's subscription settings." : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El pago se carga en tu cuenta de Apple. La suscripción se renueva automáticamente salvo que la canceles en los ajustes de suscripciones de Apple."
+          }
+        }
+      }
+    },
+    "Pending · %@" : {
+      "comment" : "Section heading. The placeholder is the selected store name entered by a user.",
+      "extractionState" : "stale",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pendientes · %@"
           }
         }
       }
@@ -2930,14 +2484,100 @@
         }
       }
     },
-    "Pending · %@" : {
-      "comment" : "Section heading. The placeholder is the selected store name entered by a user.",
+    "Premium" : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premium"
+          }
+        }
+      }
+    },
+    "Premium active" : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premium activo"
+          }
+        }
+      }
+    },
+    "Premium and free group" : {
+      "comment" : "Premium subscription and account-wide free group management.",
       "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pendientes · %@"
+            "value" : "Premium y grupo gratuito"
+          }
+        }
+      }
+    },
+    "Premium annual" : {
+      "comment" : "Illustrative preview product name; runtime metadata comes from StoreKit.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premium anual"
+          }
+        }
+      }
+    },
+    "Premium gives you access to all your groups. Choose which one to keep using if your subscription ends." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premium te permite usar todos tus grupos. Elige cuál seguirás usando si termina tu suscripción."
+          }
+        }
+      }
+    },
+    "Premium has ended. You can keep shopping in your existing groups until %@." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premium ha terminado. Puedes seguir comprando en tus grupos actuales hasta el %@."
+          }
+        }
+      }
+    },
+    "Premium includes" : {
+      "comment" : "Heading for the benefits included in the personal premium subscription, separate from its current verified state.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ventajas de Premium"
+          }
+        }
+      }
+    },
+    "Premium monthly" : {
+      "comment" : "Illustrative preview product name; runtime metadata comes from StoreKit.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premium mensual"
+          }
+        }
+      }
+    },
+    "Premium remains active while Apple retries your payment. Check your payment method in subscription settings." : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premium sigue activo mientras Apple reintenta el cobro. Revisa tu método de pago en los ajustes de suscripciones."
           }
         }
       }
@@ -3019,6 +2659,17 @@
         }
       }
     },
+    "Products · %lld" : {
+      "comment" : "Draft section heading. The placeholder is the number of draft products.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Productos · %lld"
+          }
+        }
+      }
+    },
     "Products remain in your draft until you confirm adding them to the group." : {
       "extractionState" : "stale",
       "localizations" : {
@@ -3036,17 +2687,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Los productos se compartirán únicamente al confirmar este envío."
-          }
-        }
-      }
-    },
-    "Products · %lld" : {
-      "comment" : "Draft section heading. The placeholder is the number of draft products.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Productos · %lld"
           }
         }
       }
@@ -3077,6 +2717,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Identificador del miembro propuesto: %@"
+          }
+        }
+      }
+    },
+    "Purchases will be available once premium is ready." : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las compras estarán disponibles cuando premium esté listo."
           }
         }
       }
@@ -3259,6 +2910,17 @@
         }
       }
     },
+    "Refund request sent to Apple. Premium changes only after the refund is confirmed." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solicitud de reembolso enviada a Apple. Premium solo cambiará cuando se confirme el reembolso."
+          }
+        }
+      }
+    },
     "Remove" : {
       "comment" : "Button to remove a draft product or request removal of a pending product. Verb.",
       "localizations" : {
@@ -3301,32 +2963,35 @@
         }
       }
     },
+    "Renewal is cancelled. Premium remains active until the current period ends." : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "extractionState" : "stale",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Has cancelado la renovación. Premium sigue activo hasta el final del periodo actual."
+          }
+        }
+      }
+    },
+    "Request test refund" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solicitar reembolso de prueba"
+          }
+        }
+      }
+    },
     "Resolve the saved submission before changing groups. It keeps its original destination." : {
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Resuelve el envío guardado antes de cambiar de grupo. Conserva su destino original."
-          }
-        }
-      }
-    },
-    "Restore store: %@" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Restaurar tienda: %@"
-          }
-        }
-      }
-    },
-    "Restore %@? It will use one active store place in this group." : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "¿Restaurar %@? Ocupará una plaza de tienda activa en este grupo."
           }
         }
       }
@@ -3341,12 +3006,43 @@
         }
       }
     },
+    "Restore %@? It will use one active store place in this group." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Restaurar %@? Ocupará una plaza de tienda activa en este grupo."
+          }
+        }
+      }
+    },
+    "Restore purchases" : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restaurar compras"
+          }
+        }
+      }
+    },
     "Restore store" : {
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Restaurar tienda"
+          }
+        }
+      }
+    },
+    "Restore store: %@" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restaurar tienda: %@"
           }
         }
       }
@@ -3391,6 +3087,17 @@
         }
       }
     },
+    "Retry purchase verification" : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reintentar verificación de compra"
+          }
+        }
+      }
+    },
     "Retry submission" : {
       "localizations" : {
         "es" : {
@@ -3419,6 +3126,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Revisa cada producto, su cantidad y la tienda. Puedes añadir hasta 50 productos por lote."
+          }
+        }
+      }
+    },
+    "Review free group" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Revisar grupo gratuito"
           }
         }
       }
@@ -3514,6 +3231,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Revocada"
+          }
+        }
+      }
+    },
+    "Sandbox testing" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pruebas Sandbox"
           }
         }
       }
@@ -3672,18 +3400,6 @@
         }
       }
     },
-    "Smart List" : {
-      "comment" : "Title of a shopping list notice.",
-      "isCommentAutoGenerated" : true,
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Smart List"
-          }
-        }
-      }
-    },
     "Shopping text" : {
       "localizations" : {
         "es" : {
@@ -3784,6 +3500,17 @@
         }
       }
     },
+    "Sign in with the account that started this purchase to finish verifying it." : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inicia sesión con la cuenta que inició esta compra para completar su verificación."
+          }
+        }
+      }
+    },
     "Sign out" : {
       "localizations" : {
         "es" : {
@@ -3810,6 +3537,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sesión iniciada con Apple"
+          }
+        }
+      }
+    },
+    "Smart List" : {
+      "comment" : "Title of a shopping list notice.",
+      "isCommentAutoGenerated" : true,
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Smart List"
           }
         }
       }
@@ -3893,6 +3632,26 @@
         }
       }
     },
+    "Store and product limits already follow each administrator’s current plan." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los límites de tiendas y productos ya corresponden al plan actual de cada administrador."
+          }
+        }
+      }
+    },
+    "Store and product limits apply to groups you administer. Only active stores and products pending purchase count." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los límites de tiendas y productos se aplican a los grupos que administras. Solo cuentan las tiendas activas y los productos pendientes de comprar."
+          }
+        }
+      }
+    },
     "Store availability changed while loading or could not be verified. Refresh to check it again." : {
       "localizations" : {
         "es" : {
@@ -3961,6 +3720,51 @@
         }
       }
     },
+    "Subscription management" : {
+      "comment" : "Heading for opening Apple's subscription settings and recovering previous purchases.",
+      "extractionState" : "stale",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gestionar la suscripción"
+          }
+        }
+      }
+    },
+    "Subscription options" : {
+      "comment" : "Heading for the available StoreKit subscription products; it does not identify the user's current purchased product.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opciones de suscripción"
+          }
+        }
+      }
+    },
+    "Subscription options could not be loaded. Your existing access and saved purchases are kept. Refresh to try again." : {
+      "comment" : "StoreKit catalogue failure does not invalidate server-confirmed premium rights or saved purchase recovery.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se han podido cargar las opciones de suscripción. Se conservan tu acceso actual y las compras guardadas. Actualiza para reintentarlo."
+          }
+        }
+      }
+    },
+    "Subscription verification is unavailable. Your purchase is kept so you can try again." : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La verificación de suscripciones no está disponible. Conservamos tu compra para que puedas reintentarlo."
+          }
+        }
+      }
+    },
     "Supermarket" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -3999,6 +3803,16 @@
         }
       }
     },
+    "The action is confirmed, but your current access could not be refreshed. Retry the saved request." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La acción está confirmada, pero no se ha podido actualizar tu acceso actual. Reintenta la solicitud guardada."
+          }
+        }
+      }
+    },
     "The Apple Intelligence model is currently unavailable. Your draft is kept; you can retry later or continue manually." : {
       "localizations" : {
         "es" : {
@@ -4015,16 +3829,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "El modelo de Apple Intelligence todavía no está listo."
-          }
-        }
-      }
-    },
-    "The action is confirmed, but your current access could not be refreshed. Retry the saved request." : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "La acción está confirmada, pero no se ha podido actualizar tu acceso actual. Reintenta la solicitud guardada."
           }
         }
       }
@@ -4077,6 +3881,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "El borrador está ocupado. Termina la edición u operación actual en la app y vuelve a intentarlo."
+          }
+        }
+      }
+    },
+    "The free group cannot be changed yet. Refresh to check when the next change is available." : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Todavía no puedes cambiar el grupo gratuito. Actualiza para comprobar cuándo podrás volver a cambiarlo."
           }
         }
       }
@@ -4248,6 +4063,17 @@
         }
       }
     },
+    "The purchase could not be verified. No premium access has been confirmed. Try again or restore purchases." : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se ha podido verificar la compra. No se ha confirmado el acceso premium. Reinténtalo o restaura las compras."
+          }
+        }
+      }
+    },
     "The purchase is confirmed, but the list could not be refreshed. Refresh before continuing." : {
       "localizations" : {
         "es" : {
@@ -4265,6 +4091,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "La compra se ha confirmado. Los productos no seleccionados siguen pendientes."
+          }
+        }
+      }
+    },
+    "The purchase still needs verification, but it could not be saved on this device. Keep the app open and try again." : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La compra sigue pendiente de verificación, pero no se ha podido guardar en este dispositivo. Mantén la app abierta y vuelve a intentarlo."
           }
         }
       }
@@ -4399,6 +4236,17 @@
         }
       }
     },
+    "The test refund request could not be sent. Try again." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se ha podido enviar la solicitud de reembolso de prueba. Inténtalo de nuevo."
+          }
+        }
+      }
+    },
     "The text could not be interpreted. Your draft is kept; you can retry or continue manually." : {
       "localizations" : {
         "es" : {
@@ -4470,6 +4318,17 @@
         }
       }
     },
+    "This additional group is available for consultation. You can remove pending products, archive empty stores, transfer administration or leave." : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este grupo adicional está disponible para consulta. Puedes retirar productos pendientes, archivar tiendas vacías, traspasar la administración o abandonarlo."
+          }
+        }
+      }
+    },
     "This device does not support Apple Intelligence." : {
       "localizations" : {
         "es" : {
@@ -4520,6 +4379,16 @@
         }
       }
     },
+    "This is your only group. You do not need to choose: it is your group for use with the free plan." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este es tu único grupo. No necesitas elegir: es tu grupo para usar con el plan gratuito."
+          }
+        }
+      }
+    },
     "This link could not be saved. Open it again after unlocking the device." : {
       "localizations" : {
         "es" : {
@@ -4546,6 +4415,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Este producto ya no está pendiente en esta tienda. Tus cambios no se han guardado."
+          }
+        }
+      }
+    },
+    "This product is saved on this device until you choose a group with full shopping access." : {
+      "comment" : "Manual product remains local when the active group is restricted after premium expires.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este producto se guarda en el dispositivo hasta que elijas un grupo con acceso completo a la compra."
+          }
+        }
+      }
+    },
+    "This purchase belongs to another app account. Sign in with its original account." : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta compra pertenece a otra cuenta de la app. Inicia sesión con su cuenta original."
           }
         }
       }
@@ -4772,6 +4663,38 @@
         }
       }
     },
+    "Up to 10 stores per group" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hasta 10 tiendas por grupo"
+          }
+        }
+      }
+    },
+    "Up to 100 products per store" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hasta 100 productos por tienda"
+          }
+        }
+      }
+    },
+    "Use %@ as free group" : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "extractionState" : "stale",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usar %@ como grupo gratuito"
+          }
+        }
+      }
+    },
     "Use the product’s actions to edit or remove it." : {
       "comment" : "Discovery hint below the pending product list when VoiceOver is on.",
       "localizations" : {
@@ -4821,12 +4744,34 @@
         }
       }
     },
+    "With the free plan you can shop in your free group. Your other groups and their data remain available to consult." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Con el plan gratuito puedes comprar en tu grupo gratuito. Los demás grupos y sus datos siguen disponibles para consulta."
+          }
+        }
+      }
+    },
     "Withdraw proposal" : {
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Retirar propuesta"
+          }
+        }
+      }
+    },
+    "Without premium: one group, 3 active stores and 20 pending products per store. Group store and product limits follow the current administrator's plan." : {
+      "comment" : "Premium subscription and account-wide free group management.",
+      "extractionState" : "stale",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sin premium: un grupo, 3 tiendas activas y 20 productos pendientes por tienda. Los límites de tiendas y productos del grupo dependen del plan del administrador actual."
           }
         }
       }
@@ -4882,6 +4827,26 @@
         }
       }
     },
+    "You can change your choice once every 30 days. If you leave this group or it closes, you can choose a replacement. Changing your free group does not switch the group you are viewing." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Puedes cambiar tu elección una vez cada 30 días. Si abandonas ese grupo o se cierra, puedes elegir otro. Cambiar tu grupo gratuito no cambia el grupo que estás viendo."
+          }
+        }
+      }
+    },
+    "You can change your free group again on %@." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Podrás volver a cambiar tu grupo gratuito el %@."
+          }
+        }
+      }
+    },
     "You can interpret the text and review the products before adding them to the group." : {
       "localizations" : {
         "es" : {
@@ -4892,12 +4857,32 @@
         }
       }
     },
+    "You can shop in your existing groups until %@. Then only in your free group." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Puedes comprar en tus grupos actuales hasta el %@. Después, solo en tu grupo gratuito."
+          }
+        }
+      }
+    },
     "You have already accepted this invitation." : {
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ya has aceptado esta invitación."
+          }
+        }
+      }
+    },
+    "You have no groups yet" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Todavía no tienes grupos"
           }
         }
       }
@@ -4952,6 +4937,26 @@
         }
       }
     },
+    "Your free group: %@" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tu grupo gratuito: %@"
+          }
+        }
+      }
+    },
+    "Your free plan lets you shop in one group. Review which group you want to use." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tu plan gratuito te permite comprar en un grupo. Revisa cuál quieres usar."
+          }
+        }
+      }
+    },
     "Your group" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -4959,6 +4964,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tu grupo"
+          }
+        }
+      }
+    },
+    "Your groups could not be verified. Refresh to see your free group." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se han podido comprobar tus grupos. Actualiza para ver tu grupo gratuito."
           }
         }
       }
