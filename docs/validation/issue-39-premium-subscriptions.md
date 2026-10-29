@@ -2,6 +2,50 @@
 
 Fecha: 10 de octubre de 2026. [Issue #39](https://github.com/JFrancoG/SmartShoppingList/issues/39).
 
+## 29 de octubre — conciliación final y cierre del alcance Sandbox
+
+La implementación y las pruebas Sandbox tienen evidencia suficiente para cerrar #39. El estado definitivo
+de la entrega y del cierre se registra en la issue; los apartados históricos de este informe describen sus
+checkpoints y no constituyen pendientes actuales. Producción, distribución, activación comercial y regalos
+permanecen fuera de este cierre.
+
+La [conciliación de Apple y Railway](https://github.com/JFrancoG/SmartShoppingList/issues/39#issuecomment-6497767869)
+identifica los UUID, hashes, fechas y límites. Consulta autenticada de solo lectura del historial de Apple:
+8 eventos del 29 de octubre y 3 eventos REFUND del 16–20 de octubre, con paginación agotada.
+**Los 11 UUID y hashes SHA-256 coinciden con los recibos duraderos de Railway Sandbox; Apple registra SUCCESS
+en las 11 entregas.** No se clasifican eventos por proximidad temporal ni se publican JWT, JWS o claves.
+
+| Recorrido | Evidencia y resultado |
+|---|---|
+| Compra mensual/anual, catálogo, restauración activa y cancelación | Pruebas físicas y persistencia/callbacks recogidos en #39; PASS. |
+| Primera gracia real | 29/10, 08:45:46–09:15:46 CET; DID_FAIL_TO_RENEW/GRACE_PERIOD, status 4, UUID `9978736d-3c54-4109-a5b7-6749d4b636e8`. |
+| Recuperación dentro de gracia | 29/10, 08:50:46 CET; DID_RENEW/BILLING_RECOVERY, UUID `a06034f3-3377-4bc3-ac21-44be1d73ab68`; Premium observado hasta 09:15. |
+| Segunda gracia y agotamiento | 29/10, 09:15:46–09:45:46 CET; UUID `a3d9a896-1c7a-49de-a20d-fa997054ccae`; GRACE_PERIOD_EXPIRED a las 09:45:50, UUID `338a555a-031a-46ba-b461-0eb7b2e486c6`. Gratuito persistente tras reiniciar/restaurar, confirmado por el propietario. |
+| Reembolso antes de vencer | 19/10, revocación 04:43:32 CEST frente a vencimiento 05:31:37; transacción `2000001253492212`, REFUND `60f63306-240e-446b-835d-1aed34fdd8d4`. Retirada de Premium, B y grupos conservados; correlación exacta antes pendiente, ahora resuelta. |
+| Segundo reembolso | Solicitud que abrió al primer intento: revocación 19/10 a las 05:24:33 CEST, antes del fin 06:14:33; REFUND `5580feca-ff7b-454a-8162-035370e1b1b7`. |
+| Reinstalación y restauración | iPhone 16, 29/10: Test1 → Aldi → Alpro recuperados; contraseña solicitada, sin error. Apple y SQL coinciden en Premium 13:58:41–14:28:41 CET; verificación persistida 14:05. |
+| Cupos y transición | Ensayos físicos de 3 tiendas/20 pendientes, conservación del sobrecupo y recuperación de capacidad; tras #52 se permite el primer grupo con cero pertenencias y se bloquea el segundo. |
+| Titularidad y entornos | Cuenta distinta en iPhone 11/16 sin trasladar compras ni grupos; regresiones de vinculación y separación Sandbox/Production. |
+| Duplicados, estados tardíos, indisponibilidad y carreras | Pruebas automatizadas HTTP/SQL con gateway simulado; no se atribuyen a emisiones reales de Apple. |
+
+El [CI de main 40867418477](https://github.com/JFrancoG/SmartShoppingList/actions/runs/40867418477),
+commit `bc7f2e2591ad8f3c78942e4a933277af68f462e1`, confirma tres jobs SUCCESS y **159 tests en 9 suites**
+(64,548 s). El log del job `123425586684` acredita gracia con caída de verificación, conservación del final
+de gracia al caducar, rechazo de estados antiguos/igual revisión tras revocación, deduplicación duradera,
+fallos reintentables sin concesión, carreras de revocación/crecimiento y transición/cupos. La entrega final
+volverá a pasar CI; este resultado identifica la base funcional ensayada, no un CI futuro.
+
+Límites: el tester nuevo estaba sin grupos cuando agotó la gracia. La conservación con datos poblados se
+acredita por los ensayos físicos previos de caducidad y por las regresiones de transición/final de gracia;
+no se afirma un único ensayo físico combinado que no se hizo. El estado SQL actual ya refleja la compra
+posterior para reinstalación y no sustituye una captura histórica del periodo de gracia. Se conserva la
+excepción externa JWTKit EXC-001; no se acredita producción ni una espera real de dieciséis días.
+
+En la entrega de cierre se incluyen la ordenación de Xcode y las 15 marcas `stale` pendientes del catálogo:
+sin altas/bajas de claves ni cambios de traducción. Se descarta el cambio local que renombraba Release a
+Smart List Sandbox: Debug conserva Smart List Sandbox y Release conserva Smart List, con sus respectivos
+orígenes ya definidos. No quedan cambios pendientes de esa preparación por decidir.
+
 ## 29 de octubre — primer grupo gratuito durante la transición
 
 Ajuste autorizado por el propietario tras detectar una cuenta Sandbox sin pertenencias bloqueada después del fin de gracia.

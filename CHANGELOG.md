@@ -37,6 +37,8 @@
 
 ### Documentation
 
+- 2026-10-29 | 📝 docs(premium): reconcile Sandbox validation evidence
+
 - 2026-10-09 | 📝 docs: plan group access and premium quotas
 
 - 2026-09-27 | 📝 docs: simplify demo links
