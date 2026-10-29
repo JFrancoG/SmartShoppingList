@@ -2,6 +2,32 @@
 
 Fecha: 10 de octubre de 2026. [Issue #39](https://github.com/JFrancoG/SmartShoppingList/issues/39).
 
+## 29 de octubre — primer grupo gratuito durante la transición
+
+Ajuste autorizado por el propietario tras detectar una cuenta Sandbox sin pertenencias bloqueada después del fin de gracia.
+La política común del servidor permite crear o aceptar un grupo con cero pertenencias durante la transición; con una o más
+mantiene el rechazo. Las lecturas de capacidades y ambas escrituras usan el mismo criterio, bajo el bloqueo de cuenta existente.
+No cambia la vigencia Premium, los cupos 1/3/20, la duración de la transición ni el plazo de elección del grupo gratuito.
+
+El aviso de Ajustes distingue transición y límite completo. Una capacidad denegada con hueco disponible pide actualizar,
+sin afirmar que el cupo está lleno. La app sigue respetando la autoridad del servidor. Texto ES y EN localizado.
+
+Validación local:
+- Regresión reproducida antes del cambio: los tres tests de servidor nuevos/ampliados fallaban en los casos de transición;
+  en iOS los dos casos con pertenencias mostraban el aviso de cupo incorrecto.
+- Después: casos HTTP de creación e invitación con cero grupos, rechazo con uno/dos, sustitución al salir del último,
+  conservación del plazo y carrera crear/aceptar en ambos órdenes: PASS sobre PostgreSQL temporal de pruebas.
+- Suite completa servidor: **159 tests en 9 suites**, PASS (45,060 s). Build con tests correcto; persiste únicamente el
+  aviso externo conocido EXC-001 del manifiesto de JWTKit, sin excepciones nuevas.
+- Xcode MCP estable, SDK iOS 27.1, simulador iPhone 18 Pro Max / iOS 27.2, plan Fast:
+  build con tests PASS sin warnings/errores; **412 ejecuciones correctas**, cero fallos/skips/expected failures.
+  El inventario incluye 13 entradas fuera del plan ejecutado, sin resultado; no se acredita el plan Integration.
+- Contrato: 31 operaciones, 125 ejemplos positivos y 47 negativos, PASS. Auditoría de estilo del diff de seis Swift
+  y `git diff --check`: PASS. Sin cambios de layout ni nuevas afirmaciones de accesibilidad física.
+
+Se preservan las modificaciones previas del proyecto Xcode y del catálogo. No se ha hecho commit/push, despliegue,
+instalación ni otra compra. **#39 permanece OPEN**; la verificación física del primer grupo y la reinstalación siguen pendientes.
+
 ## 16 de octubre — preparación del reembolso Sandbox
 
 Añadida solicitud nativa de reembolso solo Debug + backend Sandbox, con selección de transacción verificada

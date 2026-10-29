@@ -30,9 +30,8 @@ struct ShoppingService: Sendable {
                 return replay
             }
             let access = try await accountCapacity.access(for: user, on: sql)
-            guard access.canAdmitMembership,
-                try await membershipCount(user: user, on: sql) < access.limits.groups
-            else {
+            let count = try await membershipCount(user: user, on: sql)
+            guard access.canAdmitMembership(membershipCount: count) else {
                 let conflict = try APIReply(status: .conflict, json: Self.groupLimitReached.json)
                 return try await save(
                     conflict,
@@ -207,9 +206,8 @@ struct ShoppingService: Sendable {
                 if accepting {
                     if !member {
                         let access = try await accountCapacity.access(for: user, on: sql)
-                        guard access.canAdmitMembership,
-                            try await membershipCount(user: user, on: sql) < access.limits.groups
-                        else {
+                        let count = try await membershipCount(user: user, on: sql)
+                        guard access.canAdmitMembership(membershipCount: count) else {
                             throw Self.groupLimitReached
                         }
                         try await insertMembership(user, group: groupID, on: sql)

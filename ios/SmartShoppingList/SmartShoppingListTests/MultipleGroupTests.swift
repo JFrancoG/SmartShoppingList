@@ -5,6 +5,65 @@ import Testing
 @Suite(.tags(.fast))
 @MainActor
 struct MultipleGroupTests {
+    @Test(arguments: [0, 1])
+    func `Admission notices only claim a reached limit when the account is actually full`(count: Int) async throws {
+        let fixture = try MembershipFixture()
+        let api = MembershipAPI(fixture: fixture)
+        await api.setMemberships(Array([fixture.first].prefix(count)))
+        await api.overrideCapabilities(try SharedAccountCapabilities(
+            membershipCount: count,
+            canCreateGroup: false,
+            canJoinGroup: false,
+            limits: SharedAccountLimits(groupsPerAccount: SharedResourceLimit(maximum: 1, enforced: true))
+        ))
+        let model = fixture.model(api: api)
+        await model.load()
+        #expect(!model.canCreateGroup)
+        var message = try #require(model.groupAccessMessage)
+        message.locale = Locale(identifier: "en")
+        #expect(String(localized: message) == (count == 0
+            ? "Group availability could not be verified. Refresh before creating or joining a group."
+            : "Your account has reached its group limit. Your current groups and draft are kept."))
+    }
+
+    @Test(arguments: [0, 1, 2])
+    func `Transition admits the first group and explains why further groups are blocked`(count: Int) async throws {
+        let fixture = try MembershipFixture()
+        let api = MembershipAPI(fixture: fixture)
+        await api.setMemberships(Array([fixture.first, fixture.second].prefix(count)))
+        await api.overrideCapabilities(try SharedAccountCapabilities(
+            membershipCount: count,
+            canCreateGroup: count == 0,
+            canJoinGroup: count == 0,
+            limits: SharedAccountLimits(groupsPerAccount: SharedResourceLimit(maximum: 1, enforced: true)),
+            membershipAccess: SharedMembershipAccess(
+                premiumActive: false,
+                premiumExpiresAt: .now.addingTimeInterval(-60),
+                transitionEndsAt: .now.addingTimeInterval(86_400),
+                freeGroupId: count == 0 ? nil : fixture.first.id,
+                freeGroupChangeAvailableAt: nil,
+                canChangeFreeGroup: true
+            )
+        ))
+        let credentials = MemorySharedCredentialStore(session: fixture.session, invitation: fixture.invitation)
+        let model = fixture.model(api: api, credentials: credentials)
+        await model.load()
+        model.groupName = "Nuevo grupo"
+        #expect(model.canCreateGroup == (count == 0))
+        #expect(model.canAcceptInvitation == (count == 0))
+        if count == 0 {
+            #expect(model.groupAccessMessage == nil)
+        } else {
+            var message = try #require(model.groupAccessMessage)
+            message.locale = Locale(identifier: "es")
+            #expect(String(localized: message) == "Durante la transición puedes usar tus grupos actuales, pero no añadir otro. Se conservan tus grupos y el borrador.")
+            await model.createGroup()
+            await model.acceptInvitation()
+            #expect(await api.membershipMutations == 0)
+        }
+        #expect(model.draft.items == fixture.draft.items)
+    }
+
     @Test
     func `Duplicate group labels remain distinct without UUIDs after membership order changes`() async throws {
         let fixture = try MembershipFixture()
@@ -689,6 +748,7 @@ private actor MembershipAPI: SharedShoppingAPI {
     private let fixture: MembershipFixture
     private var memberships: [SharedGroup]
     private var providesCapabilities = true
+    private var capabilitiesOverride: SharedAccountCapabilities?
     private var membershipCountOverride: Int?
     private var lookupFails = false
     private var creationFails = false
@@ -780,6 +840,10 @@ private actor MembershipAPI: SharedShoppingAPI {
         membershipCountOverride = count
     }
 
+    func overrideCapabilities(_ capabilities: SharedAccountCapabilities) {
+        capabilitiesOverride = capabilities
+    }
+
     func delayAuthenticationFailure(_ gate: MembershipGate) {
         nextItemsGate = gate
         delayedItemsError = .server(
@@ -841,6 +905,9 @@ private actor MembershipAPI: SharedShoppingAPI {
                     )
                 }
             )
+        }
+        if let capabilitiesOverride {
+            user.accountCapabilities = capabilitiesOverride
         }
         return user
     }

@@ -1,6 +1,18 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "During the transition you can use your current groups, but cannot add another. Your groups and draft are kept.": {
+      "comment": "Shown when server admission is blocked during the seven-day group transition and the account already has a group.",
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Durante la transición puedes usar tus grupos actuales, pero no añadir otro. Se conservan tus grupos y el borrador."
+          }
+        }
+      }
+    },
     "OK" : {
       "comment" : "Acknowledges an informational notice; does not authorize a purchase or another operation.",
       "localizations" : {

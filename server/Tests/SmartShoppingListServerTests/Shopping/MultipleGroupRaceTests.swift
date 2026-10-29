@@ -41,11 +41,14 @@ extension SmartShoppingListServerTests {
     @Test(
         "Creating and joining concurrently cannot each consume the final account slot",
         .timeLimit(.minutes(1)),
-        arguments: [true, false]
+        arguments: [true, false], [true, false]
     )
-    func creationAndAdmissionShareCapacity(createFirst: Bool) async throws {
+    func creationAndAdmissionShareCapacity(createFirst: Bool, inTransition: Bool) async throws {
         let owner = try await ShoppingFixture.user()
         let joining = try await ShoppingFixture.user()
+        if inTransition {
+            try await PremiumAccessFixture.access(joining, expiresIn: -60)
+        }
         let group = try await ShoppingFixture.group(owner)
         let invitation = try await ShoppingFixture.invitation(group)
         let body = MembershipFixture.creationBody()

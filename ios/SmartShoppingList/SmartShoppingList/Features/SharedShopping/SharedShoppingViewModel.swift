@@ -232,9 +232,15 @@ final class SharedShoppingViewModel {
         guard let capabilities = session?.user.accountCapabilities else {
             return "Group availability could not be verified. Refresh before creating or joining a group."
         }
-        return capabilities.canCreateGroup
-            ? nil
-            : "Your account has reached its group limit. Your current groups and draft are kept."
+        guard !capabilities.canCreateGroup else { return nil }
+        if let access = capabilities.membershipAccess, !access.premiumActive,
+           let end = access.transitionEndsAt, end > .now, capabilities.membershipCount > 0 {
+            return "During the transition you can use your current groups, but cannot add another. Your groups and draft are kept."
+        }
+        if let maximum = capabilities.limits.groupsPerAccount.maximum, capabilities.membershipCount >= maximum {
+            return "Your account has reached its group limit. Your current groups and draft are kept."
+        }
+        return "Group availability could not be verified. Refresh before creating or joining a group."
     }
 
     var reviewedGroupName: String { group?.name ?? "" }
