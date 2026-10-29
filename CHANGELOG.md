@@ -70,6 +70,8 @@
 
 ### Fixed
 
+- 2026-10-29 | 🐛 fix(groups): allow the first free group during downgrade transition
+
 - 2026-10-19 | 🐛 fix(ios): stabilize refunds and acknowledge notices
 
 - 2026-10-15 | 🐛 fix(premium): clarify group labels and premium expiry

@@ -7,6 +7,62 @@ import Vapor
 import VaporTesting
 
 extension SmartShoppingListServerTests {
+    @Test("An empty account can create or join its one free group during transition", arguments: [true, false])
+    func firstGroupDuringTransition(creating: Bool) async throws {
+        let user = try await ShoppingFixture.user()
+        let owner = try await ShoppingFixture.user()
+        let destination = try await ShoppingFixture.group(owner)
+        let invitation = try await ShoppingFixture.invitation(destination)
+        try await PremiumAccessFixture.access(user, expiresIn: -60)
+        let before = try await PremiumAccessFixture.capabilities(user)
+        #expect(before["membershipCount"] == .integer(0))
+        #expect(before["canCreateGroup"] == .bool(true))
+        #expect(before["canJoinGroup"] == .bool(true))
+        try #require(before["transitionEndsAt"]?.string != nil)
+        let response = try await (creating
+            ? ShoppingFixture.request(.POST, "/v1/groups", user, MembershipFixture.creationBody())
+            : MembershipFixture.accept(invitation, user: user))
+        try #require(response.status == (creating ? .created : .ok))
+        let group = try #require(try ShoppingFixture.object(response)["id"]?.string)
+        let after = try await PremiumAccessFixture.capabilities(user)
+        #expect(after["membershipCount"] == .integer(1))
+        #expect(after["freeGroupId"] == .string(group))
+        #expect(after["canCreateGroup"] == .bool(false))
+        #expect(after["canJoinGroup"] == .bool(false))
+        #expect(after["transitionEndsAt"] == before["transitionEndsAt"])
+        #expect(try await PremiumAccessFixture.groups(user)[group]?["canUseShopping"] == .bool(true))
+        // Leaving the last group allows a replacement without restarting the transition.
+        #expect(try await MembershipFixture.depart(user, group: group).status == .ok)
+        let emptyAgain = try await PremiumAccessFixture.capabilities(user)
+        #expect(emptyAgain["canCreateGroup"] == .bool(true))
+        #expect(emptyAgain["canJoinGroup"] == .bool(true))
+        #expect(emptyAgain["transitionEndsAt"] == before["transitionEndsAt"])
+    }
+
+    @Test("Transition keeps existing memberships but rejects every additional group", arguments: [1, 2])
+    func existingGroupsDuringTransition(count: Int) async throws {
+        let user = try await ShoppingFixture.user()
+        try await PremiumAccessFixture.access(user, expiresIn: 86_400)
+        for _ in 0..<count {
+            _ = try await ShoppingFixture.group(user)
+        }
+        let owner = try await ShoppingFixture.user()
+        let destination = try await ShoppingFixture.group(owner)
+        let invitation = try await ShoppingFixture.invitation(destination)
+        try await PremiumAccessFixture.access(user, expiresIn: -60)
+        let before = try await PremiumAccessFixture.groups(user)
+        let create = try await ShoppingFixture.request(.POST, "/v1/groups", user, MembershipFixture.creationBody())
+        let join = try await MembershipFixture.accept(invitation, user: user)
+        #expect(try StoreQuotaFixture.code(create) == "group_limit_reached")
+        #expect(try StoreQuotaFixture.code(join) == "group_limit_reached")
+        #expect(try await PremiumAccessFixture.groups(user) == before)
+        // A rejected invitation remains usable after the account loses its last membership.
+        for group in before.keys {
+            #expect(try await MembershipFixture.depart(user, group: group).status == .ok)
+        }
+        #expect(try await MembershipFixture.accept(invitation, user: user).status == .ok)
+    }
+
     @Test("Verified Sandbox and Production access never grant allowances across their environment boundary")
     func premiumAccessIsIsolatedByVerificationEnvironment() async throws {
         let sandboxUser = try await ShoppingFixture.user()

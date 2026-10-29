@@ -14,7 +14,9 @@ struct AccountAccess: Sendable {
     let freeGroupChangedAt: Date?
 
     var inTransition: Bool { !premiumActive && transitionEndsAt.map { $0 > now } == true }
-    var canAdmitMembership: Bool { !inTransition }
+    func canAdmitMembership(membershipCount: Int64) -> Bool {
+        membershipCount < limits.groups && (!inTransition || membershipCount == 0)
+    }
     var freeGroupChangeAvailableAt: Date? { freeGroupChangedAt?.addingTimeInterval(30 * 86_400) }
     var canChangeFreeGroup: Bool {
         !storedFreeGroupIsValid || freeGroupChangeAvailableAt.map { $0 <= now } != false
@@ -32,8 +34,8 @@ struct AccountAccess: Sendable {
     func capabilities(membershipCount: Int64) -> APIJSON {
         .object([
             "membershipCount": .integer(membershipCount),
-            "canCreateGroup": .bool(canAdmitMembership && membershipCount < limits.groups),
-            "canJoinGroup": .bool(canAdmitMembership && membershipCount < limits.groups),
+            "canCreateGroup": .bool(canAdmitMembership(membershipCount: membershipCount)),
+            "canJoinGroup": .bool(canAdmitMembership(membershipCount: membershipCount)),
             "limits": .object([
                 "groupsPerAccount": .object(["maximum": .integer(limits.groups), "enforced": .bool(true)])
             ]),
