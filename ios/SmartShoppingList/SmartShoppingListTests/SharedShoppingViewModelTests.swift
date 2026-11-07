@@ -6,6 +6,134 @@ import Testing
 
 @Suite(.tags(.fast)) @MainActor
 struct SharedShoppingViewModelTests {
+    @Test(arguments: [
+        SharedAPIError.transport,
+        .invalidResponse,
+        .server(
+            status: 503,
+            code: "service_unavailable",
+            requestID: nil,
+            retryAfter: nil
+        )
+    ])
+    func `A failed cold read keeps saved access and draft without suggesting a new group or an uncertain write`(
+        failure: SharedAPIError
+    ) async throws {
+        let api = SharedFlowAPI()
+        await api.setReadError(failure)
+        let credentials = MemorySharedCredentialStore(session: api.session)
+        let draft = ShoppingDraftItem(name: "Alpro", quantity: "1", store: "Aldi")
+        let model = try makeModel(api: api, credentials: credentials, items: [draft])
+
+        await model.load()
+
+        #expect(model.hasUnverifiedGroups)
+        #expect(!model.needsGroupSetup)
+        #expect(model.presentedNotice == nil)
+        var message = try #require(model.readFailure)
+        message.locale = Locale(identifier: "en")
+        #expect(String(localized: message) == "Could not refresh your shared data. Your saved access and draft are kept. Check your connection and try again.")
+        #expect(await credentials.loadSession() == api.session)
+        #expect(model.draft.items == [draft])
+        #expect(model.pendingOperation == nil)
+        #expect(await api.sentBatches.isEmpty)
+
+        await api.setReadError(nil)
+        await model.refresh()
+
+        #expect(model.group?.id == api.session.user.group?.id)
+        #expect(model.groupsAreVerified)
+        #expect(!model.hasUnverifiedGroups)
+        #expect(!model.needsGroupSetup)
+        #expect(model.readFailure == nil)
+        #expect(model.presentedNotice == nil)
+        #expect(model.draft.items == [draft])
+    }
+
+    @Test(arguments: [false, true])
+    func `Only signed out or verified empty accounts show group setup`(signedIn: Bool) async throws {
+        let api = SharedFlowAPI()
+        await api.configureEmptyMemberships()
+        let model = try makeModel(
+            api: api,
+            credentials: MemorySharedCredentialStore(session: signedIn ? api.session : nil)
+        )
+        #expect(!model.needsGroupSetup)
+        await model.load()
+        #expect(model.needsGroupSetup)
+        #expect(!model.hasUnverifiedGroups)
+        #expect(model.readFailure == nil)
+    }
+
+    @Test
+    func `Cancelling a read does not present an error or remove the saved account`() async throws {
+        let api = SharedFlowAPI()
+        await api.cancelReads()
+        let credentials = MemorySharedCredentialStore(session: api.session)
+        let model = try makeModel(api: api, credentials: credentials)
+        await model.load()
+        #expect(model.presentedNotice == nil)
+        #expect(model.readFailure == nil)
+        #expect(await credentials.loadSession() == api.session)
+        #expect(!model.needsGroupSetup)
+    }
+
+    @Test
+    func `An invalid session still asks for authentication instead of becoming a network warning`() async throws {
+        let api = SharedFlowAPI()
+        await api.setReadError(.server(status: 401, code: "invalid_session", requestID: nil, retryAfter: nil))
+        let credentials = MemorySharedCredentialStore(session: api.session)
+        let model = try makeModel(api: api, credentials: credentials)
+        await model.load()
+        #expect(model.session == nil)
+        #expect(await credentials.loadSession() == nil)
+        #expect(model.presentedNotice != nil)
+        #expect(model.readFailure == nil)
+    }
+
+    @Test
+    func `A failed stores lookup is not a verified empty shopping list and recovers without a write`() async throws {
+        let api = SharedFlowAPI()
+        await api.configureStores(error: .transport)
+        let model = try makeModel(api: api, credentials: MemorySharedCredentialStore(session: api.session))
+        await model.load()
+        #expect(model.group != nil)
+        #expect(model.stores.isEmpty)
+        #expect(!model.storesAreVerified)
+        #expect(model.readFailure != nil)
+        #expect(model.presentedNotice == nil)
+
+        await api.configureStores()
+        await model.refresh()
+
+        #expect(model.storesAreVerified)
+        #expect(model.stores.isEmpty)
+        #expect(model.readFailure == nil)
+        #expect(await api.sentBatches.isEmpty)
+    }
+
+    @Test(arguments: [false, true])
+    func `A selected store read cannot claim an uncertain submission or an error for cancellation`(
+        cancelled: Bool
+    ) async throws {
+        let api = SharedFlowAPI()
+        let items = try await api.preparePurchaseItems()
+        let credentials = MemorySharedCredentialStore(session: api.session)
+        let model = try makeModel(api: api, credentials: credentials)
+        await model.load()
+        model.selectedStoreID = try #require(items.first).storeId
+        await api.configurePendingItems(error: cancelled ? nil : .transport, cancelled: cancelled)
+
+        await model.loadSelectedStore()
+
+        #expect(model.presentedNotice == nil)
+        #expect((model.readFailure != nil) == !cancelled)
+        #expect(model.storeItemsState == (cancelled ? .notLoaded : .failed))
+        #expect(model.pendingOperation == nil)
+        #expect(await credentials.loadSession()?.user.id == api.session.user.id)
+        #expect(await api.sentBatches.isEmpty)
+    }
+
 #if DEBUG
     @Test(arguments: [false, true])
     func `Refund completion from a previous session cannot replace the current notice`(staleToken: Bool) async throws {
@@ -1308,13 +1436,35 @@ private actor SharedFlowAPI: SharedShoppingAPI {
     private var failRefreshAfterPurchase = false
     private var pendingItemsGate: SharedFlowGate?
     private var pendingItemsError: SharedAPIError?
+    private var pendingItemsCancelled = false
     private var emptyPendingItems = false
     private var failCurrentUser = false
+    private var readError: SharedAPIError?
+    private var readsAreCancelled = false
+    private var hasNoMemberships = false
 
-    func configurePendingItems(gate: SharedFlowGate? = nil, error: SharedAPIError? = nil, empty: Bool = false) {
+    func setReadError(_ error: SharedAPIError?) {
+        readError = error
+    }
+
+    func cancelReads() {
+        readsAreCancelled = true
+    }
+
+    func configureEmptyMemberships() {
+        hasNoMemberships = true
+    }
+
+    func configurePendingItems(
+        gate: SharedFlowGate? = nil,
+        error: SharedAPIError? = nil,
+        empty: Bool = false,
+        cancelled: Bool = false
+    ) {
         pendingItemsGate = gate
         pendingItemsError = error
         emptyPendingItems = empty
+        pendingItemsCancelled = cancelled
     }
 
     func setCurrentUserFailure(_ fails: Bool) {
@@ -1476,18 +1626,24 @@ private actor SharedFlowAPI: SharedShoppingAPI {
     }
 
     func groups(token: String) async throws -> [SharedGroup] {
-        session.user.group.map { [$0] } ?? []
+        hasNoMemberships ? [] : session.user.group.map { [$0] } ?? []
     }
 
     func currentUser(token: String) async throws -> SharedUser {
         requestCount += 1
         await currentUserGate?.pause()
+        if readsAreCancelled {
+            throw CancellationError()
+        }
+        if let readError {
+            throw readError
+        }
         if failCurrentUser || (changeRefreshFails && !sentItemChanges.isEmpty) || (failRefreshAfterPurchase && !sentPurchases.isEmpty) {
             throw SharedAPIError.transport
         }
         var user = session.user
         user.accountCapabilities = try SharedAccountCapabilities(
-            membershipCount: user.group == nil ? 0 : 1,
+            membershipCount: hasNoMemberships || user.group == nil ? 0 : 1,
             canCreateGroup: true,
             canJoinGroup: true,
             limits: SharedAccountLimits(groupsPerAccount: SharedResourceLimit(maximum: 3, enforced: true))
@@ -1627,6 +1783,9 @@ private actor SharedFlowAPI: SharedShoppingAPI {
         let result = emptyPendingItems ? [] : purchaseItems.filter { $0.storeId == storeID }
         let error = pendingItemsError
         await pendingItemsGate?.pause()
+        if pendingItemsCancelled {
+            throw CancellationError()
+        }
         if let error {
             throw error
         }

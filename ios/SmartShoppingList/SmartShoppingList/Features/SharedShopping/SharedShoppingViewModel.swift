@@ -1,6 +1,7 @@
 import AuthenticationServices
 import Foundation
 import Observation
+import OSLog
 import Security
 
 struct DraftStoreChoice: Identifiable {
@@ -10,6 +11,13 @@ struct DraftStoreChoice: Identifiable {
 }
 
 enum StoreItemsState {
+    case notLoaded
+    case loading
+    case loaded
+    case failed
+}
+
+enum InvitationPreviewState {
     case notLoaded
     case loading
     case loaded
@@ -33,15 +41,21 @@ final class SharedShoppingViewModel {
     private(set) var session: SharedSession?
     private(set) var groups: [SharedGroup] = []
     private(set) var groupsAreVerified = false
+    private(set) var readFailure: LocalizedStringResource?
+    private let refreshLogger = Logger(subsystem: "com.plusprojects.SmartShoppingList", category: "SharedRefresh")
     private var groupGeneration = UUID()
     private var groupLoadID: UUID?
     private(set) var pendingInvitation: PendingInvitation?
     private(set) var invitationPreview: InvitationPreview?
+    private(set) var invitationPreviewState = InvitationPreviewState.notLoaded
+    @ObservationIgnored private var invitationPreviewRequestID: UUID?
+    private var isClearingInvitation = false
     private(set) var pendingOperation: PendingSharedOperation?
     private var purchaseSelections: [UUID: [SharedItem]] = [:]
     private var purchaseSelectionOwner: UUID?
     private var loadedStoreID: UUID?
     private(set) var stores: [SharedStore] = []
+    private(set) var storesAreVerified = false
     private(set) var archivedStores: [SharedStore] = []
     private(set) var groupCapacity: SharedGroupCapacity?
     private(set) var storeManagementState = GroupManagementLoadState.notLoaded
@@ -131,6 +145,11 @@ final class SharedShoppingViewModel {
     @ObservationIgnored private var hasRestoredLocalState = false
     @ObservationIgnored private var localStateLoadTask: Task<Void, Never>?
     @ObservationIgnored private var initialLoadTask: Task<Void, Never>?
+    @ObservationIgnored private var refreshTask: Task<Void, Never>?
+    @ObservationIgnored private var refreshTaskID: UUID?
+    @ObservationIgnored private var refreshIncludesPremium = false
+    @ObservationIgnored private var refreshReportsVerificationErrors = false
+    @ObservationIgnored private var activationRefreshPending = false
     @ObservationIgnored private var reviewSnapshot: ShoppingDraftSnapshot?
     @ObservationIgnored private var retryNotBefore: Date?
 
@@ -159,11 +178,18 @@ final class SharedShoppingViewModel {
 
     deinit {
         subscriptionUpdatesTask?.cancel()
+        refreshTask?.cancel()
     }
 
     var group: SharedGroup? { groups.first { $0.id == session?.activeGroupID } }
+    var hasUnverifiedGroups: Bool { hasLoaded && session != nil && !groupsAreVerified }
+    var needsGroupSetup: Bool {
+        hasLoaded && group == nil && groups.isEmpty && (session == nil || groupsAreVerified)
+    }
     var isConfigured: Bool { api != nil && configuration != nil }
-    var isBusy: Bool { isPerformingAction || isProcessingShoppingIntent || groupLoadID != nil || premium.isBusy }
+    var isBusy: Bool {
+        isPerformingAction || isProcessingShoppingIntent || groupLoadID != nil || premium.isBusy || isClearingInvitation
+    }
     var isPreparingAppleLogin: Bool { applePreparationID != nil }
     var shouldMaintainAppleLogin: Bool {
         hasLoaded && isConfigured && session == nil && !isAuthorizingWithApple && !storageFailed
@@ -214,7 +240,7 @@ final class SharedShoppingViewModel {
 
     var canSelectGroup: Bool {
         hasLoaded && sessionIsVerified && groupsAreVerified && !storageFailed
-            && !isPerformingAction && !isProcessingShoppingIntent && pendingOperation == nil
+            && !isPerformingAction && !isProcessingShoppingIntent && !isClearingInvitation && pendingOperation == nil
             && !isReviewPresentationActive && !isItemEditorPresentationActive && !isInvitationsPresentationActive
             && !draft.isEditorPresentationActive && !draft.isReceivingIntent && draft.activity == .idle
             && storeQuery.activity == .idle
@@ -282,17 +308,92 @@ final class SharedShoppingViewModel {
     }
 
     func loadPremium(reportsActionErrors: Bool = false) async {
-        guard subscriptionStore != nil, !isBusy, sessionIsVerified, let session else { return }
-        await performAction {
-            let receivedAuthority = await premium.load(session: session, isCurrentSession: isCurrentSubscriptionSession)
-            let actionNotice = reportsActionErrors ? premium.takeActionNotice() : nil
-            if receivedAuthority, isCurrentSubscriptionSession(session) {
-                await refreshSessionAndLists()
+        guard subscriptionStore != nil else { return }
+        refreshLogger.debug("Refresh requested trigger=premium")
+        await refreshSharedAccess(includingPremium: true, reportsVerificationErrors: reportsActionErrors)
+    }
+
+    func refreshOnActivation() async {
+        guard !Task.isCancelled else { return }
+        refreshLogger.debug("Refresh requested trigger=activation")
+        let wasLoaded = hasLoaded
+        await load()
+        guard hasLoaded, !storageFailed, !Task.isCancelled else { return }
+        // A failed initial read waits for recovery instead of immediately repeating the same offline request.
+        guard wasLoaded || sessionIsVerified else { return }
+        guard refreshTask != nil || !isBusy else {
+            activationRefreshPending = true
+            return
+        }
+        activationRefreshPending = false
+        await refreshSharedAccess(includingPremium: subscriptionStore != nil)
+    }
+
+    private func resumeDeferredActivationRefresh() async {
+        guard activationRefreshPending, refreshTask == nil, !isBusy,
+              !isDrainingSubscriptionUpdates, !Task.isCancelled else { return }
+        activationRefreshPending = false
+        await refreshOnActivation()
+    }
+
+    private func refreshSharedAccess(includingPremium: Bool, reportsVerificationErrors: Bool = false) async {
+        guard !Task.isCancelled else { return }
+        if let running = refreshTask {
+            let needsPremiumPass = includingPremium && !refreshIncludesPremium
+            let accountID = session?.user.id
+            let accessToken = session?.accessToken
+            refreshReportsVerificationErrors = refreshReportsVerificationErrors || reportsVerificationErrors
+            refreshLogger.debug("Refresh joined premium=\(includingPremium, privacy: .public)")
+            await running.value
+            guard !Task.isCancelled, session?.user.id == accountID,
+                  session?.accessToken == accessToken else { return }
+            if needsPremiumPass {
+                await refreshSharedAccess(includingPremium: true, reportsVerificationErrors: reportsVerificationErrors)
             }
-            if isCurrentSubscriptionSession(session), let actionNotice {
-                notice = actionNotice
+            return
+        }
+        guard hasLoaded, !isBusy, !storageFailed, let originalSession = session else { return }
+        let identifier = UUID()
+        refreshTaskID = identifier
+        refreshIncludesPremium = includingPremium
+        refreshReportsVerificationErrors = reportsVerificationErrors
+        let task = Task { @MainActor [weak self] in
+            guard let self else { return }
+            defer {
+                if self.refreshTaskID == identifier {
+                    self.refreshTask = nil
+                    self.refreshTaskID = nil
+                    self.refreshIncludesPremium = false
+                    self.refreshReportsVerificationErrors = false
+                }
+            }
+            self.refreshLogger.debug("Refresh started premium=\(includingPremium, privacy: .public)")
+            await self.performAction {
+                guard self.session?.user.id == originalSession.user.id,
+                      self.session?.accessToken == originalSession.accessToken else { return }
+                var recoveredVerification = false
+                if includingPremium {
+                    if !self.sessionIsVerified {
+                        guard await self.refreshSessionAndLists() else { return }
+                    }
+                    guard let current = self.session, self.isCurrentSubscriptionSession(current) else { return }
+                    _ = await self.premium.load(session: current, isCurrentSession: self.isCurrentSubscriptionSession)
+                    recoveredVerification = self.premium.lastLoadAttemptedVerification
+                    guard self.isCurrentSubscriptionSession(current) else { return }
+                }
+                guard !Task.isCancelled else { return }
+                await self.refreshSessionAndLists()
+                // Explicit recovery of a persisted purchase is a mutation; ordinary read failures remain inline.
+                if self.refreshReportsVerificationErrors, recoveredVerification,
+                   self.isCurrentSubscriptionSession(originalSession),
+                   let actionNotice = self.premium.takeActionNotice() {
+                    self.notice = actionNotice
+                }
             }
         }
+        refreshTask = task
+        await task.value
+        await resumeDeferredActivationRefresh()
     }
 
     func purchasePremium(productID: String) async {
@@ -393,6 +494,7 @@ final class SharedShoppingViewModel {
                     self.deferredSubscriptionUpdates[oldest] = nil
                 }
                 await self.drainSubscriptionUpdates()
+                await self.resumeDeferredActivationRefresh()
             }
         }
     }
@@ -427,6 +529,10 @@ final class SharedShoppingViewModel {
         // Invalidate an older read before suspending on Keychain. Its failure cannot revive or clear this selection.
         groupGeneration = UUID()
         groupLoadID = nil
+        invitationPreviewRequestID = nil
+        if invitationPreviewState == .loading {
+            invitationPreviewState = .notLoaded
+        }
         let originalToken = current.accessToken
         current.activeGroupID = id
         do {
@@ -435,9 +541,11 @@ final class SharedShoppingViewModel {
                   sessionIsVerified, groupsAreVerified else {
                 isPerformingAction = false
                 await drainSubscriptionUpdates()
+                await resumeDeferredActivationRefresh()
                 return
             }
             clearGroupPresentation()
+            invitationPreviewState = .notLoaded
             session = current
             notice = nil
         } catch {
@@ -445,11 +553,18 @@ final class SharedShoppingViewModel {
             storeItemsState = loadedStoreID == nil ? .notLoaded : .loaded
             isPerformingAction = false
             await drainSubscriptionUpdates()
+            await resumeDeferredActivationRefresh()
             return
         }
         isPerformingAction = false
+        let context = groupContext
         await loadActiveGroup()
+        if groupContext == context {
+            await previewPendingInvitation()
+        }
+        await promoteIncomingInvitation()
         await drainSubscriptionUpdates()
+        await resumeDeferredActivationRefresh()
     }
 
     private var groupContext: GroupContext? {
@@ -639,10 +754,9 @@ final class SharedShoppingViewModel {
     }
 
     func refresh() async {
-        guard hasLoaded, !isBusy, !storageFailed else { return }
-        await performAction {
-            await refreshSessionAndLists()
-        }
+        guard hasLoaded, !storageFailed else { return }
+        refreshLogger.debug("Refresh requested trigger=manual")
+        await refreshSharedAccess(includingPremium: false)
     }
 
     func prepareAppleLogin() async {
@@ -771,6 +885,7 @@ final class SharedShoppingViewModel {
                 sessionIsVerified = true
                 notice = nil
                 await refreshSessionAndLists()
+                activationRefreshPending = isCurrentSubscriptionSession(result)
             } catch {
                 notice = SharedErrorMessage.message(for: error)
             }
@@ -1280,10 +1395,12 @@ final class SharedShoppingViewModel {
                 storeManagementState = .failed
             }
             await drainSubscriptionUpdates()
+            await resumeDeferredActivationRefresh()
             return
         }
         await refreshStoreManagement()
         await drainSubscriptionUpdates()
+        await resumeDeferredActivationRefresh()
     }
 
     @discardableResult
@@ -1464,6 +1581,7 @@ final class SharedShoppingViewModel {
     func loadSelectedStore() async {
         await refreshSelectedStore()
         await drainSubscriptionUpdates()
+        await resumeDeferredActivationRefresh()
     }
 
     private func refreshSelectedStore() async {
@@ -1489,8 +1607,12 @@ final class SharedShoppingViewModel {
             reconcilePurchaseSelection()
         } catch {
             guard groupContext == context, selectedStoreID == storeID else { return }
+            if error is CancellationError || (error as? URLError)?.code == .cancelled {
+                storeItemsState = .notLoaded
+                return
+            }
             storeItemsState = .failed
-            await handle(error)
+            await handleReadError(error, stage: "selected-store")
         }
     }
 
@@ -1630,7 +1752,7 @@ final class SharedShoppingViewModel {
             sessionIsVerified = true
             groupsAreVerified = true
             restorePurchaseSelection()
-            notice = nil
+            readFailure = nil
             let loaded = await loadActiveGroup()
             await previewPendingInvitation()
             return loaded
@@ -1642,7 +1764,7 @@ final class SharedShoppingViewModel {
             } else if (error as? SharedAPIError)?.isSessionInvalid != true {
                 return false
             }
-            await handle(error)
+            await handleReadError(error, stage: "session-and-groups")
             return false
         }
     }
@@ -1658,6 +1780,7 @@ final class SharedShoppingViewModel {
             }
         }
         administration = nil
+        storesAreVerified = false
         loadedStoreID = nil
         storeItemsState = selectedStoreID == nil ? .notLoaded : .loading
         do {
@@ -1682,6 +1805,7 @@ final class SharedShoppingViewModel {
             let fetchedStores = try await api.stores(groupID: group.id, token: session.accessToken)
             guard groupContext == context else { return false }
             stores = fetchedStores
+            storesAreVerified = true
             if let selectedStoreID, !stores.contains(where: { $0.id == selectedStoreID }) {
                 self.selectedStoreID = nil
             }
@@ -1697,35 +1821,92 @@ final class SharedShoppingViewModel {
         } catch {
             guard groupContext == context else { return false }
             storeItemsState = selectedStoreID == nil ? .notLoaded : .failed
-            await handle(error)
+            await handleReadError(error, stage: "active-group")
             return false
         }
     }
 
     private func previewPendingInvitation() async {
-        guard sessionIsVerified, let api, let session, let invitation = pendingInvitation else { return }
+        guard !isClearingInvitation, sessionIsVerified,
+              let api, let session, let invitation = pendingInvitation else { return }
+        let requestID = UUID()
+        invitationPreviewRequestID = requestID
+        invitationPreview = nil
+        invitationPreviewState = .loading
+        defer {
+            if invitationPreviewRequestID == requestID {
+                invitationPreviewRequestID = nil
+            }
+        }
         do {
-            invitationPreview = try await api.previewInvitation(invitation, token: session.accessToken)
-        } catch let error as SharedAPIError {
-            if case .server(let status, _, _, _) = error, status == 404 || status == 410, !error.isUncertain {
+            let preview = try await api.previewInvitation(invitation, token: session.accessToken)
+            try Task.checkCancellation()
+            guard isCurrentInvitationPreview(requestID, session: session, invitation: invitation) else { return }
+            invitationPreview = preview
+            invitationPreviewState = .loaded
+        } catch {
+            guard isCurrentInvitationPreview(requestID, session: session, invitation: invitation) else { return }
+            guard !Task.isCancelled, !(error is CancellationError), (error as? URLError)?.code != .cancelled else {
+                invitationPreviewState = .notLoaded
+                return
+            }
+            if let apiError = error as? SharedAPIError,
+               case .server(let status, _, _, _) = apiError, status == 404 || status == 410, !apiError.isUncertain {
+                // An incoming URL may be saved, but cannot replace this invitation during the removal write.
+                isClearingInvitation = true
+                defer { isClearingInvitation = false }
                 do {
                     try await credentials.saveInvitation(nil)
+                    guard isCurrentInvitationPreview(requestID, session: session, invitation: invitation) else {
+                        return
+                    }
                     pendingInvitation = nil
                     invitationPreview = nil
+                    invitationPreviewState = .notLoaded
                 } catch {
-                    notice = SharedErrorMessage.message(for: error)
+                    guard isCurrentInvitationPreview(requestID, session: session, invitation: invitation) else {
+                        return
+                    }
+                    invitationPreviewState = .failed
+                    await handleReadError(error)
                     return
                 }
+            } else {
+                invitationPreviewState = .failed
             }
-            await handle(error)
-        } catch {
-            notice = SharedErrorMessage.message(for: error)
+            await handleReadError(error)
         }
+    }
+
+    private func isCurrentInvitationPreview(
+        _ requestID: UUID,
+        session: SharedSession,
+        invitation: PendingInvitation
+    ) -> Bool {
+        invitationPreviewRequestID == requestID && sessionIsVerified && self.session?.user.id == session.user.id
+            && self.session?.accessToken == session.accessToken && pendingInvitation == invitation
     }
 
     private func updateMembership(_ updated: SharedGroup) {
         guard let index = groups.firstIndex(where: { $0.id == updated.id }) else { return }
         groups[index] = updated
+    }
+
+    private func handleReadError(_ error: any Error, stage: String = "invitation-preview") async {
+        guard !(error is CancellationError), (error as? URLError)?.code != .cancelled else { return }
+        let category: String
+        switch error as? SharedAPIError {
+        case .transport: category = "transport"
+        case .invalidResponse: category = "validation"
+        case .server(let status, _, _, _): category = "http-\(status)"
+        default: category = "local"
+        }
+        refreshLogger.error("Read failed stage=\(stage, privacy: .public) category=\(category, privacy: .public) pending=\(self.pendingOperation != nil, privacy: .public)")
+        if (error as? SharedAPIError)?.isSessionInvalid == true {
+            await handle(error)
+        } else {
+            readFailure = SharedErrorMessage.readMessage(for: error)
+        }
     }
 
     private func handle(_ error: any Error) async {
@@ -1752,6 +1933,7 @@ final class SharedShoppingViewModel {
         isPerformingAction = false
         await promoteIncomingInvitation()
         await drainSubscriptionUpdates()
+        await resumeDeferredActivationRefresh()
     }
 
     private func promoteIncomingInvitation() async {
@@ -1787,6 +1969,7 @@ final class SharedShoppingViewModel {
 
     private func clearSessionPresentation() {
         clearGroupPresentation()
+        readFailure = nil
         groups = []
         groupsAreVerified = false
         session = nil
@@ -1812,6 +1995,7 @@ final class SharedShoppingViewModel {
         purchaseSelectionOwner = nil
         loadedStoreID = nil
         stores = []
+        storesAreVerified = false
         archivedStores = []
         groupCapacity = nil
         storeManagementState = .notLoaded
@@ -1831,6 +2015,7 @@ final class SharedShoppingViewModel {
     func loadGroupManagement() async {
         await refreshGroupManagement()
         await drainSubscriptionUpdates()
+        await resumeDeferredActivationRefresh()
     }
 
     private func refreshGroupManagement() async {
@@ -2039,6 +2224,8 @@ extension SharedShoppingViewModel {
         session = preview.session
         groups = preview.groups
         groupsAreVerified = preview.groupsAreVerified
+        readFailure = preview.readFailure
+        storesAreVerified = preview.storesAreVerified
         pendingInvitation = preview.pendingInvitation
         invitationPreview = preview.invitationPreview
         pendingOperation = preview.pendingOperation

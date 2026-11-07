@@ -32,9 +32,22 @@ struct SharedPendingInvitationSection: View {
                         Text(message)
                             .fixedSize(horizontal: false, vertical: true)
                     }
-                } else {
+                } else if viewModel.session == nil {
                     Text("Sign in and refresh to check the group before accepting.")
                         .foregroundStyle(.textSecondary)
+                } else if viewModel.invitationPreviewState == .loading {
+                    ProgressView("Checking invitation…")
+                } else {
+                    Text("Refresh to check the invitation before accepting. Your saved link is kept.")
+                        .foregroundStyle(.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button("Refresh", systemImage: "arrow.clockwise") {
+                        Task {
+                            await viewModel.refresh()
+                        }
+                    }
+                    .buttonStyle(ShoppingActionButtonStyle())
+                    .disabled(viewModel.isBusy)
                 }
                 Button("Discard invitation", role: .destructive) {
                     Task {

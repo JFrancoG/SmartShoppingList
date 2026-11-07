@@ -44,7 +44,8 @@ struct SharedGroupView: View {
                             }
                         }
                         StoreQueryView(viewModel: viewModel.storeQuery, shared: viewModel, showsMicrophone: false)
-                        if viewModel.stores.isEmpty {
+                        if viewModel.storesAreVerified && viewModel.groupsAreVerified
+                            && !viewModel.isBusy && viewModel.stores.isEmpty {
                             Text("Add products to start your first shopping list.")
                                 .foregroundStyle(.textSecondary)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -58,17 +59,26 @@ struct SharedGroupView: View {
                         }
                         SharedEmptyStoreArchiveSection(viewModel: viewModel)
                     }
-                } else if viewModel.hasLoaded && !viewModel.isBusy && viewModel.groups.isEmpty {
-                    Section {
-                        Text("Set up your group in Settings to share a shopping list.")
-                            .foregroundStyle(.textSecondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                        Button("Open Settings", action: onOpenSettings)
-                            .buttonStyle(ShoppingActionButtonStyle())
-                            .listRowBackground(Color.clear)
-                            .listRowSeparator(.hidden)
+                } else if viewModel.hasLoaded && !viewModel.isBusy {
+                    if viewModel.hasUnverifiedGroups {
+                        Section {
+                            Text("Your groups haven’t been checked yet. Connect and refresh to see your shopping lists.")
+                                .foregroundStyle(.textSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .listRowBackground(Color.surface)
+                    } else if viewModel.needsGroupSetup {
+                        Section {
+                            Text("Set up your group in Settings to share a shopping list.")
+                                .foregroundStyle(.textSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Button("Open Settings", action: onOpenSettings)
+                                .buttonStyle(ShoppingActionButtonStyle())
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
+                        }
+                        .listRowBackground(Color.surface)
                     }
-                    .listRowBackground(Color.surface)
                 }
             }
             .modifier(ShoppingFormStyle())
@@ -140,6 +150,12 @@ struct SharedGroupView: View {
 #Preview("Signed out", traits: .sharedShopping(.signedOut)) {
     @Previewable @Environment(SharedShoppingViewModel.self) var viewModel
     SharedGroupView(viewModel: viewModel)
+}
+
+#Preview("Offline · ES", traits: .sharedShopping(.offline)) {
+    @Previewable @Environment(SharedShoppingViewModel.self) var viewModel
+    SharedGroupView(viewModel: viewModel)
+        .environment(\.locale, Locale(identifier: "es"))
 }
 
 #Preview("Shopping list, large text", traits: .sharedShopping) {

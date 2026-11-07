@@ -1,5 +1,11 @@
 import SwiftUI
 
+#Preview("Offline · ES", traits: .sharedShopping(.offline)) {
+    @Previewable @Environment(SharedShoppingViewModel.self) var shared
+    AddItemsView(viewModel: shared.draft, shared: shared)
+        .environment(\.locale, Locale(identifier: "es"))
+}
+
 struct AddItemsView: View {
     @Environment(\.scenePhase) private var scenePhase
     @AccessibilityFocusState private var focusedControl: DraftItemAccessibilityTarget?
@@ -87,7 +93,7 @@ struct AddItemsView: View {
                         .listRowBackground(Color.surface)
                         .disabled(shared?.draftIsLocked == true)
 
-                        if let shared {
+                        if let shared, shared.group != nil {
                             DraftStoreClarificationSection(viewModel: shared)
                             Section {
                                 Button(
@@ -99,23 +105,30 @@ struct AddItemsView: View {
                                     }
                                 }
                                 .buttonStyle(ShoppingActionButtonStyle())
-                                .disabled(
-                                    !shared.canPerformShopping || shared.group == nil || viewModel.activity != .idle
-                                )
+                                .disabled(!shared.canPerformShopping || viewModel.activity != .idle)
                             }
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
                         }
                     }
 
-                    if let shared, shared.group == nil, shared.groups.isEmpty {
-                        Section {
-                            Button("Open Settings to join or create a group.", action: onOpenSettings)
-                        } footer: {
-                            Text("Your products are saved on this device until you have a group.")
+                    if let shared, shared.hasLoaded, shared.group == nil {
+                        if shared.hasUnverifiedGroups {
+                            Section {
+                                Text("Your groups haven’t been checked yet. Connect and refresh to see your shopping lists.")
+                                    .foregroundStyle(.textSecondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .listRowBackground(Color.surface)
+                        } else if shared.needsGroupSetup {
+                            Section {
+                                Button("Open Settings to join or create a group.", action: onOpenSettings)
+                            } footer: {
+                                Text("Your products are saved on this device until you have a group.")
+                            }
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
                         }
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
                     }
 
                     if viewModel.availability != .available, viewModel.activity == .idle, !viewModel.text.isEmpty {

@@ -4,6 +4,41 @@ import Testing
 
 @Suite(.tags(.fast))
 struct SharedAPIClientTests {
+    @Test(arguments: [
+        ("v1/groups/private-group/stores/private-store/items", "v1/groups/:group/stores/:store/items"),
+        ("v1/groups/private-group/items/private-item/cancellation", "v1/groups/:group/items/:item/cancellation"),
+        ("v1/groups/private-group/invitations/private-invitation", "v1/groups/:group/invitations/:invitation"),
+        ("v1/invitations/private-invitation/preview", "v1/invitations/:invitation/preview"),
+        ("v1/invitations/private-invitation/accept", "v1/invitations/:invitation/accept"),
+        (
+            "v1/groups/private-group/administration-transfers/private-transfer/accept",
+            "v1/groups/:group/administration-transfers/:transfer/accept"
+        ),
+        ("v1/groups/stores/stores/items/items", "v1/groups/:group/stores/:store/items")
+    ])
+    func `HTTP diagnostics replace resource values even when they resemble fixed route segments`(
+        _ path: String,
+        expectedRoute: String
+    ) {
+        let context = SharedHTTPDiagnosticContext(method: "POST", path: path)
+
+        #expect(context.method == "POST")
+        #expect(context.route == expectedRoute)
+        #expect(!context.route.contains("private-"))
+    }
+
+    @Test(arguments: [
+        "v1/groups/private-group/new-feature/private-token",
+        "v1/groups/private-group/stores?token=private-token",
+        "https://private-host.test/v1/me?token=private-token"
+    ])
+    func `HTTP diagnostics discard unknown routes and methods instead of logging arbitrary input`(_ path: String) {
+        let context = SharedHTTPDiagnosticContext(method: "PRIVATE-METHOD\nprivate-token", path: path)
+
+        #expect(context.method == "OTHER")
+        #expect(context.route == "<unrecognized>")
+    }
+
     @Test
     func `Pending pages merge by identity and retain the latest version`() async throws {
         let transport = FixtureSharedTransport { request in

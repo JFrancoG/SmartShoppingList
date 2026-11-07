@@ -1,6 +1,23 @@
 import Foundation
 
 enum SharedErrorMessage {
+    static func readMessage(for error: any Error) -> LocalizedStringResource {
+        if let error = error as? SharedAPIError {
+            switch error {
+            case .configuration, .invalidInvitation:
+                return message(for: error)
+            case .server(_, let code, _, _) where [
+                "invalid_session", "not_found", "invitation_expired", "invitation_revoked", "invitation_consumed",
+                "group_access_restricted", "rate_limited"
+            ].contains(code):
+                return message(for: error)
+            default:
+                break
+            }
+        }
+        return "Could not refresh your shared data. Your saved access and draft are kept. Check your connection and try again."
+    }
+
     static func message(for error: any Error) -> LocalizedStringResource {
         guard let error = error as? SharedAPIError else {
             return "The operation could not be completed. Pending data is kept; try again."

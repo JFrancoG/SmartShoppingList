@@ -56,6 +56,13 @@ struct PendingSubscriptionVerification: Codable, Equatable {
     let userID: UUID
     let transactionID: String
     let request: VerifySharedSubscriptionRequest
+    let environment: SharedStoreEnvironment?
+}
+
+extension PendingSubscriptionVerification {
+    init(userID: UUID, transactionID: String, request: VerifySharedSubscriptionRequest) {
+        self.init(userID: userID, transactionID: transactionID, request: request, environment: nil)
+    }
 }
 
 protocol SharedSubscriptionCredentialStoring: Sendable {

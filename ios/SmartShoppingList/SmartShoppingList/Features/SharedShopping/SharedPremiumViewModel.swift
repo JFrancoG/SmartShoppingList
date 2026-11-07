@@ -8,6 +8,7 @@ final class SharedPremiumViewModel {
     private(set) var pendingVerification: PendingSubscriptionVerification?
     private(set) var isBusy = false
     private(set) var notice: LocalizedStringResource?
+    @ObservationIgnored private(set) var lastLoadAttemptedVerification = false
     private var ownerID: UUID?
     @ObservationIgnored private let api: (any SharedSubscriptionAPI)?
     @ObservationIgnored private let store: (any SharedSubscriptionStore)?
@@ -48,6 +49,7 @@ final class SharedPremiumViewModel {
         isCurrentSession: @MainActor (SharedSession) -> Bool
     ) async -> Bool {
         guard !isBusy, let api, let credentials else { return false }
+        lastLoadAttemptedVerification = false
         isBusy = true
         defer { isBusy = false }
         if ownerID != session.user.id {
@@ -70,6 +72,7 @@ final class SharedPremiumViewModel {
                     return true
                 }
                 // Delivery recovery must not depend on the availability of Apple's product catalogue.
+                lastLoadAttemptedVerification = true
                 _ = await verify(pendingVerification, session: session, isCurrentSession: isCurrentSession)
                 return isCurrentSession(session)
             }
@@ -88,12 +91,16 @@ final class SharedPremiumViewModel {
                 products = available
             } catch {
                 guard isCurrentSession(session) else { return false }
+                if error is CancellationError || (error as? URLError)?.code == .cancelled {
+                    return receivedAuthority
+                }
                 // Metadata controls which prices can be offered, never existing purchase delivery or account rights.
                 notice = "Subscription options could not be loaded. Your existing access and saved purchases are kept. Refresh to try again."
             }
             for transaction in try await store.transactions() {
                 guard isCurrentSession(session) else { return false }
                 if accepts(transaction, status: current) {
+                    lastLoadAttemptedVerification = true
                     _ = await receive(transaction, session: session, isCurrentSession: isCurrentSession)
                     if pendingVerification != nil { break }
                 }
@@ -101,7 +108,10 @@ final class SharedPremiumViewModel {
             return isCurrentSession(session)
         } catch {
             guard isCurrentSession(session) else { return false }
-            notice = message(for: error)
+            guard !(error is CancellationError), (error as? URLError)?.code != .cancelled else {
+                return receivedAuthority
+            }
+            notice = SharedErrorMessage.readMessage(for: error)
             return receivedAuthority
         }
     }
@@ -125,10 +135,12 @@ final class SharedPremiumViewModel {
                 }
                 return false
             case .verified(let transaction):
-                guard isCurrentSession(session), accepts(transaction, status: status) else {
-                    if isCurrentSession(session) {
-                        notice = "This purchase belongs to another app account. Sign in with its original account."
-                    }
+                guard isCurrentSession(session) else { return false }
+                guard store.expectedEnvironment.accepts(transaction.environment) else {
+                    throw SharedSubscriptionStoreError.incompatibleEnvironment
+                }
+                guard accepts(transaction, status: status) else {
+                    notice = "This purchase belongs to another app account. Sign in with its original account."
                     return false
                 }
                 return await receive(transaction, session: session, isCurrentSession: isCurrentSession)
@@ -174,6 +186,7 @@ final class SharedPremiumViewModel {
 
     private func accepts(_ transaction: SharedStoreTransaction, status: SharedSubscriptionStatus) -> Bool {
         transaction.appAccountToken == status.appAccountToken && status.productIDs.contains(transaction.productID)
+            && store?.expectedEnvironment.accepts(transaction.environment) == true
     }
 
     private func receive(
@@ -185,7 +198,8 @@ final class SharedPremiumViewModel {
         let verification = PendingSubscriptionVerification(
             userID: session.user.id,
             transactionID: transaction.id,
-            request: VerifySharedSubscriptionRequest(signedTransaction: transaction.signedTransaction)
+            request: VerifySharedSubscriptionRequest(signedTransaction: transaction.signedTransaction),
+            environment: transaction.environment
         )
         do {
             try await credentials.saveSubscriptionVerification(verification)
@@ -207,6 +221,8 @@ final class SharedPremiumViewModel {
     ) async -> Bool {
         guard let api, let store, let credentials, verification.userID == session.user.id else { return false }
         do {
+            let verification = try await compatibleVerification(verification, session: session)
+            guard isCurrentSession(session) else { return false }
             let acknowledgement = try await api.verifySubscription(verification.request, token: session.accessToken)
             guard isCurrentSession(session) else { return false }
             guard acknowledgement.acknowledgedTransactionId == verification.transactionID,
@@ -238,7 +254,43 @@ final class SharedPremiumViewModel {
         }
     }
 
+    /// Older Keychain envelopes lack environment metadata. Retain their original payload until StoreKit confirms it.
+    private func compatibleVerification(
+        _ verification: PendingSubscriptionVerification,
+        session: SharedSession
+    ) async throws -> PendingSubscriptionVerification {
+        guard let store else { throw SharedSubscriptionStoreError.unavailable }
+        if let environment = verification.environment {
+            guard store.expectedEnvironment.accepts(environment) else {
+                throw SharedSubscriptionStoreError.incompatibleEnvironment
+            }
+            return verification
+        }
+        guard let status,
+              let transaction = try await store.transactions().first(where: {
+                  $0.id == verification.transactionID && accepts($0, status: status)
+              }) else {
+            throw SharedSubscriptionStoreError.missingEnvironmentEvidence
+        }
+        return PendingSubscriptionVerification(
+            userID: session.user.id,
+            transactionID: verification.transactionID,
+            request: verification.request,
+            environment: transaction.environment
+        )
+    }
+
     private func message(for error: any Error) -> LocalizedStringResource {
+        if let storeError = error as? SharedSubscriptionStoreError {
+            switch storeError {
+            case .incompatibleEnvironment:
+                return "This purchase belongs to a different test or App Store environment. Open the version that started it; your purchase is kept."
+            case .missingEnvironmentEvidence:
+                return "Your saved purchase is kept, but its environment could not be verified on this device. Refresh to try again."
+            case .unavailable, .unverified:
+                break
+            }
+        }
         if error is SharedCredentialError {
             return "The purchase still needs verification, but it could not be saved on this device. Keep the app open and try again."
         }

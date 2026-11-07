@@ -19,29 +19,9 @@ struct SharedRootView: View {
                 SharedGroupView(viewModel: viewModel, onOpenSettings: requestSettings)
             }
         }
-        .task {
-            await viewModel.load()
-            await viewModel.loadPremium()
-        }
-        .onChange(of: scenePhase) { _, phase in
-            if phase == .active {
-                Task {
-                    await viewModel.refresh()
-                    await viewModel.loadPremium()
-                }
-            }
-        }
-        .onChange(of: viewModel.sessionIsVerified) { _, verified in
-            if verified {
-                Task {
-                    await viewModel.loadPremium()
-                }
-            }
-        }
-        .onOpenURL { url in
-            Task {
-                await viewModel.receiveInvitation(url)
-            }
+        .task(id: scenePhase) {
+            guard scenePhase == .active else { return }
+            await viewModel.refreshOnActivation()
         }
         .onChange(of: viewModel.pendingInvitation, initial: true) { _, invitation in
             guard invitation != nil, viewModel.draftIntentNavigationID == nil else { return }

@@ -4,14 +4,15 @@
 
 ## Checks and triggers
 
-Pull requests targeting `main` and pushes to `main` run two independent jobs. A manual run is also available once the workflow reaches the default branch. Superseded runs for the same PR/ref are cancelled.
+Pull requests targeting `main` and pushes to `main` run three independent jobs. The workflow also supports manual runs. Superseded runs for the same PR/ref are cancelled.
 
 - **Contract and design system:** Python validates the API contract/examples and the documented color pairs, generated reports and color assets. Validation is read-only.
 - **Server tests (Linux arm64):** the pinned Swift 6.4.0 image builds the server and all existing tests with `Package.resolved`, then executes Swift Testing against an isolated PostgreSQL service. The database name ends in `_testing`; the `db-test` host is already allowed by the test harness. Each job owns its temporary database, without published host ports or production credentials.
+- **Server runtime image (Linux amd64)** builds the final Release image and starts it against disposable PostgreSQL with test Apple credentials. The [image check](../../scripts/check_server_image.sh) verifies migrations, the health response, authentication on protected routes and removal of the legacy todos routes.
 
 The database image matches `server/docker-compose.yml`. Images are pinned by digest and actions by commit SHA. The repository token only has `contents: read`, and checkout does not persist it. There is no deploy step, self-hosted runner, signing material or connection to Railway.
 
-The jobs have 10/30-minute limits. Server build/test output is retained in the run log and uploaded as `server-ci-logs` for seven days when available, including failed runs. Explicit Bash uses GitHub's `-e -o pipefail` behavior so `tee` cannot hide a build or test failure. First-party warnings remain errors through `Package.swift`; [EXC-001](../dependency-exceptions.md) stays visible with its existing narrow scope.
+The repository checks have a 10-minute limit and each server job has 30 minutes. The jobs retain `server-ci-logs` and `server-image-ci-logs` for seven days when available, including failed runs. Explicit Bash uses GitHub's `-e -o pipefail` behavior so `tee` cannot hide a build or test failure. First-party warnings remain errors through `Package.swift`. [EXC-001](../dependency-exceptions.md) documents the existing exception.
 
 ## Local reproduction
 
@@ -28,4 +29,6 @@ For server tests, use the isolated PostgreSQL instructions in [the server README
 
 ## Scope and limits
 
-This workflow does not build iOS, perform physical accessibility/Speech/Apple sign-in checks, test production, or deploy. It does not build the Release Docker runtime or claim amd64 coverage. Branch protection is unchanged: failed checks are visible, but the workflow alone does not make them mandatory for merging. iOS CI, caching and automatic deployment are outside this MVP setup.
+For server logic, inspect the arm64 test result. For Dockerfile, packaging or startup changes, inspect the amd64 image result. Reuse a successful job for the exact revision under review. Reproduce the affected check locally when results are missing, a failure needs diagnosis or the working tree changes its inputs.
+
+For iOS logic and coordination, use the [Fast test plan](../../ios/SmartShoppingList/TestPlans/Fast.xctestplan). For local persistence and Keychain, use [Integration](../../ios/SmartShoppingList/TestPlans/Integration.xctestplan). A shared API change also needs the contract validator and the affected client and server tests. Device checks, real Apple services and deployment have separate evidence.

@@ -10,6 +10,7 @@ struct SharedPremiumView: View {
     var body: some View {
         TimelineView(.periodic(from: .now, by: 60)) { context in
             Form {
+                SharedOperationSection(viewModel: viewModel)
                 SharedPremiumStatusSection(viewModel: viewModel)
                 SharedPremiumGroupNotice(viewModel: viewModel, date: referenceDate ?? context.date)
 
@@ -42,7 +43,7 @@ struct SharedPremiumView: View {
         }
         .navigationTitle("Premium")
         .manageSubscriptionsSheet(isPresented: $showsSubscriptionManagement)
-        .task {
+        .task(id: viewModel.session?.user.id) {
             // The preview trait already prepared a snapshot; do not recapture a transient reload state.
             guard !usesPreparedShoppingPreview else { return }
             await viewModel.loadPremium()

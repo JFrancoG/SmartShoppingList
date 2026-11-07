@@ -19,7 +19,7 @@ struct AddDraftItemIntent: AppIntent {
     @Parameter(title: "Quantity")
     var quantity: String?
 
-    @Dependency private var shopping: SharedShoppingViewModel
+    @Dependency private var bootstrap: AppBootstrap
 
     // Copies of this intent share an identity; a new system invocation creates a new one.
     private let requestID = UUID()
@@ -34,6 +34,8 @@ struct AddDraftItemIntent: AppIntent {
     func perform() async throws -> some IntentResult & ProvidesDialog {
         let added: Bool
         do {
+            let shopping = try await bootstrap.context()
+            try Task.checkCancellation()
             added = try await shopping.addDraftItemFromIntent(
                 ShoppingDraftItem(
                     id: requestID,
@@ -44,6 +46,11 @@ struct AddDraftItemIntent: AppIntent {
             )
         } catch is CancellationError {
             throw CancellationError()
+        } catch is AppBootstrapError {
+            try Task.checkCancellation()
+            var message: LocalizedStringResource = "Open the app to finish preparing access, then try again."
+            message.locale = systemContext.locale
+            throw AppIntentError(description: message)
         } catch {
             var message = DraftIntentError.message(for: error)
             message.locale = systemContext.locale
@@ -55,5 +62,12 @@ struct AddDraftItemIntent: AppIntent {
             : "This request was already processed. No duplicate product was added. Review your draft in the app."
         message.locale = systemContext.locale
         return .result(dialog: IntentDialog(message))
+    }
+}
+
+extension AddDraftItemIntent {
+    @MainActor
+    init(bootstrap: AppBootstrap) {
+        self.bootstrap = bootstrap
     }
 }

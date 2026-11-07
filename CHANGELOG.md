@@ -4,6 +4,8 @@
 
 ### Added
 
+- 2026-11-07 | ✨ feat(ios): isolate distributed data and stabilize refreshes
+
 - 2026-10-16 | ✨ feat(ui): polish controls and Sandbox tools
 
 - 2026-10-10 | ✨ feat(premium): add verified subscriptions and downgrade handling
@@ -36,6 +38,16 @@
 - 2026-09-19 | ✨ feat(ios): add editable shopping drafts
 
 ### Documentation
+
+- 2026-11-07 | 📝 docs(release): record device acceptance
+
+- 2026-11-07 | 📝 docs(release): record build 5 distribution
+
+- 2026-11-07 | 📝 docs(release): clarify Release audit evidence
+
+- 2026-11-07 | 📝 docs(release): record validated internal build 5
+
+- 2026-11-04 | 📝 docs(ci): clarify validation by change
 
 - 2026-10-29 | 📝 docs(premium): reconcile Sandbox validation evidence
 

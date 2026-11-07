@@ -2,6 +2,189 @@
 
 Seguimiento: [issue #49](https://github.com/JFrancoG/SmartShoppingList/issues/49).
 
+## Estado vigente — 7 de noviembre: ronda física aceptada; pendiente integración
+
+El propietario autoriza corregir los tres hallazgos antes de preparar el siguiente build. Se trabaja
+en `codex/issue-54-production-readiness`, partiendo de `3dd5237` y conservando los cambios de distribución
+anteriores. El propietario autoriza después consolidar #54/#49, hacer commit/push y preparar el
+siguiente Archive interno. La [entrega de 1.0 (5)](testflight-1.0-5.md) registra su resultado y límites.
+
+- **Invitación:** cambiar grupo vuelve a consultar la invitación guardada. Cada respuesta se vincula
+  a petición, cuenta, sesión e invitación; una respuesta antigua, incluso 401/410, no sustituye un
+  enlace nuevo ni invalida otra sesión. El borrado confirmado conserva cualquier enlace entrante.
+  La UI distingue acceso cerrado, consulta y recuperación.
+- **Sin conexión:** Añadir/Comprar distinguen grupos no verificados de una cuenta sin grupos.
+  Conservan borrador y acceso; sólo ofrecen crear/unirse con sesión cerrada o vacío verificado.
+  Las tiendas también necesitan verificación antes del mensaje de primera lista, y no se presenta
+  un botón de publicar con el destino vacío.
+- **Refrescos y avisos:** activación, consulta Premium y actualización manual comparten la carga.
+  Con sesión verificada, el foreground reconcilia Premium y después obtiene una sola instantánea
+  de cuenta/listas. Si una acción impide actualizar, se reanuda al terminar. Un caller cancelado no
+  cancela la carga compartida. Los errores de lectura son inline con Actualizar en Añadir, Comprar,
+  Ajustes y Premium; una cancelación no genera error. Los avisos de mutación, recuperación de la
+  misma operación y sesión inválida conservan sus reglas. La recuperación explícita de compras
+  distingue un GET previo fallido de una verificación realmente intentada.
+
+El diagnóstico local registra disparador, método y plantilla de ruta, etapa, status/código de
+transporte y presencia booleana de pendiente. No registra tokens, JWS, cuerpos, contenido de listas,
+URLs completas ni identificadores de recursos. No identifica retrospectivamente la petición que
+falló en el iPhone 16 con 1.0 (4); ese desencadenante histórico sigue sin medirse.
+
+### Validación local
+
+- Xcode MCP, **Xcode 27.1 (27A9274), SDK 27.1**, SmartShoppingList, iPhone 17 Simulator **iOS 27.0**:
+  compilación de app y tests correcta, **0 errores y 0 warnings** en el log completo.
+- **Fast: 481 ejecuciones correctas, 0 fallos, 0 omitidas.** La herramienta enumera aparte 14 tests
+  sin resultado, fuera de la selección Fast; no se presentan como ejecutados. La consolidación posterior
+  repite Fast y añade 21 ejecuciones Integration correctas; no cambia el servidor.
+- Una pasada intermedia se detuvo por un fixture nuevo sin selección explícita de grupo: se corrigió
+  el setup y se mantuvieron las expectativas. La pasada completa posterior supera todos los casos.
+  La selección focalizada MCP rechazaba los tests etiquetados como deshabilitados; RunAllTests sí
+  ejecutó la selección Fast sin modificar el plan.
+- Regresiones: respuesta tardía/descartada y sesión sustituida, enlace entrante durante borrado,
+  lectura offline y recuperación, sesión inválida, cancelación, consulta de tienda/Premium, espera
+  compartida, activación diferida, aviso de mutación conservado y privacidad de las trazas. También
+  pasan las recuperaciones idempotentes previas.
+- Previews offline ES de Añadir y Comprar: Large y AX5; Comprar también XXX Large. Render real en
+  iPhone 18 Pro Max / iOS 27.2, distinto del destino de tests elegido por el servicio de previews.
+  Texto visible sin solapamientos; AX5 sólo acredita el viewport, no desplazamiento ni VoiceOver.
+  Los estados nuevos de consulta/error de invitación tienen revisión estática, sin ensayo físico.
+- Revisión independiente de concurrencia, SwiftUI/localización y estilo sin hallazgos pendientes;
+  catálogo válido, diff-check correcto. Se conservan las modificaciones previas ajenas a #49.
+
+Evidencia local de ejecución:
+`/var/folders/wt/r327qtw12_s5tbbcnx9dzqv80000gn/T/ActionArtifacts/default/RunAllTests/D1136A47-9CB4-4C13-A63B-EF4F518A7AE0.txt`.
+Log de compilación:
+`/var/folders/wt/r327qtw12_s5tbbcnx9dzqv80000gn/T/ActionArtifacts/default/BuildProject/BuildProject-Log-20261107-131757.txt`.
+
+### Aceptación física de 1.0 (5)
+
+El propietario informa de tres recorridos correctos: retornos conectados en Añadir/Comprar/Premium
+del iPhone 16 sin el aviso y con Test1/productos conservados; arranque sin red del iPhone 11 con
+grupos sin comprobar y recuperación de Test1/Aldi/productos al conectar; vista previa de Test1
+recuperada automáticamente al cambiar Test1 → B en el iPhone 11, sin Actualizar ni aceptar/descartar.
+La última comprobación en Comprar del iPhone 11 también pasa: VoiceOver lee el error y Actualizar,
+texto máximo sin solapamientos; al recuperar Internet desaparece el error y vuelven los mismos
+productos sin avisos. No se atribuye activación manual de Actualizar con VoiceOver ni conservación
+física del borrador, que no se han informado.
+La ronda acotada de los tres arreglos queda completada; no repetir esos recorridos.
+[Detalle y límites de la evidencia física](testflight-1.0-5.md#aceptación-física-de-esta-ronda).
+
+La última comprobación no exige crear un borrador: Añadir a mano con acceso completo publica
+directamente, como informa el propietario y confirma la fuente. Se corrige la instrucción de
+prueba, sin registrar ese comportamiento como fallo ni modificar la app.
+
+**#49 continúa abierta hasta su entrega en main**, pendiente de PR, CI e integración autorizada.
+El build distribuido conserva el código validado de `464118d`; este registro sólo modifica
+documentación y reutiliza las pruebas previas, sin atribuir cobertura global de accesibilidad.
+
+## Antecedente — 30 de octubre: aviso de envío al volver a primer plano
+
+Durante la aceptación de **TestFlight comercial 1.0 (4)** de #54 en **iPhone 16**, el propietario informa
+que cada retorno desde segundo plano presenta una alerta «Smart List / Aceptar» con el texto:
+
+> No se ha podido confirmar el resultado. Conservamos el envío original para reintentarlo sin duplicar productos.
+
+La captura de las **12:51** muestra el aviso sobre Premium activo con fin de periodo a las 13:03;
+esa hora pertenece a la captura anterior a la renovación comprobada posteriormente, no acredita un
+estado actual de Premium ni demuestra un error de compra. Se conserva el original sin editar en
+[evidencia local](evidence/issue-49-foreground-submission-warning-testflight-1.0-4.png), SHA-256
+`5cff8642c5a1ba28e8453b086f322eca4359b3d15318c845c607413bf67d8a65`.
+
+**Hechos de fuente contrastados, sin cambio Swift:**
+
+- `SharedErrorMessage.message(for:)` usa ese texto para `.transport` y `.invalidResponse` sin conocer
+  método HTTP, ruta ni `pendingOperation`. Una consulta de lectura puede mostrarlo sin envío pendiente.
+- `SharedRootView` llama `refresh()` y después `loadPremium()` al entrar en `.active`.
+  Si Premium obtiene autoridad, `loadPremium()` vuelve a ejecutar `refreshSessionAndLists()` aunque
+  no haya una nueva compra. Hay dos refrescos completos en serie; no se da por probada concurrencia de red.
+- `refreshSessionAndLists()` y `loadActiveGroup()` consultan usuario, grupos, administración, capacidad,
+  tiendas y productos. Sus errores pasan por `handle(error)` al mismo mensaje de envío incierto.
+- El host conserva la instantánea de una alerta presentada: que una carga posterior ponga `notice=nil`
+  no equivale a retirar la alerta que ya se está mostrando. Un primer fallo seguido de un segundo
+  refresco correcto es una hipótesis compatible, no la causa física medida.
+- `SharedHTTPAPI.exchange` propaga `CancellationError` y `URLError.cancelled` como cancelación;
+  no los convierte en `.transport`. No se atribuye esta alerta exacta a cancelación pura. Los errores
+  de transporte no cancelados y validaciones de respuesta/contrato siguen siendo candidatos distintos.
+
+**Decisión de alcance:** registrar y priorizar en #49 la reproducción instrumentada y corrección antes
+del siguiente build comercial de validación de #54. La compra, renovación, V2 y pruebas funcionales
+anteriores conservan su evidencia; este síntoma no justifica reparar compras ni borrar la cola local.
+No se modifica código ni se oculta globalmente la alerta a partir de una captura.
+
+**Diagnóstico y aceptación pendientes:** identificar ruta/método, error subyacente y número de consultas
+por ciclo background/foreground sin registrar tokens, JWS o contenido privado; distinguir fallo de GET
+de mutación con resultado incierto y comprobar si existe realmente una operación persistida. Separar
+los mensajes y coordinar las cargas equivalentes según la causa. Validar retornos repetidos sin aviso
+espurio, feedback fiel ante GET fallido/offline, conservación de sesión/grupo y autoridad, y reintento
+de mutación incierta con el mismo identificador/cuerpo y sin duplicados. La validación física del arreglo
+en TestFlight sigue pendiente. En este registro sólo se revisa fuente, conserva evidencia y sincroniza
+el seguimiento; no se ejecutan builds ni suites nuevas.
+
+### Decisión de alcance tras valorar un arreglo inmediato
+
+El propietario permite corregir ahora si es pequeño o resolverlo junto a los refrescos excesivos.
+La revisión adicional mantiene la segunda opción: no se ha encontrado una incompatibilidad determinista
+de DTO/contrato que explique el fallo físico. Una prueba local de GET fallido sin operación pendiente
+demostraría el texto incorrecto, pero no identificaría la consulta real que falla en el teléfono.
+Cambiar sólo el texto mantendría la alerta recurrente. Silenciarla en refrescos automáticos dejaría sin
+feedback transversal a Premium/Añadir y al estado sin tienda seleccionada; el feedback inline existente
+no cubre esos contextos. No se aplica ese cambio como supuesto arreglo.
+
+La unidad de #49 abordará conjuntamente coordinación de refresco, distinción entre actualización
+automática/acción manual/mutación incierta y feedback de lectura en todas las pantallas, preservando
+identidad de alertas relevantes y recuperación idempotente. Permanece priorizada antes del siguiente
+build comercial. Esta decisión no requiere otra compra ni modificar o borrar el estado del teléfono.
+
+## 7 de noviembre — invitación pendiente sin vista previa al cambiar grupo
+
+Durante #54, **TestFlight 1.0 (4), iPhone 11**, el propietario cierra y abandona A·2 para liberar una
+de las cinco plazas Premium y selecciona B como grupo activo. La invitación pendiente a Test1 conserva
+Descartar habilitado, pero desaparece Aceptar y aparece «Accede y actualiza para consultar el grupo
+antes de aceptar».
+
+La fuente identifica el hueco: `SharedShoppingViewModel.selectGroup` llama a `clearGroupPresentation`,
+que borra `invitationPreview` sin borrar `pendingInvitation`; a continuación llama a `loadActiveGroup`
+sin consultar otra vez la invitación. `SharedPendingInvitationSection` usa ese texto también cuando
+hay sesión y sólo falta la vista previa. La salida del grupo sí intenta el refresco completo; elegir B
+después puede volver a borrar la información recién consultada.
+
+Un único **Actualizar en Ajustes** recorre `refreshSessionAndLists` → `previewPendingInvitation`.
+El propietario confirma que reaparecen **Test1 + Aceptar invitación**. Se conserva esta recuperación
+física como evidencia. A continuación confirma aceptación de Test1 y lectura de Aldi, Alpro y otros
+dos productos en el iPhone 11, según el [registro de #54](issue-54-distribution-environments.md#7-de-noviembre--invitación-aceptada-y-lista-compartida-visible-en-el-iphone-11).
+Después confirma también el alta desde el 11 visible una vez en el 16 y la compra confirmada desde
+el 16 reflejada en el 11, conservando Alpro y los otros dos productos. La recuperación manual no
+equivale a una corrección del defecto.
+
+**Corrección pendiente:** revalidar la invitación conservada tras cambiar el grupo activo, con las
+barreras de cuenta, identidad de invitación y respuesta tardía correspondientes, y distinguir falta
+de sesión de carga/error de vista previa. No basta tratar este estado como límite comercial o pedir
+otra compra. En la futura validación del cambio se comprobará que seleccionar otro grupo mantiene o
+recupera la invitación sin exigir el refresco manual y que los fallos/caducidad tienen feedback fiel.
+No se cambia Swift ni se ejecutan builds o suites en este registro.
+
+## 7 de noviembre — ausencia de grupos no verificada durante el arranque sin red
+
+En el ensayo de **TestFlight 1.0 (4), iPhone 11**, el propietario confirma que todavía está sin
+conexión cuando Comprar pide configurar un grupo y Añadir propone unirse o crear uno, indicando
+que los productos se guardan localmente hasta tener un grupo. Acaba de aceptar Test1 y comprobar
+la sincronización con el iPhone 16; el mensaje offline no acredita que haya perdido sus pertenencias.
+
+`SharedGroupView` presenta ese estado si `hasLoaded && !isBusy && groups.isEmpty`; `AddItemsView`
+lo hace si `group == nil && groups.isEmpty`. Ninguno exige `groupsAreVerified` para interpretar el
+vacío como ausencia de pertenencias. El arranque restaura la sesión y luego consulta usuario/grupos;
+un error de transporte puede dejar esa colección sin cargar. No se atribuye a cierre de sesión sin
+comprobar el resultado al recuperar conexión.
+
+**Corrección pendiente:** diferenciar grupo inexistente, carga y verificación fallida/sin red, con
+feedback que permita actualizar sin sugerir crear otra cuenta o grupo. Conservar las barreras de
+autoridad para escrituras. El propietario confirma después recuperación automática al volver a
+conectar, sin Actualizar manual ni avisos: Datos de prueba/Test1 y, al elegir Aldi, Alpro con los otros
+dos productos. El [registro de #54](issue-54-distribution-environments.md#7-de-noviembre--recuperación-automática-tras-el-arranque-sin-red-confirmada)
+conserva esa aceptación y sus límites; no mide el disparador exacto del refresco. El mensaje offline
+sigue pendiente de corrección. No se cambia Swift ni se declara un arreglo validado.
+
 ## Implementación y validación
 
 - Gestionar suscripción: nombre breve, sin tarjeta ni encabezado redundante.
