@@ -1,6 +1,6 @@
 # Plan de implementación
 
-Fecha de creación: 18 de septiembre de 2026. Última revisión: 10 de octubre de 2026.
+Fecha de creación: 18 de septiembre de 2026. Última revisión: 7 de noviembre de 2026.
 
 Especificación de referencia: [MVP aprobado](mvp-spec.md). Este documento conserva las fases, dependencias y condiciones para avanzar; no amplía el contrato funcional ni registra el progreso de cada tarea.
 
@@ -25,6 +25,36 @@ Se detallan las unidades del bloque inmediato. Las fases posteriores permanecen 
 Cada issue contiene resultado, fuentes, alcance, plan vigente identificado como Draft o Approved, dependencias, criterios de aceptación y validación prevista. Su descripción identifica si está pendiente, en curso o bloqueada; crearla no significa empezar la implementación. Al cambiar materialmente el plan se actualiza la descripción y se añade un comentario fechado con la decisión, su motivo y evidencia. Las decisiones duraderas se reflejan en la spec o en el documento técnico correspondiente.
 
 La evidencia se registra en la issue con fecha, entorno, resultados y referencia al commit o PR. Los informes extensos pueden guardarse en archivos enlazados. Una issue se cierra cuando cumple sus criterios, se valida y sus cambios están entregados en `main`; compilar pruebas, abrir una PR o escribir un plan no equivale a completar el trabajo.
+
+## Preparación de producción después del alcance Sandbox
+
+La [#54](https://github.com/JFrancoG/SmartShoppingList/issues/54) reúne la preparación de distribución,
+requisitos dentro de la app, migración del backend real, App Store Connect y publicación controlada.
+Parte del alcance Sandbox cerrado en #39, sin extender esa evidencia a distribución ni producción.
+El [diseño de entornos de distribución](architecture/distribution-environments.md) está aprobado para
+implementación local: arranque antes de sesión/datos, App Intents, compras e invitaciones separados.
+La [validación de #54](validation/issue-54-distribution-environments.md) registra 441 ejecuciones Fast y
+21 Integration correctas. El ensayo físico del build comercial **1.0 (3)** detecta que el aviso Sandbox
+oculta Ajustes; la corrección pasa la validación local. **1.0 (4)** tiene Archive validado y está
+**En pruebas** en TestFlight Internal Only para **core**. El 30/10 Apple y la base Sandbox confirman que
+la suscripción previa del iPhone 16 caducó el 29/10 a las 19:58:41 CET; Gratis tras restaurar es coherente
+con ese estado. Se conservan los datos de prueba. La nueva compra mensual desde el build distribuido
+muestra Premium y coincide con Apple y el backend: **30/10 12:33:33–13:03:33 CET**, autorrenovación activa,
+transacción registrada y titular coincidente. El propietario confirma que reiniciar conserva datos y
+Premium, y que restaurar una vez mantiene Premium. También acepta Ajustes y Datos de prueba desde
+Añadir y Comprar sin solapamientos, incluido texto al máximo. La V2 de compra queda correlacionada por
+UUID/hash con Apple (**SUBSCRIBED / RESUBSCRIBE, SUCCESS**). El dictado y envío del producto de prueba
+a Test1/Aldi quedan aceptados, conservando Alpro. Siri abre la app y añade directamente a esa lista;
+la primera renovación **13:03:33–13:33:33 CET** y su V2 **DID_RENEW / SUCCESS** coinciden con el backend.
+El 7/11 se confirma también el segundo cliente de TestFlight en el iPhone 11: incorporación a Test1,
+alta visible una sola vez en el 16 y compra reflejada en ambos, conservando Alpro y los otros productos.
+La recuperación de conexión restaura automáticamente el contexto; VoiceOver permite abrir/cerrar
+Datos de prueba y Ajustes sin perder el foco. Se conservan estas aceptaciones para no repetirlas.
+Los tres hallazgos de #49 —invitación al cambiar grupo, mensajes de ausencia de grupo sin red y avisos y
+refrescos al volver a primer plano— tienen corrección local y 481 ejecuciones Fast correctas. La
+consolidación Git y el siguiente Archive interno dan paso a una regresión física acotada de esos cambios.
+El 503 de AASA Sandbox está corregido y verificado por HTTPS. El feedback al restaurar sin derecho
+activo y los demás requisitos de publicación conservan sus gates; no cambian el contrato 0.5.
 
 ## CI mínimo antes de la entrega
 

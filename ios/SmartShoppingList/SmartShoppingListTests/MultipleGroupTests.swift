@@ -1,3 +1,4 @@
+import AuthenticationServices
 import Foundation
 import Testing
 @testable import SmartShoppingList
@@ -106,7 +107,8 @@ struct MultipleGroupTests {
         let verification = PendingSubscriptionVerification(
             userID: fixture.session.user.id,
             transactionID: "908",
-            request: VerifySharedSubscriptionRequest(signedTransaction: "saved.original.transaction")
+            request: VerifySharedSubscriptionRequest(signedTransaction: "saved.original.transaction"),
+            environment: .production
         )
         if action == "verification" {
             await api.rejectSubscriptionVerification(.transport)
@@ -197,7 +199,8 @@ struct MultipleGroupTests {
             id: "908",
             appAccountToken: accountToken,
             productID: "premium.monthly",
-            signedTransaction: "apple.update.during.refresh"
+            signedTransaction: "apple.update.during.refresh",
+            environment: .production
         )
         let store = MembershipSubscriptionStore(
             transaction: transaction,
@@ -643,6 +646,359 @@ struct MultipleGroupTests {
         #expect(!model.groupsAreVerified)
         #expect(model.pendingInvitation == fixture.invitation)
     }
+
+    @Test
+    func `Changing the active group revalidates its saved invitation without another account refresh`() async throws {
+        let fixture = try MembershipFixture()
+        let api = MembershipAPI(fixture: fixture)
+        let credentials = MemorySharedCredentialStore(session: fixture.session, invitation: fixture.invitation)
+        let model = fixture.model(api: api, credentials: credentials)
+        await model.load()
+        try #require(model.invitationPreview?.group.id == fixture.third.id)
+        let expiresAt = Date(timeIntervalSince1970: 2_100_000_000)
+        await api.configureInvitationPreview(
+            fixture.invitation,
+            preview: InvitationPreview(group: fixture.third, expiresAt: expiresAt, alreadyAccepted: false)
+        )
+
+        await model.selectGroup(id: fixture.second.id)
+
+        #expect(model.group?.id == fixture.second.id)
+        #expect(model.invitationPreview?.expiresAt == expiresAt)
+        #expect(model.invitationPreviewState == .loaded)
+        #expect(model.canAcceptInvitation)
+        #expect(model.pendingInvitation == fixture.invitation)
+        #expect(await credentials.loadInvitation() == fixture.invitation)
+        #expect(await api.previewedInvitations == [fixture.invitation, fixture.invitation])
+        #expect(await api.userLookups == 1)
+        #expect(await api.membershipMutations == 0)
+    }
+
+    @Test(.timeLimit(.minutes(1)), arguments: DelayedInvitationPreview.allCases)
+    private func `A discarded invitation's late response cannot replace a newer link or invalidate its session`(
+        outcome: DelayedInvitationPreview
+    ) async throws {
+        let fixture = try MembershipFixture()
+        let api = MembershipAPI(fixture: fixture)
+        let credentials = MemorySharedCredentialStore(session: fixture.session, invitation: fixture.invitation)
+        let model = fixture.model(api: api, credentials: credentials)
+        await model.load()
+        let incoming = PendingInvitation(id: UUID(), token: String(repeating: "E", count: 43))
+        let incomingURL = try fixture.invitationURL(incoming)
+        let gate = MembershipGate()
+        await api.delayInvitationPreview(gate, result: outcome.result(group: fixture.third))
+        let selecting = Task {
+            await model.selectGroup(id: fixture.second.id)
+        }
+        await gate.waitUntilReached()
+        let replacement = InvitationPreview(group: fixture.first, expiresAt: .distantFuture, alreadyAccepted: true)
+        await api.configureInvitationPreview(incoming, preview: replacement)
+
+        await model.discardInvitation()
+        await model.receiveInvitation(incomingURL)
+        let previewBeforeEarlierResponse = model.invitationPreview
+        await gate.open()
+        await selecting.value
+
+        #expect(previewBeforeEarlierResponse == replacement)
+        #expect(model.sessionIsVerified)
+        #expect(model.session?.accessToken == fixture.session.accessToken)
+        #expect(model.pendingInvitation == incoming)
+        #expect(model.invitationPreview == replacement)
+        #expect(model.invitationPreviewState == .loaded)
+        #expect(await credentials.loadInvitation() == incoming)
+        #expect(await credentials.loadIncomingInvitation() == nil)
+        #expect(model.notice == nil)
+    }
+
+    @Test(.timeLimit(.minutes(1)), arguments: [false, true], DelayedInvitationPreview.allCases)
+    private func `An earlier session's invitation response cannot change the account that signs in afterward`(
+        changesUser: Bool,
+        outcome: DelayedInvitationPreview
+    ) async throws {
+        let fixture = try MembershipFixture()
+        let api = MembershipAPI(fixture: fixture)
+        let credentials = MemorySharedCredentialStore(session: fixture.session, invitation: fixture.invitation)
+        let model = fixture.model(api: api, credentials: credentials)
+        await model.load()
+        let gate = MembershipGate()
+        await api.delayInvitationPreview(gate, result: outcome.result(group: fixture.third))
+        let selecting = Task {
+            await model.selectGroup(id: fixture.second.id)
+        }
+        await gate.waitUntilReached()
+        await model.logout()
+        let sessionAfterLogout = model.session
+        let replacement = SharedSession(
+            accessToken: changesUser ? fixture.session.accessToken : String(repeating: "E", count: 43),
+            tokenType: "Bearer",
+            expiresAt: .distantFuture,
+            user: SharedUser(id: changesUser ? UUID() : fixture.session.user.id, displayName: "Taylor", group: nil)
+        )
+        await api.configureLogin(replacement)
+        await model.prepareAppleLogin()
+        let request = ASAuthorizationAppleIDProvider().createRequest()
+        model.configureAppleRequest(request)
+        await model.completeAppleLogin(
+            token: "native-fixture", code: "single-use-fixture", returnedState: request.state, displayName: nil
+        )
+        let currentPreview = model.invitationPreview
+
+        await gate.open()
+        await selecting.value
+
+        try #require(sessionAfterLogout == nil)
+        let previewAfterLogin = try #require(currentPreview)
+        #expect(model.session?.user.id == replacement.user.id)
+        #expect(model.session?.accessToken == replacement.accessToken)
+        #expect(model.sessionIsVerified)
+        #expect(model.pendingInvitation == fixture.invitation)
+        #expect(model.invitationPreview == previewAfterLogin)
+        #expect(await credentials.loadInvitation() == fixture.invitation)
+        #expect(await credentials.loadSession()?.accessToken == replacement.accessToken)
+        #expect(model.notice == nil)
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func `A newer group selection keeps its invitation preview when an earlier selection returns late`() async throws {
+        let fixture = try MembershipFixture()
+        let api = MembershipAPI(fixture: fixture)
+        let credentials = MemorySharedCredentialStore(session: fixture.session, invitation: fixture.invitation)
+        let model = fixture.model(api: api, credentials: credentials)
+        await model.load()
+        let gate = MembershipGate()
+        await api.delayInvitationPreview(gate, result: .success(InvitationPreview(
+            group: fixture.third, expiresAt: .distantPast, alreadyAccepted: false
+        )))
+        let firstSelection = Task {
+            await model.selectGroup(id: fixture.first.id)
+        }
+        await gate.waitUntilReached()
+        let latest = InvitationPreview(group: fixture.third, expiresAt: .distantFuture, alreadyAccepted: false)
+        await api.configureInvitationPreview(fixture.invitation, preview: latest)
+
+        await model.selectGroup(id: fixture.second.id)
+        let previewBeforeEarlierResponse = model.invitationPreview
+        await gate.open()
+        await firstSelection.value
+
+        #expect(previewBeforeEarlierResponse == latest)
+        #expect(model.group?.id == fixture.second.id)
+        #expect(model.invitationPreview == latest)
+        #expect(model.invitationPreviewState == .loaded)
+        #expect(await credentials.loadInvitation() == fixture.invitation)
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func `A link received while an expired invitation is removed survives that durable removal`() async throws {
+        let fixture = try MembershipFixture()
+        let api = MembershipAPI(fixture: fixture)
+        let removalGate = MembershipGate()
+        let credentials = MembershipCredentialStore(
+            session: fixture.session, invitation: fixture.invitation, removalGate: removalGate
+        )
+        let model = fixture.model(api: api, credentials: credentials)
+        await model.load()
+        let incoming = PendingInvitation(id: UUID(), token: String(repeating: "E", count: 43))
+        let incomingURL = try fixture.invitationURL(incoming)
+        await api.delayInvitationPreview(nil, result: DelayedInvitationPreview.expired.result(group: fixture.third))
+        let selecting = Task {
+            await model.selectGroup(id: fixture.second.id)
+        }
+        await removalGate.waitUntilReached()
+        let replacement = InvitationPreview(group: fixture.first, expiresAt: .distantFuture, alreadyAccepted: true)
+        await api.configureInvitationPreview(incoming, preview: replacement)
+
+        await model.receiveInvitation(incomingURL)
+        #expect(try await credentials.loadIncomingInvitation() == incoming)
+        #expect(model.isBusy)
+        await model.discardInvitation()
+        await removalGate.open()
+        await selecting.value
+
+        #expect(model.pendingInvitation == incoming)
+        #expect(model.invitationPreview == replacement)
+        #expect(try await credentials.loadInvitation() == incoming)
+        #expect(try await credentials.loadIncomingInvitation() == nil)
+    }
+}
+
+extension MultipleGroupTests {
+    @Test
+    func `Foreground refresh reconciles Premium before loading one shopping snapshot`() async throws {
+        let fixture = try MembershipFixture()
+        let api = MembershipAPI(fixture: fixture)
+        await api.configureFreeGroup(fixture.first.id)
+        await api.configureSubscription(fixture.subscriptionStatus, reconcilesPremium: true)
+        let store = MembershipNoTransactionsStore(withCatalogue: true)
+        let model = fixture.model(api: api, subscriptionStore: store)
+        await model.load()
+        await model.selectGroup(id: fixture.first.id)
+        try #require(model.group?.id == fixture.first.id)
+        model.selectedStoreID = fixture.firstStore.id
+        let before = await api.refreshReads.count
+
+        await model.refreshOnActivation()
+
+        #expect(await Array(api.refreshReads.dropFirst(before)) == [
+            "subscription", "user", "groups", "capacity", "stores", "items"
+        ])
+        #expect(model.membershipAccess?.premiumActive == true)
+        #expect(model.session?.user.accountCapabilities?.limits.groupsPerAccount.maximum == 5)
+        #expect(model.items.map(\.name) == ["Leche de casa"])
+        #expect(model.draft.items == fixture.draft.items)
+        #expect(await store.purchases == 0)
+        #expect(await store.restorations == 0)
+        #expect(model.pendingOperation == nil)
+    }
+
+    @Test(.timeLimit(.minutes(1)), arguments: [false, true])
+    func `Concurrent refresh callers share their snapshot even when its first waiter is cancelled`(
+        cancelsFirstWaiter: Bool
+    ) async throws {
+        let fixture = try MembershipFixture()
+        let api = MembershipAPI(fixture: fixture)
+        await api.configureSubscription(fixture.subscriptionStatus)
+        let store = MembershipNoTransactionsStore(withCatalogue: true)
+        let model = fixture.model(api: api, subscriptionStore: store)
+        await model.load()
+        await model.selectGroup(id: fixture.first.id)
+        try #require(model.group?.id == fixture.first.id)
+        model.selectedStoreID = fixture.firstStore.id
+        let before = await api.refreshReads.count
+        let gate = MembershipGate()
+        await api.delayNextUserLookup(gate)
+        let first = Task { await model.refreshOnActivation() }
+        await gate.waitUntilReached()
+        let premiumCompletion = MembershipRefreshCompletion()
+        let shoppingCompletion = MembershipRefreshCompletion()
+        let premium = try await startMembershipRefresh {
+            await model.loadPremium()
+            premiumCompletion.hasReturned = true
+        }
+        let shopping = try await startMembershipRefresh {
+            await model.refresh()
+            shoppingCompletion.hasReturned = true
+        }
+        if cancelsFirstWaiter {
+            first.cancel()
+        }
+        #expect(!premiumCompletion.hasReturned)
+        #expect(!shoppingCompletion.hasReturned)
+        #expect(model.isBusy)
+        #expect(model.draft.items == fixture.draft.items)
+
+        await gate.open()
+        await first.value
+        await premium.value
+        await shopping.value
+
+        #expect(await Array(api.refreshReads.dropFirst(before)) == [
+            "subscription", "user", "groups", "capacity", "stores", "items"
+        ])
+        #expect(model.sessionIsVerified)
+        #expect(model.groupsAreVerified)
+        #expect(!model.isBusy)
+        #expect(premiumCompletion.hasReturned)
+        #expect(shoppingCompletion.hasReturned)
+        #expect(model.items.map(\.name) == ["Leche de casa"])
+        #expect(model.notice == nil)
+        #expect(await api.membershipMutations == 0)
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func `Activation during a store lookup is deferred and replayed once after that lookup finishes`() async throws {
+        let fixture = try MembershipFixture()
+        let api = MembershipAPI(fixture: fixture)
+        await api.configureSubscription(fixture.subscriptionStatus)
+        let store = MembershipNoTransactionsStore(withCatalogue: true)
+        let model = fixture.model(api: api, subscriptionStore: store)
+        await model.load()
+        await model.selectGroup(id: fixture.first.id)
+        try #require(model.group?.id == fixture.first.id)
+        model.selectedStoreID = fixture.firstStore.id
+        let before = await api.refreshReads.count
+        let gate = MembershipGate()
+        await api.delayNextItems(gate)
+        let lookup = Task { await model.loadSelectedStore() }
+        await gate.waitUntilReached()
+
+        await model.refreshOnActivation()
+        await model.refreshOnActivation()
+        #expect(await Array(api.refreshReads.dropFirst(before)) == ["items"])
+        #expect(model.isBusy)
+        await gate.open()
+        await lookup.value
+
+        #expect(await Array(api.refreshReads.dropFirst(before)) == [
+            "items", "subscription", "user", "groups", "capacity", "stores", "items"
+        ])
+        #expect(!model.isBusy)
+        #expect(model.sessionIsVerified)
+        #expect(model.group?.id == fixture.first.id)
+        #expect(model.items.map(\.name) == ["Leche de casa"])
+        #expect(model.draft.items == fixture.draft.items)
+        #expect(await api.membershipMutations == 0)
+    }
+
+    @Test
+    func `A successful automatic read preserves an undismissed mutation notice`() async throws {
+        let fixture = try MembershipFixture()
+        let api = MembershipAPI(fixture: fixture)
+        await api.rejectCreationAtLimit()
+        let model = fixture.model(api: api)
+        await model.load()
+        model.groupName = "Otra casa"
+        await model.createGroup()
+        let rejection = try #require(model.presentedNotice)
+        #expect(model.pendingOperation == nil)
+
+        await model.refreshOnActivation()
+
+        #expect(model.presentedNotice == rejection)
+        #expect(model.groupsAreVerified)
+        #expect(model.groups.map(\.id) == [fixture.first.id, fixture.second.id])
+        #expect(model.draft.items == fixture.draft.items)
+        #expect(await api.membershipMutations == 1)
+        model.dismissPresentedNotice(rejection)
+        #expect(model.presentedNotice == nil)
+    }
+}
+
+@MainActor
+private final class MembershipRefreshCompletion {
+    var hasReturned = false
+}
+
+@MainActor
+private func startMembershipRefresh(
+    _ operation: @escaping @MainActor () async -> Void
+) async throws -> Task<Void, Never> {
+    var task: Task<Void, Never>?
+    await withCheckedContinuation { started in
+        task = Task { @MainActor in
+            started.resume()
+            await operation()
+        }
+    }
+    return try #require(task)
+}
+
+private enum DelayedInvitationPreview: CaseIterable {
+    case valid
+    case expired
+    case invalidSession
+
+    func result(group: SharedGroup) -> Result<InvitationPreview, SharedAPIError> {
+        switch self {
+        case .valid:
+            .success(InvitationPreview(group: group, expiresAt: .distantPast, alreadyAccepted: false))
+        case .expired:
+            .failure(.server(status: 410, code: "invitation_expired", requestID: nil, retryAfter: nil))
+        case .invalidSession:
+            .failure(.server(status: 401, code: "invalid_session", requestID: nil, retryAfter: nil))
+        }
+    }
 }
 
 @Suite(.tags(.integration))
@@ -696,6 +1052,19 @@ private struct MembershipFixture {
 }
 
 private extension MembershipFixture {
+    var subscriptionStatus: SharedSubscriptionStatus {
+        SharedSubscriptionStatus(
+            appAccountToken: session.user.id,
+            isConfigured: true,
+            productIDs: ["premium.monthly", "premium.annual"],
+            state: .subscribed,
+            expiresAt: .distantFuture,
+            gracePeriodExpiresAt: nil,
+            autoRenewEnabled: true,
+            verifiedAt: .distantPast
+        )
+    }
+
     init() throws {
         configuration = try SharedAPIConfiguration(baseURL: "https://api.test", invitationOrigin: "https://links.test")
         let userID = UUID()
@@ -725,6 +1094,10 @@ private extension MembershipFixture {
             expiresAt: .distantFuture,
             user: SharedUser(id: userID, displayName: "Alex", group: first)
         )
+    }
+
+    func invitationURL(_ invitation: PendingInvitation) throws -> URL {
+        try #require(URL(string: "https://links.test/invite/\(invitation.id.uuidString.lowercased())#token=\(invitation.token)"))
     }
 
     @MainActor
@@ -761,6 +1134,11 @@ private actor MembershipAPI: SharedShoppingAPI {
     private var subscriptionVerificationError: SharedAPIError?
     private var premiumOnSubscriptionRead = false
     private var hasReadSubscription = false
+    private var loginSession: SharedSession?
+    private var nextPreviewGate: MembershipGate?
+    private var nextPreviewResult: Result<InvitationPreview, SharedAPIError>?
+    private var invitationPreviews: [UUID: InvitationPreview] = [:]
+    private(set) var previewedInvitations: [PendingInvitation] = []
     private(set) var subscriptionRequests: [VerifySharedSubscriptionRequest] = []
     private var freeGroupID: UUID?
     private var permitsFreeGroupChange = true
@@ -772,6 +1150,7 @@ private actor MembershipAPI: SharedShoppingAPI {
     private(set) var additionGroups: [UUID] = []
     private(set) var additionOperations: [UUID] = []
     private(set) var membershipMutations = 0
+    private(set) var refreshReads: [String] = []
 
     init(fixture: MembershipFixture) {
         self.fixture = fixture
@@ -788,6 +1167,7 @@ private actor MembershipAPI: SharedShoppingAPI {
     }
 
     func subscription(token: String) async throws -> SharedSubscriptionStatus {
+        refreshReads.append("subscription")
         hasReadSubscription = true
         return try #require(subscriptionStatus)
     }
@@ -830,6 +1210,19 @@ private actor MembershipAPI: SharedShoppingAPI {
 
     func delayNextUserLookup(_ gate: MembershipGate) {
         nextUserGate = gate
+    }
+
+    func configureLogin(_ session: SharedSession) {
+        loginSession = session
+    }
+
+    func configureInvitationPreview(_ invitation: PendingInvitation, preview: InvitationPreview) {
+        invitationPreviews[invitation.id] = preview
+    }
+
+    func delayInvitationPreview(_ gate: MembershipGate?, result: Result<InvitationPreview, SharedAPIError>) {
+        nextPreviewGate = gate
+        nextPreviewResult = result
     }
 
     func setMemberships(_ groups: [SharedGroup]) {
@@ -880,11 +1273,12 @@ private actor MembershipAPI: SharedShoppingAPI {
     }
 
     func currentUser(token: String) async throws -> SharedUser {
+        refreshReads.append("user")
         userLookups += 1
         let gate = nextUserGate
         nextUserGate = nil
         await gate?.pause()
-        var user = fixture.session.user
+        var user = loginSession?.user ?? fixture.session.user
         if providesCapabilities {
             let premiumActive = premiumOnSubscriptionRead && hasReadSubscription
             let maximum = freeGroupID == nil ? 3 : (premiumActive ? 5 : 1)
@@ -913,6 +1307,7 @@ private actor MembershipAPI: SharedShoppingAPI {
     }
 
     func groups(token: String) async throws -> [SharedGroup] {
+        refreshReads.append("groups")
         guard !lookupFails else { throw SharedAPIError.transport }
         return memberships.map { original in
             guard let freeGroupID else { return original }
@@ -926,7 +1321,8 @@ private actor MembershipAPI: SharedShoppingAPI {
     }
 
     func stores(groupID: UUID, token: String) async throws -> [SharedStore] {
-        try [fixture.firstStore, fixture.secondStore].filter { $0.groupId == groupID }.map { original in
+        refreshReads.append("stores")
+        return try [fixture.firstStore, fixture.secondStore].filter { $0.groupId == groupID }.map { original in
             var store = original
             store.state = try SharedStoreState(
                 archivedAt: nil,
@@ -962,6 +1358,7 @@ private actor MembershipAPI: SharedShoppingAPI {
         return []
     }
     func groupCapacity(groupID: UUID, token: String) async throws -> SharedGroupCapacity {
+        refreshReads.append("capacity")
         let count = [fixture.firstStore, fixture.secondStore].filter { $0.groupId == groupID }.count
         return try SharedGroupCapacity(
             groupId: groupID,
@@ -984,6 +1381,7 @@ private actor MembershipAPI: SharedShoppingAPI {
         throw SharedAPIError.configuration
     }
     func pendingItems(groupID: UUID, storeID: UUID, token: String) async throws -> [SharedItem] {
+        refreshReads.append("items")
         let snapshot = groupID == fixture.first.id && !firstGroupHasItems
             ? []
             : [item(groupID: groupID, storeID: storeID)]
@@ -1040,7 +1438,15 @@ private actor MembershipAPI: SharedShoppingAPI {
     }
 
     func previewInvitation(_ invitation: PendingInvitation, token: String) async throws -> InvitationPreview {
-        InvitationPreview(group: fixture.third, expiresAt: .distantFuture, alreadyAccepted: false)
+        previewedInvitations.append(invitation)
+        let gate = nextPreviewGate
+        let result = nextPreviewResult ?? .success(invitationPreviews[invitation.id] ?? InvitationPreview(
+            group: fixture.third, expiresAt: .distantFuture, alreadyAccepted: false
+        ))
+        nextPreviewGate = nil
+        nextPreviewResult = nil
+        await gate?.pause()
+        return try result.get()
     }
 
     func acceptInvitation(_ invitation: PendingInvitation, token: String) async throws -> SharedGroup {
@@ -1049,9 +1455,12 @@ private actor MembershipAPI: SharedShoppingAPI {
         return fixture.third
     }
 
-    func createChallenge() async throws -> SharedChallenge { throw SharedAPIError.configuration }
+    func createChallenge() async throws -> SharedChallenge {
+        guard loginSession != nil else { throw SharedAPIError.configuration }
+        return SharedChallenge(id: UUID(), nonce: String(repeating: "A", count: 43), expiresAt: .distantFuture)
+    }
     func loginWithApple(_ request: AppleLoginRequest) async throws -> SharedSession {
-        throw SharedAPIError.configuration
+        try #require(loginSession)
     }
     func logout(token: String) async throws {}
     func groupMembers(groupID: UUID, token: String) async throws -> [SharedGroupMember] {
@@ -1205,9 +1614,10 @@ extension MultipleGroupTests {
 
 private actor MembershipCredentialStore: SharedCredentialStoring {
     private let store: MemorySharedCredentialStore
-    private let targetID: UUID
-    private let gate: MembershipGate
+    private let targetID: UUID?
+    private let gate: MembershipGate?
     private let fails: Bool
+    private var removalGate: MembershipGate?
 
     init(
         session: SharedSession,
@@ -1221,11 +1631,19 @@ private actor MembershipCredentialStore: SharedCredentialStoring {
         self.fails = fails
     }
 
+    init(session: SharedSession, invitation: PendingInvitation, removalGate: MembershipGate) {
+        store = MemorySharedCredentialStore(session: session, invitation: invitation)
+        targetID = nil
+        gate = nil
+        fails = false
+        self.removalGate = removalGate
+    }
+
     func loadSession() async throws -> SharedSession? {
         await store.loadSession()
     }
     func saveSession(_ session: SharedSession?) async throws {
-        if session?.activeGroupID == targetID {
+        if let gate, session?.activeGroupID == targetID {
             await gate.pause()
             if fails {
                 throw SharedCredentialError.unavailable(status: -1)
@@ -1237,6 +1655,10 @@ private actor MembershipCredentialStore: SharedCredentialStoring {
         await store.loadInvitation()
     }
     func saveInvitation(_ invitation: PendingInvitation?) async throws {
+        if invitation == nil, let gate = removalGate {
+            removalGate = nil
+            await gate.pause()
+        }
         await store.saveInvitation(invitation)
     }
     func loadIncomingInvitation() async throws -> PendingInvitation? {

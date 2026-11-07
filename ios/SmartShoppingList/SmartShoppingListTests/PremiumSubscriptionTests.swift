@@ -5,6 +5,64 @@ import Testing
 @Suite(.tags(.fast))
 @MainActor
 struct PremiumSubscriptionTests {
+    @Test(arguments: [false, true])
+    func `A failed subscription status read preserves known access without claiming an unfinished purchase`(
+        cancelled: Bool
+    ) async throws {
+        let fixture = PremiumFixture()
+        let status = fixture.status(state: .subscribed)
+        let api = PremiumAPI(status: status)
+        let store = PremiumStore(transaction: fixture.transaction)
+        let credentials = MemorySharedCredentialStore()
+        let model = fixture.model(api: api, store: store, credentials: credentials)
+        _ = await model.load(session: fixture.session, isCurrentSession: { _ in true })
+        await api.failStatusRead(cancelled: cancelled)
+
+        #expect(await !model.load(session: fixture.session, isCurrentSession: { _ in true }))
+
+        #expect(model.status == status)
+        #expect(!model.lastLoadAttemptedVerification)
+        #expect(model.pendingVerification == nil)
+        #expect(await credentials.loadSubscriptionVerification() == nil)
+        #expect(await api.receivedRequests.isEmpty)
+        if cancelled {
+            #expect(model.notice == nil)
+        } else {
+            var message = try #require(model.notice)
+            message.locale = Locale(identifier: "en")
+            #expect(String(localized: message) == "Could not refresh your shared data. Your saved access and draft are kept. Check your connection and try again.")
+        }
+    }
+
+    @Test
+    func `A saved verification is not reported as attempted when the preceding status read fails`() async throws {
+        let fixture = PremiumFixture()
+        let api = PremiumAPI(status: fixture.status())
+        await api.failStatusRead(cancelled: false)
+        let credentials = MemorySharedCredentialStore()
+        let pending = PendingSubscriptionVerification(
+            userID: fixture.session.user.id,
+            transactionID: fixture.transaction.id,
+            request: VerifySharedSubscriptionRequest(signedTransaction: fixture.transaction.signedTransaction)
+        )
+        await credentials.saveSubscriptionVerification(pending)
+        let model = fixture.model(
+            api: api,
+            store: PremiumStore(transaction: fixture.transaction),
+            credentials: credentials
+        )
+
+        _ = await model.load(session: fixture.session, isCurrentSession: { _ in true })
+
+        #expect(!model.lastLoadAttemptedVerification)
+        #expect(model.pendingVerification == pending)
+        #expect(await credentials.loadSubscriptionVerification() == pending)
+        #expect(await api.receivedRequests.isEmpty)
+        var message = try #require(model.notice)
+        message.locale = Locale(identifier: "en")
+        #expect(String(localized: message) == "Could not refresh your shared data. Your saved access and draft are kept. Check your connection and try again.")
+    }
+
     @Test
     func `Saved purchase verification completes even when Apple's product catalogue is unavailable`() async throws {
         let fixture = PremiumFixture()
@@ -15,7 +73,8 @@ struct PremiumSubscriptionTests {
         let verification = PendingSubscriptionVerification(
             userID: fixture.session.user.id,
             transactionID: fixture.transaction.id,
-            request: VerifySharedSubscriptionRequest(signedTransaction: fixture.transaction.signedTransaction)
+            request: VerifySharedSubscriptionRequest(signedTransaction: fixture.transaction.signedTransaction),
+            environment: .production
         )
         await credentials.saveSubscriptionVerification(verification)
         let model = fixture.model(api: api, store: store, credentials: credentials)
@@ -207,7 +266,8 @@ struct PremiumSubscriptionTests {
             id: "701",
             appAccountToken: UUID(),
             productID: fixture.transaction.productID,
-            signedTransaction: fixture.transaction.signedTransaction
+            signedTransaction: fixture.transaction.signedTransaction,
+            environment: .production
         )
         let store = PremiumStore(transaction: transaction)
         let model = fixture.model(api: api, store: store)
@@ -259,6 +319,198 @@ struct PremiumSubscriptionTests {
         #expect(model.status?.state == .subscribed)
     }
 
+    @Test(arguments: [
+        (SharedStoreEnvironment.production, SharedStoreEnvironment.sandbox),
+        (.sandbox, .production),
+        (.production, .xcode),
+        (.sandbox, .xcode),
+        (.production, .unknown),
+        (.sandbox, .unknown),
+        (.xcode, .xcode),
+        (.unknown, .unknown)
+    ])
+    func `Purchases outside the resolved backend environment never reach verification or finish`(
+        expected: SharedStoreEnvironment,
+        observed: SharedStoreEnvironment
+    ) async throws {
+        let fixture = PremiumFixture()
+        let api = PremiumAPI(status: fixture.status())
+        let transaction = fixture.storeTransaction(environment: observed)
+        let store = PremiumStore(transaction: transaction, expectedEnvironment: expected)
+        let credentials = MemorySharedCredentialStore()
+        let model = fixture.model(api: api, store: store, credentials: credentials)
+        _ = await model.load(session: fixture.session, isCurrentSession: { _ in true })
+        let result = await model.purchase(
+            productID: "premium.monthly",
+            session: fixture.session,
+            isCurrentSession: { _ in true }
+        )
+
+        #expect(!result)
+        #expect(await api.receivedRequests.isEmpty)
+        #expect(await store.finished.isEmpty)
+        #expect(await credentials.loadSubscriptionVerification() == nil)
+        #expect(model.pendingVerification == nil)
+        #expect(model.status?.state == .free)
+        #expect(model.notice != nil)
+    }
+
+    @Test(arguments: [SharedStoreEnvironment.production, .sandbox])
+    func `A matching distributed purchase is delivered and finished after acknowledgement`(
+        environment: SharedStoreEnvironment
+    ) async throws {
+        let fixture = PremiumFixture()
+        let api = PremiumAPI(status: fixture.status())
+        await api.setAcknowledgedStatus(fixture.status(state: .subscribed))
+        let store = PremiumStore(
+            transaction: fixture.storeTransaction(environment: environment),
+            expectedEnvironment: environment
+        )
+        let credentials = MemorySharedCredentialStore()
+        let model = fixture.model(api: api, store: store, credentials: credentials)
+        _ = await model.load(session: fixture.session, isCurrentSession: { _ in true })
+        let result = await model.purchase(
+            productID: "premium.monthly",
+            session: fixture.session,
+            isCurrentSession: { _ in true }
+        )
+
+        #expect(result)
+        #expect(await api.receivedRequests.map(\.signedTransaction) == ["verified.device.transaction"])
+        #expect(await store.finished == ["701"])
+        #expect(model.status?.state == .subscribed)
+        #expect(await credentials.loadSubscriptionVerification() == nil)
+    }
+
+    @Test(arguments: [
+        (SharedStoreEnvironment.production, SharedStoreEnvironment.sandbox),
+        (.sandbox, .production)
+    ])
+    func `Restoring mixed history only delivers transactions belonging to the resolved environment`(
+        expected: SharedStoreEnvironment,
+        incompatible: SharedStoreEnvironment
+    ) async throws {
+        let fixture = PremiumFixture()
+        let api = PremiumAPI(status: fixture.status())
+        await api.setAcknowledgementID("703")
+        let store = PremiumStore(transaction: fixture.transaction, expectedEnvironment: expected)
+        let model = fixture.model(api: api, store: store)
+        _ = await model.load(session: fixture.session, isCurrentSession: { _ in true })
+        await store.setRestoredTransactions([
+            fixture.storeTransaction(environment: incompatible),
+            fixture.storeTransaction(environment: .xcode),
+            fixture.storeTransaction(environment: .unknown),
+            fixture.storeTransaction(id: "703", environment: expected, signed: "matching.restored.transaction")
+        ])
+
+        #expect(await model.restore(session: fixture.session, isCurrentSession: { _ in true }))
+        #expect(await store.restorations == 1)
+        #expect(await api.receivedRequests.map(\.signedTransaction) == ["matching.restored.transaction"])
+        #expect(await store.finished == ["703"])
+        #expect(model.pendingVerification == nil)
+    }
+
+    @Test(arguments: [
+        (SharedStoreEnvironment.production, SharedStoreEnvironment.sandbox),
+        (.sandbox, .production)
+    ])
+    func `Updates from another environment cannot prevent a later matching update from being delivered`(
+        expected: SharedStoreEnvironment,
+        incompatible: SharedStoreEnvironment
+    ) async throws {
+        let fixture = PremiumFixture()
+        let api = PremiumAPI(status: fixture.status())
+        let store = PremiumStore(transaction: fixture.transaction, expectedEnvironment: expected)
+        let credentials = MemorySharedCredentialStore()
+        let model = fixture.model(api: api, store: store, credentials: credentials)
+        _ = await model.load(session: fixture.session, isCurrentSession: { _ in true })
+        let rejected = await model.receiveUpdate(
+            fixture.storeTransaction(environment: incompatible),
+            session: fixture.session,
+            isCurrentSession: { _ in true }
+        )
+        #expect(!rejected)
+        #expect(await api.receivedRequests.isEmpty)
+        #expect(await store.finished.isEmpty)
+        #expect(await credentials.loadSubscriptionVerification() == nil)
+
+        let delivered = await model.receiveUpdate(
+            fixture.storeTransaction(environment: expected),
+            session: fixture.session,
+            isCurrentSession: { _ in true }
+        )
+        #expect(delivered)
+        #expect(await api.receivedRequests.map(\.signedTransaction) == ["verified.device.transaction"])
+        #expect(await store.finished == ["701"])
+    }
+
+    @Test
+    func `A saved Sandbox verification is preserved without replay in the Production context`() async throws {
+        let fixture = PremiumFixture()
+        let api = PremiumAPI(status: fixture.status())
+        let store = PremiumStore(transaction: fixture.transaction)
+        let verification = PendingSubscriptionVerification(
+            userID: fixture.session.user.id,
+            transactionID: "701",
+            request: VerifySharedSubscriptionRequest(signedTransaction: "saved.sandbox.transaction"),
+            environment: .sandbox
+        )
+        let credentials = MemorySharedCredentialStore(subscriptionVerification: verification)
+        let model = fixture.model(api: api, store: store, credentials: credentials)
+
+        #expect(await model.load(session: fixture.session, isCurrentSession: { _ in true }))
+        #expect(await api.receivedRequests.isEmpty)
+        #expect(await store.finished.isEmpty)
+        #expect(await credentials.loadSubscriptionVerification() == verification)
+        #expect(model.pendingVerification == verification)
+        #expect(model.status?.state == .free)
+        #expect(model.notice != nil)
+    }
+
+    @Test
+    func `Legacy verification without matching StoreKit evidence remains saved without contacting verification`() async throws {
+        let fixture = PremiumFixture()
+        let api = PremiumAPI(status: fixture.status())
+        let store = PremiumStore(transaction: fixture.transaction)
+        await store.setRestoredTransactions([fixture.storeTransaction(environment: .sandbox)])
+        let verification = PendingSubscriptionVerification(
+            userID: fixture.session.user.id,
+            transactionID: "701",
+            request: VerifySharedSubscriptionRequest(signedTransaction: "saved.original.transaction")
+        )
+        let credentials = MemorySharedCredentialStore(subscriptionVerification: verification)
+        let model = fixture.model(api: api, store: store, credentials: credentials)
+
+        #expect(await model.load(session: fixture.session, isCurrentSession: { _ in true }))
+        #expect(await api.receivedRequests.isEmpty)
+        #expect(await store.finished.isEmpty)
+        #expect(await credentials.loadSubscriptionVerification() == verification)
+        #expect(model.pendingVerification == verification)
+        #expect(model.status?.state == .free)
+    }
+
+    @Test
+    func `Matching StoreKit evidence recovers a legacy envelope with its exact saved payload`() async throws {
+        let fixture = PremiumFixture()
+        let api = PremiumAPI(status: fixture.status())
+        let store = PremiumStore(transaction: fixture.transaction)
+        await store.failCatalogue()
+        await store.setRestoredTransactions([fixture.transaction])
+        let verification = PendingSubscriptionVerification(
+            userID: fixture.session.user.id,
+            transactionID: "701",
+            request: VerifySharedSubscriptionRequest(signedTransaction: "saved.original.transaction")
+        )
+        let credentials = MemorySharedCredentialStore(subscriptionVerification: verification)
+        let model = fixture.model(api: api, store: store, credentials: credentials)
+
+        #expect(await model.load(session: fixture.session, isCurrentSession: { _ in true }))
+        #expect(await api.receivedRequests.map(\.signedTransaction) == ["saved.original.transaction"])
+        #expect(await store.finished == ["701"])
+        #expect(await store.productLoads == 0)
+        #expect(await credentials.loadSubscriptionVerification() == nil)
+    }
+
     @Test
     func `Confirmed rejection clears local verification without finishing a transaction Apple has not delivered`() async throws {
         let fixture = PremiumFixture()
@@ -296,11 +548,20 @@ private struct PremiumFixture {
     )
 
     var transaction: SharedStoreTransaction {
+        storeTransaction(environment: .production)
+    }
+
+    func storeTransaction(
+        id: String = "701",
+        environment: SharedStoreEnvironment,
+        signed: String = "verified.device.transaction"
+    ) -> SharedStoreTransaction {
         SharedStoreTransaction(
-            id: "701",
+            id: id,
             appAccountToken: accountToken,
             productID: "premium.monthly",
-            signedTransaction: "verified.device.transaction"
+            signedTransaction: signed,
+            environment: environment
         )
     }
 
@@ -331,6 +592,7 @@ private actor PremiumAPI: SharedSubscriptionAPI {
     private let currentStatus: SharedSubscriptionStatus
     private var acknowledgedStatus: SharedSubscriptionStatus
     private var failure: SharedAPIError?
+    private var statusReadFailure: Bool?
     private var acknowledgementID = "701"
     private var gate: PremiumGate?
     private(set) var receivedRequests: [VerifySharedSubscriptionRequest] = []
@@ -353,7 +615,19 @@ private actor PremiumAPI: SharedSubscriptionAPI {
         self.gate = gate
     }
 
-    func subscription(token: String) async throws -> SharedSubscriptionStatus { currentStatus }
+    func failStatusRead(cancelled: Bool) {
+        statusReadFailure = cancelled
+    }
+
+    func subscription(token: String) async throws -> SharedSubscriptionStatus {
+        if let statusReadFailure {
+            if statusReadFailure {
+                throw CancellationError()
+            }
+            throw SharedAPIError.transport
+        }
+        return currentStatus
+    }
 
     func verifySubscription(
         _ request: VerifySharedSubscriptionRequest,
@@ -372,6 +646,7 @@ private actor PremiumAPI: SharedSubscriptionAPI {
 }
 
 private actor PremiumStore: SharedSubscriptionStore {
+    nonisolated let expectedEnvironment: SharedStoreEnvironment
     private let transaction: SharedStoreTransaction
     private var result: SharedSubscriptionPurchaseResult
     private var restoredTransactions: [SharedStoreTransaction] = []
@@ -398,7 +673,8 @@ private actor PremiumStore: SharedSubscriptionStore {
     private(set) var restorations = 0
     private(set) var finished: [String] = []
 
-    init(transaction: SharedStoreTransaction) {
+    init(transaction: SharedStoreTransaction, expectedEnvironment: SharedStoreEnvironment = .production) {
+        self.expectedEnvironment = expectedEnvironment
         self.transaction = transaction
         result = .verified(transaction)
     }

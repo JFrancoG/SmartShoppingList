@@ -27,6 +27,24 @@
       },
       "shouldTranslate" : false
     },
+    "NSCameraUsageDescription" : {
+      "comment" : "Required by App Store processing for the shared capture APIs used by microphone dictation. The app does not request camera access.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Smart List uses the microphone to transcribe your shopping dictation. It does not take photos or record video."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Smart List usa el micrófono para transcribir lo que dictas para la compra. No toma fotos ni graba vídeo."
+          }
+        }
+      }
+    },
     "NSMicrophoneUsageDescription" : {
       "comment" : "System microphone permission prompt for shopping dictation.",
       "extractionState" : "manual",

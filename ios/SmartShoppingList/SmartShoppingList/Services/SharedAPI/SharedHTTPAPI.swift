@@ -1,4 +1,53 @@
 import Foundation
+import OSLog
+
+/// Diagnostics use fixed templates, never request URLs, queries, credentials or resource identifiers.
+struct SharedHTTPDiagnosticContext {
+    let method: String
+    let route: String
+
+    init(method: String, path: String) {
+        self.method = ["GET", "POST", "PATCH", "DELETE"].contains(method) ? method : "OTHER"
+        let segments = path.split(separator: "/", omittingEmptySubsequences: false)
+        route = Self.routes.first { template in
+            let expected = template.split(separator: "/", omittingEmptySubsequences: false)
+            return expected.count == segments.count && zip(expected, segments).allSatisfy { expected, actual in
+                expected.hasPrefix(":") || expected == actual
+            }
+        } ?? "<unrecognized>"
+    }
+
+    private static let routes = [
+        "v1/auth/challenges",
+        "v1/auth/apple",
+        "v1/me",
+        "v1/groups",
+        "v1/account/free-group",
+        "v1/account/subscription",
+        "v1/account/subscription/transactions",
+        "v1/session",
+        "v1/groups/:group/stores",
+        "v1/groups/:group/capacity",
+        "v1/groups/:group/stores/:store/archive",
+        "v1/groups/:group/stores/:store/restore",
+        "v1/groups/:group/members",
+        "v1/groups/:group/administration",
+        "v1/groups/:group/administration-transfers",
+        "v1/groups/:group/administration-transfers/:transfer/accept",
+        "v1/groups/:group/administration-transfers/:transfer/reject",
+        "v1/groups/:group/administration-transfers/:transfer/withdraw",
+        "v1/groups/:group/departure",
+        "v1/groups/:group/invitations",
+        "v1/groups/:group/invitations/:invitation",
+        "v1/invitations/:invitation/preview",
+        "v1/invitations/:invitation/accept",
+        "v1/groups/:group/item-batches",
+        "v1/groups/:group/items/:item",
+        "v1/groups/:group/items/:item/cancellation",
+        "v1/groups/:group/purchases",
+        "v1/groups/:group/stores/:store/items"
+    ]
+}
 
 protocol SharedHTTPTransport: Sendable {
     func response(to request: URLRequest) async throws -> (Data, HTTPURLResponse)
@@ -44,6 +93,7 @@ final class RejectSharedAPIRedirects: NSObject, URLSessionTaskDelegate {
 }
 
 actor SharedHTTPAPI: SharedShoppingAPI {
+    private static let logger = Logger(subsystem: "com.plusprojects.SmartShoppingList", category: "SharedHTTP")
     private let configuration: SharedAPIConfiguration
     private let transport: any SharedHTTPTransport
 
@@ -475,7 +525,7 @@ actor SharedHTTPAPI: SharedShoppingAPI {
             status: 200,
             query: query
         )
-        return try decode(Response.self, from: data)
+        return try decode(Response.self, from: data, diagnostic: SharedHTTPDiagnosticContext(method: "GET", path: path))
     }
 
     private func send<Body: Encodable & Sendable, Response: Decodable & Sendable>(
@@ -498,7 +548,11 @@ actor SharedHTTPAPI: SharedShoppingAPI {
             status: status,
             purchaseContext: purchaseContext
         )
-        return try decode(Response.self, from: data)
+        return try decode(
+            Response.self,
+            from: data,
+            diagnostic: SharedHTTPDiagnosticContext(method: method, path: path)
+        )
     }
 
     private func exchange(
@@ -537,21 +591,37 @@ actor SharedHTTPAPI: SharedShoppingAPI {
         }
         let data: Data
         let response: HTTPURLResponse
+        let diagnostic = SharedHTTPDiagnosticContext(method: method, path: path)
         do {
             (data, response) = try await transport.response(to: request)
         } catch is CancellationError {
+            Self.logger.info("method=\(diagnostic.method, privacy: .public) route=\(diagnostic.route, privacy: .public) stage=transport result=cancelled")
             throw CancellationError()
         } catch let error as URLError where error.code == .cancelled {
+            Self.logger.info("method=\(diagnostic.method, privacy: .public) route=\(diagnostic.route, privacy: .public) stage=transport url_error=\(error.code.rawValue)")
             throw CancellationError()
+        } catch let error as URLError {
+            Self.logger.error("method=\(diagnostic.method, privacy: .public) route=\(diagnostic.route, privacy: .public) stage=transport url_error=\(error.code.rawValue)")
+            throw SharedAPIError.transport
         } catch {
+            Self.logger.error("method=\(diagnostic.method, privacy: .public) route=\(diagnostic.route, privacy: .public) stage=transport result=unknown_failure")
             throw SharedAPIError.transport
         }
-        guard response.url == request.url, data.count <= 1_024 * 1_024 else { throw SharedAPIError.invalidResponse }
+        Self.logger.info("method=\(diagnostic.method, privacy: .public) route=\(diagnostic.route, privacy: .public) stage=http status=\(response.statusCode)")
+        guard response.url == request.url, data.count <= 1_024 * 1_024 else {
+            Self.logger.error("method=\(diagnostic.method, privacy: .public) route=\(diagnostic.route, privacy: .public) stage=http_validation reason=response_envelope")
+            throw SharedAPIError.invalidResponse
+        }
         guard response.statusCode == status else {
             let failure = try? SharedJSON.decoder().decode(ServerFailure.self, from: data)
             if failure?.code == "item_conflict", let purchaseContext {
                 guard response.statusCode == 409 else { throw SharedAPIError.invalidResponse }
-                try purchaseContext.validate(data)
+                do {
+                    try purchaseContext.validate(data)
+                } catch {
+                    Self.logger.error("method=\(diagnostic.method, privacy: .public) route=\(diagnostic.route, privacy: .public) stage=decoding reason=purchase_conflict")
+                    throw error
+                }
             }
             let retryAfter = response.value(forHTTPHeaderField: "Retry-After").flatMap(Int.init)
             throw SharedAPIError.server(
@@ -564,16 +634,22 @@ actor SharedHTTPAPI: SharedShoppingAPI {
         if status != 204 {
             let contentType = response.value(forHTTPHeaderField: "Content-Type")?.split(separator: ";").first
             guard contentType?.trimmingCharacters(in: .whitespaces).lowercased() == "application/json" else {
+                Self.logger.error("method=\(diagnostic.method, privacy: .public) route=\(diagnostic.route, privacy: .public) stage=http_validation reason=content_type")
                 throw SharedAPIError.invalidResponse
             }
         }
         return data
     }
 
-    private func decode<Response: Decodable>(_ type: Response.Type, from data: Data) throws -> Response {
+    private func decode<Response: Decodable>(
+        _ type: Response.Type,
+        from data: Data,
+        diagnostic: SharedHTTPDiagnosticContext
+    ) throws -> Response {
         do {
             return try SharedJSON.decoder().decode(type, from: data)
         } catch {
+            Self.logger.error("method=\(diagnostic.method, privacy: .public) route=\(diagnostic.route, privacy: .public) stage=decoding reason=response_payload")
             throw SharedAPIError.invalidResponse
         }
     }

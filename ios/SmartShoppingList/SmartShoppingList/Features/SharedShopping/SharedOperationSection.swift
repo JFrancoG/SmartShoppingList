@@ -4,10 +4,22 @@ struct SharedOperationSection: View {
     let viewModel: SharedShoppingViewModel
 
     var body: some View {
-        if viewModel.pendingOperation != nil || viewModel.isBusy {
+        if viewModel.pendingOperation != nil || viewModel.isBusy || viewModel.readFailure != nil {
             Section("Group status") {
                 if viewModel.isBusy {
                     ProgressView("Loading group…")
+                }
+                if let message = viewModel.readFailure {
+                    Text(message)
+                        .foregroundStyle(.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button("Refresh", systemImage: "arrow.clockwise") {
+                        Task {
+                            await viewModel.refresh()
+                        }
+                    }
+                    .buttonStyle(ShoppingActionButtonStyle())
+                    .disabled(!viewModel.hasLoaded || viewModel.isBusy || !viewModel.isConfigured)
                 }
                 if viewModel.pendingOperation != nil {
                     Text("A submission is awaiting confirmation. Its data is kept so you can retry without duplicating it.")

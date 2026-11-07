@@ -46,7 +46,7 @@ open ios/SmartShoppingList/SmartShoppingList.xcodeproj
 
 1. Selecciona el esquema **SmartShoppingList** y un iPhone, iPad o simulador compatible.
 2. En **Signing & Capabilities**, configura la firma para el App ID autorizado. El proyecto usa `com.plusprojects.SmartShoppingList`, Sign in with Apple y Associated Domains.
-3. Comprueba `SHARED_API_BASE_URL` y `SHARED_INVITATION_ORIGIN` en **Build Settings**, tanto en Debug como en Release. El checkout apunta al [servicio HTTPS del proyecto](https://smartshoppinglist-production.up.railway.app/hello).
+3. Debug usa el contexto Sandbox. Release verifica el entorno de la transacción de la app firmada por Apple antes de cargar sesión y datos: Sandbox en TestFlight y producción para evidencia Production. Si no puede verificarlo, ofrece reintentar sin elegir un servidor por defecto. Consulta el [diseño de entornos](docs/architecture/distribution-environments.md).
 4. Ejecuta la app. Abre **Ajustes**, inicia sesión con el botón nativo de Apple y crea un grupo o acepta una invitación. El acceso se prepara automáticamente; el botón se habilita cuando termina la conexión. Si falla, aparece **Reintentar**. La entrada manual y el borrador local permiten explorar la app sin un grupo.
 
 El acceso al servicio existente requiere firma y capacidades compatibles con su App ID registrado. Para desplegar una instancia propia, configura conjuntamente la identidad Apple del servidor, los identificadores de la app, ambos orígenes HTTPS, Associated Domains y el archivo AASA; cambiar solo el equipo de firma no configura la colaboración. La [guía del recorrido compartido](docs/setup/shared-shopping.md) detalla las variables y los secretos necesarios. Ninguna clave privada pertenece al cliente ni al repositorio.
@@ -146,7 +146,7 @@ open ios/SmartShoppingList/SmartShoppingList.xcodeproj
 
 1. Select the **SmartShoppingList** scheme and a compatible iPhone, iPad or simulator.
 2. In **Signing & Capabilities**, configure signing for the authorized App ID. The project uses `com.plusprojects.SmartShoppingList`, Sign in with Apple and Associated Domains.
-3. Check `SHARED_API_BASE_URL` and `SHARED_INVITATION_ORIGIN` in **Build Settings** for both Debug and Release. The checkout points to the [project's hosted HTTPS service](https://smartshoppinglist-production.up.railway.app/hello).
+3. Debug uses the Sandbox context. Release verifies the environment of Apple’s signed app transaction before loading sessions or data: Sandbox in TestFlight and production for Production evidence. If verification is unavailable, it offers a retry without selecting a default server. See the [environment design](docs/architecture/distribution-environments.md).
 4. Run the app. Open **Settings**, sign in with the native Apple button, then create a group or accept an invitation. Sign-in prepares automatically; the button becomes available when the connection is ready. If preparation fails, **Retry** appears. Manual entry and the local draft let you explore the app without a group.
 
 Access to the existing service requires signing and capabilities compatible with its registered App ID. For your own deployment, configure the server's Apple identity, app identifiers, both HTTPS origins, Associated Domains and AASA together; changing only the signing team does not configure collaboration. The [shared-flow setup guide](docs/setup/shared-shopping.md) details the required variables and secrets. Private keys never belong in the client or repository.

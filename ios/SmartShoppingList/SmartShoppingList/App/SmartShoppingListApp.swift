@@ -6,7 +6,7 @@ import UIKit
 struct SmartShoppingListApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @State private var iconController = AppIconController()
-    @State private var shopping: SharedShoppingViewModel?
+    @State private var bootstrap: AppBootstrap
 
     init() {
         // Scope the adaptive selection tint to tab bars; alerts use the global NativeAccent.
@@ -21,46 +21,39 @@ struct SmartShoppingListApp: App {
         }
         UITabBar.appearance().standardAppearance = tabAppearance
         UITabBar.appearance().scrollEdgeAppearance = tabAppearance
-        let shopping = Self.makeShopping()
-        _shopping = State(initialValue: shopping)
-        if let shopping {
-            AppDependencyManager.shared.add(dependency: shopping)
-            ShoppingAppShortcuts.updateAppShortcutParameters()
-        }
+        let bootstrap = AppBootstrap(makeShopping: Self.makeShopping)
+        _bootstrap = State(initialValue: bootstrap)
+        AppDependencyManager.shared.add(dependency: bootstrap)
+        ShoppingAppShortcuts.updateAppShortcutParameters()
     }
 
-    private static func makeShopping() -> SharedShoppingViewModel? {
+    private static func makeShopping(environment: AppEnvironment) throws -> SharedShoppingViewModel {
         #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("-shopping-notice-validation") {
-            return nil
-        }
         if ProcessInfo.processInfo.arguments.contains("-shopping-ai-validation")
             || ProcessInfo.processInfo.arguments.contains("-shopping-ai-empty-validation") {
-            return try? SharedPreviewSupport.aiValidationViewModel(
+            return try SharedPreviewSupport.aiValidationViewModel(
                 emptyInterpretation: ProcessInfo.processInfo.arguments.contains("-shopping-ai-empty-validation")
             )
         }
         if ProcessInfo.processInfo.arguments.contains("-shopping-ui-validation") {
-            guard let fixture = try? SharedPreviewFixture.sample() else { return nil }
+            let fixture = try SharedPreviewFixture.sample()
             return SharedPreviewSupport.viewModel(fixture: fixture, state: .group)
         }
         #endif
-        return SharedAppFactory.make()
+        return try SharedAppFactory.make(environment: environment)
     }
 
     var body: some Scene {
         WindowGroup {
             Group {
                 #if DEBUG
-                if let shopping {
-                    AppRootView(viewModel: shopping.draft, shared: shopping)
-                } else {
+                if ProcessInfo.processInfo.arguments.contains("-shopping-notice-validation") {
                     ShoppingNoticeValidationView()
+                } else {
+                    AppBootstrapView(bootstrap: bootstrap)
                 }
                 #else
-                if let shopping {
-                    AppRootView(viewModel: shopping.draft, shared: shopping)
-                }
+                AppBootstrapView(bootstrap: bootstrap)
                 #endif
             }
             .background {

@@ -49,6 +49,7 @@ enum SharedPreviewState: CaseIterable, Hashable {
     case premiumGrace
     case premiumVerification
     case signedOut
+    case offline
     case signInUnavailable
     case invitation
     case review
@@ -71,6 +72,7 @@ struct SharedPreviewPresentation {
     let session: SharedSession?
     let groups: [SharedGroup]
     let groupsAreVerified: Bool
+    let readFailure: LocalizedStringResource?
     let administration: SharedGroupAdministration?
     let groupMembers: [SharedGroupMember]
     let groupManagementState: GroupManagementLoadState
@@ -79,6 +81,7 @@ struct SharedPreviewPresentation {
     let invitationPreview: InvitationPreview?
     let pendingOperation: PendingSharedOperation?
     let stores: [SharedStore]
+    let storesAreVerified: Bool
     let archivedStores: [SharedStore]
     let groupCapacity: SharedGroupCapacity?
     let storeManagementState: GroupManagementLoadState
@@ -106,6 +109,7 @@ extension SharedPreviewPresentation {
         session = model.session
         groups = model.groups
         groupsAreVerified = model.groupsAreVerified
+        readFailure = model.readFailure
         administration = model.administration
         groupMembers = model.groupMembers
         groupManagementState = model.groupManagementState
@@ -114,6 +118,7 @@ extension SharedPreviewPresentation {
         invitationPreview = model.invitationPreview
         pendingOperation = model.pendingOperation
         stores = model.stores
+        storesAreVerified = model.storesAreVerified
         archivedStores = model.archivedStores
         groupCapacity = model.groupCapacity
         storeManagementState = model.storeManagementState
@@ -347,6 +352,7 @@ enum SharedPreviewSupport {
             signInUnavailable: state == .signInUnavailable,
             managementScenario: managementScenario
         )
+        api?.readsUnavailable = state == .offline
         if state == .multipleGroups || state == .premiumTransition || state == .premiumRestricted || isPremiumPreview {
             api?.premiumScenario = state == .multipleGroups ? nil : state
             api?.additionalGroups = [SharedGroup(
@@ -414,7 +420,8 @@ enum SharedPreviewSupport {
         case .groupManagementOwner, .groupTransferRecipient:
             await model.loadGroupManagement()
             model.selectedSuccessorID = PreviewSharedShoppingAPI.successorID
-        case .signedOut, .signInUnavailable, .invitation, .pending, .unconfigured, .premiumNoGroups, .premiumSingleGroup:
+        case .signedOut, .offline, .signInUnavailable, .invitation, .pending, .unconfigured,
+             .premiumNoGroups, .premiumSingleGroup:
             break
         }
     }
@@ -428,6 +435,7 @@ private final class PreviewSharedShoppingAPI: SharedShoppingAPI {
     let signInUnavailable: Bool
     var additionalGroups: [SharedGroup] = []
     var premiumScenario: SharedPreviewState? = nil
+    var readsUnavailable = false
     private var premiumIsActive: Bool {
         premiumScenario == .premiumActive || premiumScenario == .premiumRenewalOff || premiumScenario == .premiumGrace
     }
@@ -464,6 +472,7 @@ private final class PreviewSharedShoppingAPI: SharedShoppingAPI {
     func loginWithApple(_ request: AppleLoginRequest) async throws -> SharedSession { throw SharedAPIError.configuration }
     @MainActor
     func currentUser(token: String) async throws -> SharedUser {
+        guard !readsUnavailable else { throw SharedAPIError.transport }
         var result = user
         let count = (user.group == nil ? 0 : 1) + additionalGroups.count
         let maximum = premiumIsActive ? 5 : (premiumScenario != nil || additionalGroups.isEmpty ? 1 : 3)

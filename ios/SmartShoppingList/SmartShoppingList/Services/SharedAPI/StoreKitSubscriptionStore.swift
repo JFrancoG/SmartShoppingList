@@ -13,11 +13,26 @@ enum SharedSubscriptionPeriod: Equatable {
     case monthly, annual
 }
 
+enum SharedStoreEnvironment: String, Codable {
+    case production, sandbox, xcode, unknown
+
+    /// Local StoreKit testing and unknown environments cannot deliver purchases to either live backend.
+    func accepts(_ environment: Self) -> Bool {
+        switch self {
+        case .production, .sandbox:
+            return self == environment
+        case .xcode, .unknown:
+            return false
+        }
+    }
+}
+
 struct SharedStoreTransaction: Equatable {
     let id: String
     let appAccountToken: UUID?
     let productID: String
     let signedTransaction: String
+    let environment: SharedStoreEnvironment
 }
 
 enum SharedSubscriptionPurchaseResult {
@@ -26,10 +41,11 @@ enum SharedSubscriptionPurchaseResult {
 }
 
 enum SharedSubscriptionStoreError: Error {
-    case unavailable, unverified
+    case unavailable, unverified, incompatibleEnvironment, missingEnvironmentEvidence
 }
 
 protocol SharedSubscriptionStore: Sendable {
+    var expectedEnvironment: SharedStoreEnvironment { get }
     func products(ids: [String]) async throws -> [SharedSubscriptionProduct]
     func purchase(id: String, appAccountToken: UUID) async throws -> SharedSubscriptionPurchaseResult
     func restore() async throws
@@ -38,10 +54,19 @@ protocol SharedSubscriptionStore: Sendable {
     func finish(transactionID: String) async
 }
 
+extension SharedSubscriptionStore {
+    var expectedEnvironment: SharedStoreEnvironment { .production }
+}
+
 /// StoreKit verifies device transactions; only the server decides membership rights and quota limits.
 actor StoreKitSubscriptionStore: SharedSubscriptionStore {
+    nonisolated let expectedEnvironment: SharedStoreEnvironment
     private var loadedProducts: [String: Product] = [:]
     private var unfinished: [String: Transaction] = [:]
+
+    init(expectedEnvironment: SharedStoreEnvironment) {
+        self.expectedEnvironment = expectedEnvironment
+    }
 
     func products(ids: [String]) async throws -> [SharedSubscriptionProduct] {
         loadedProducts = [:]
@@ -82,7 +107,10 @@ actor StoreKitSubscriptionStore: SharedSubscriptionStore {
         guard let product = loadedProducts[id] else { throw SharedSubscriptionStoreError.unavailable }
         switch try await product.purchase(options: [.appAccountToken(appAccountToken)]) {
         case .success(let verification):
-            return .verified(try remember(verification))
+            guard let transaction = try remember(verification) else {
+                throw SharedSubscriptionStoreError.incompatibleEnvironment
+            }
+            return .verified(transaction)
         case .pending:
             return .pending
         case .userCancelled:
@@ -100,12 +128,14 @@ actor StoreKitSubscriptionStore: SharedSubscriptionStore {
     func transactions() async throws -> [SharedStoreTransaction] {
         var transactions: [String: SharedStoreTransaction] = [:]
         for await verification in Transaction.currentEntitlements {
-            let value = try remember(verification)
-            transactions[value.id] = value
+            if let value = try remember(verification) {
+                transactions[value.id] = value
+            }
         }
         for await verification in Transaction.unfinished {
-            let value = try remember(verification)
-            transactions[value.id] = value
+            if let value = try remember(verification) {
+                transactions[value.id] = value
+            }
         }
         return transactions.values.sorted { $0.id < $1.id }
     }
@@ -129,27 +159,41 @@ actor StoreKitSubscriptionStore: SharedSubscriptionStore {
         if unfinished[transactionID] == nil {
             // A Keychain verification may outlive this actor and its in-memory transaction cache.
             for await verification in Transaction.unfinished {
-                guard case .verified(let transaction) = verification else { continue }
+                guard case .verified(let transaction) = verification,
+                      expectedEnvironment.accepts(environment(of: transaction)) else { continue }
                 if String(transaction.id) == transactionID {
                     unfinished[transactionID] = transaction
                     break
                 }
             }
         }
-        guard let transaction = unfinished[transactionID] else { return }
+        guard let transaction = unfinished[transactionID],
+              expectedEnvironment.accepts(environment(of: transaction)) else { return }
         await transaction.finish()
         unfinished[transactionID] = nil
     }
 
-    private func remember(_ verification: VerificationResult<Transaction>) throws -> SharedStoreTransaction {
+    private func remember(_ verification: VerificationResult<Transaction>) throws -> SharedStoreTransaction? {
         guard case .verified(let transaction) = verification else { throw SharedSubscriptionStoreError.unverified }
+        let environment = environment(of: transaction)
+        guard expectedEnvironment.accepts(environment) else { return nil }
         let id = String(transaction.id)
         unfinished[id] = transaction
         return SharedStoreTransaction(
             id: id,
             appAccountToken: transaction.appAccountToken,
             productID: transaction.productID,
-            signedTransaction: verification.jwsRepresentation
+            signedTransaction: verification.jwsRepresentation,
+            environment: environment
         )
+    }
+
+    private func environment(of transaction: Transaction) -> SharedStoreEnvironment {
+        switch transaction.environment {
+        case .production: .production
+        case .sandbox: .sandbox
+        case .xcode: .xcode
+        default: .unknown
+        }
     }
 }

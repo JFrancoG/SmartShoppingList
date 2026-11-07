@@ -1,3 +1,4 @@
+import AppIntents
 import Foundation
 import Observation
 import Testing
@@ -6,6 +7,40 @@ import Testing
 @MainActor
 @Suite(.tags(.fast))
 struct DraftIntentTests {
+    @Test(.timeLimit(.minutes(1)), arguments: BootstrapIntentKind.allCases)
+    func `An app intent waits for bootstrap and exposes recovery without creating shopping data`(
+        kind: BootstrapIntentKind
+    ) async {
+        let resolution = SuspendedIntentEnvironment()
+        var factoryCalls = 0
+        let bootstrap = AppBootstrap(
+            resolve: {
+                try await resolution.resolve()
+            },
+            makeShopping: { _ in
+                factoryCalls += 1
+                throw AppBootstrapError.configuration
+            }
+        )
+        var completed = false
+        let execution = Task {
+            defer {
+                completed = true
+            }
+            await #expect(throws: AppIntentError.self) {
+                try await kind.perform(bootstrap: bootstrap)
+            }
+        }
+
+        await resolution.waitForResolution()
+        #expect(!completed)
+        #expect(factoryCalls == 0)
+        resolution.fail()
+        await execution.value
+        #expect(completed)
+        #expect(factoryCalls == 0)
+    }
+
     @Test(arguments: [false, true])
     func `An intent preserves existing work and accepts equal products with different request identities`(
         coldStart: Bool
@@ -304,6 +339,53 @@ enum InvalidIntentInput: CaseIterable {
 
 enum OccupiedIntentDraft: CaseIterable {
     case editor, dismissingEditor, interpreting, proposal
+}
+
+enum BootstrapIntentKind: CaseIterable {
+    case draft, shopping
+
+    @MainActor
+    func perform(bootstrap: AppBootstrap) async throws {
+        switch self {
+        case .draft:
+            let intent = AddDraftItemIntent(bootstrap: bootstrap)
+            intent.product = "leche"
+            intent.store = "Aldi"
+            _ = try await intent.perform()
+        case .shopping:
+            let intent = AddShoppingItemIntent(bootstrap: bootstrap)
+            intent.product = "leche"
+            intent.quantity = "1 litro"
+            intent.store = "Aldi"
+            _ = try await intent.perform()
+        }
+    }
+}
+
+@MainActor
+private final class SuspendedIntentEnvironment {
+    private var pending: CheckedContinuation<AppEnvironment, any Error>?
+    private var waiter: CheckedContinuation<Void, Never>?
+
+    func resolve() async throws -> AppEnvironment {
+        try await withCheckedThrowingContinuation { continuation in
+            pending = continuation
+            waiter?.resume()
+            waiter = nil
+        }
+    }
+
+    func waitForResolution() async {
+        guard pending == nil else { return }
+        await withCheckedContinuation {
+            waiter = $0
+        }
+    }
+
+    func fail() {
+        pending?.resume(throwing: AppBootstrapError.unavailable)
+        pending = nil
+    }
 }
 
 @MainActor

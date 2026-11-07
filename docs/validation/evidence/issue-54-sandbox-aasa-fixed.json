@@ -1,0 +1,70 @@
+{
+  "checked_at_utc": "2026-10-29T18:30:25.026857+00:00",
+  "environment": "Sandbox",
+  "deployment_id_reported_by_parent": "66f4ac61-564a-40ed-90d9-a2be53e4f789",
+  "source_commit": "e3d47c66ac57349cedfb518d3e9491e033d90387",
+  "checks": [
+    {
+      "method": "GET",
+      "url": "https://smartshoppinglistsandbox-sandbox.up.railway.app/hello",
+      "status": 200,
+      "headers": {
+        "content-type": "text/plain; charset=utf-8",
+        "date": "Thu, 29 Oct 2026 18:30:25 GMT",
+        "server": "railway-hikari"
+      },
+      "body": "Hello, world!",
+      "curl_exit": 0,
+      "duration_seconds": 0.346,
+      "transport_error": null
+    },
+    {
+      "method": "GET",
+      "url": "https://smartshoppinglistsandbox-sandbox.up.railway.app/.well-known/apple-app-site-association",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=3600",
+        "content-type": "application/json; charset=utf-8",
+        "date": "Thu, 29 Oct 2026 18:30:25 GMT",
+        "server": "railway-hikari"
+      },
+      "body": {
+        "applinks": {
+          "details": [
+            {
+              "appIDs": [
+                "NWN8JUE438.com.plusprojects.SmartShoppingList"
+              ],
+              "components": [
+                {
+                  "/": "/invite/*"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "curl_exit": 0,
+      "duration_seconds": 0.346,
+      "transport_error": null
+    },
+    {
+      "method": "GET",
+      "url": "https://smartshoppinglistsandbox-sandbox.up.railway.app/todos",
+      "status": 404,
+      "headers": {
+        "content-type": "application/json; charset=utf-8",
+        "date": "Thu, 29 Oct 2026 18:30:24 GMT",
+        "server": "railway-hikari"
+      },
+      "body": {
+        "code": "not_found",
+        "message": "Recurso no encontrado.",
+        "requestId": "2d899ba9-5394-480c-96ac-5635bd436e7b"
+      },
+      "curl_exit": 0,
+      "duration_seconds": 0.312,
+      "transport_error": null
+    }
+  ]
+}

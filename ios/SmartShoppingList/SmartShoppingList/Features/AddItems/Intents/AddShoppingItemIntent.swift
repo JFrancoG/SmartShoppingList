@@ -19,7 +19,7 @@ struct AddShoppingItemIntent: AppIntent {
     @Parameter(title: "Store", requestValueDialog: "At which store?")
     var store: String
 
-    @Dependency private var shopping: SharedShoppingViewModel
+    @Dependency private var bootstrap: AppBootstrap
 
     // The pending server operation and local receipt keep the same identity for this request.
     private let requestID = UUID()
@@ -32,6 +32,8 @@ struct AddShoppingItemIntent: AppIntent {
     func perform() async throws -> some IntentResult & ProvidesDialog {
         let outcome: ShoppingIntentOutcome
         do {
+            let shopping = try await bootstrap.context()
+            try Task.checkCancellation()
             outcome = try await shopping.addShoppingItemFromIntent(
                 ShoppingDraftItem(
                     id: requestID,
@@ -42,6 +44,11 @@ struct AddShoppingItemIntent: AppIntent {
             )
         } catch is CancellationError {
             throw CancellationError()
+        } catch is AppBootstrapError {
+            try Task.checkCancellation()
+            var message: LocalizedStringResource = "Open the app to finish preparing access, then try again."
+            message.locale = systemContext.locale
+            throw AppIntentError(description: message)
         } catch {
             var message: LocalizedStringResource
             if error is ShoppingIntentError {
@@ -64,5 +71,12 @@ struct AddShoppingItemIntent: AppIntent {
         }
         message.locale = systemContext.locale
         return .result(dialog: IntentDialog(message))
+    }
+}
+
+extension AddShoppingItemIntent {
+    @MainActor
+    init(bootstrap: AppBootstrap) {
+        self.bootstrap = bootstrap
     }
 }

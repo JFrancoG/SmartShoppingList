@@ -1,6 +1,208 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+  "Your groups haven’t been checked yet. Connect and refresh to see your shopping lists.": {
+    "comment": "Group read and invitation recovery feedback; does not imply a pending write.",
+    "extractionState": "manual",
+    "localizations": {
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Todavía no se han comprobado tus grupos. Conéctate y actualiza para ver tus listas de la compra."
+        }
+      }
+    }
+  },
+  "Could not refresh your shared data. Your saved access and draft are kept. Check your connection and try again.": {
+    "comment": "Group read and invitation recovery feedback; does not imply a pending write.",
+    "extractionState": "manual",
+    "localizations": {
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "No se han podido actualizar tus datos compartidos. Se conservan tu acceso guardado y el borrador. Comprueba la conexión y vuelve a intentarlo."
+        }
+      }
+    }
+  },
+  "Checking invitation…": {
+    "comment": "Group read and invitation recovery feedback; does not imply a pending write.",
+    "extractionState": "manual",
+    "localizations": {
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Consultando la invitación…"
+        }
+      }
+    }
+  },
+  "Refresh to check the invitation before accepting. Your saved link is kept.": {
+    "comment": "Group read and invitation recovery feedback; does not imply a pending write.",
+    "extractionState": "manual",
+    "localizations": {
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Actualiza para consultar la invitación antes de aceptarla. Se conserva el enlace guardado."
+        }
+      }
+    }
+  },
+  "Test data": {
+    "extractionState": "manual",
+    "localizations": {
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Datos de prueba"
+        }
+      }
+    }
+  },
+  "Learn how this version keeps test data separate.": {
+    "extractionState": "manual",
+    "localizations": {
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Explica cómo esta versión mantiene separados los datos de prueba."
+        }
+      }
+    }
+  },
+  "Test data. Lists and purchases stay separate from the App Store version.": {
+    "comment": "Distribution environment preparation and isolation.",
+    "extractionState": "manual",
+    "localizations": {
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Datos de prueba. Las listas y compras se mantienen separadas de la versión del App Store."
+        }
+      }
+    }
+  },
+  "Unable to prepare the app": {
+    "comment": "Distribution environment preparation and isolation.",
+    "extractionState": "manual",
+    "localizations": {
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "No se ha podido preparar la app"
+        }
+      }
+    }
+  },
+  "We could not verify this installation. Check your connection and try again. Your saved data is preserved.": {
+    "comment": "Distribution environment preparation and isolation.",
+    "extractionState": "manual",
+    "localizations": {
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "No se ha podido verificar esta instalación. Comprueba tu conexión y vuelve a intentarlo. Tus datos guardados se conservan."
+        }
+      }
+    }
+  },
+  "Preparing the app…": {
+    "comment": "Distribution environment preparation and isolation.",
+    "extractionState": "manual",
+    "localizations": {
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Preparando la app…"
+        }
+      }
+    }
+  },
+  "Verifying this installation before opening your account and lists.": {
+    "comment": "Distribution environment preparation and isolation.",
+    "extractionState": "manual",
+    "localizations": {
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Verificando esta instalación antes de abrir tu cuenta y tus listas."
+        }
+      }
+    }
+  },
+  "Open the app to finish preparing access, then try again.": {
+    "comment": "Distribution environment preparation and isolation.",
+    "extractionState": "manual",
+    "localizations": {
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Abre la app para terminar de preparar el acceso y vuelve a intentarlo."
+        }
+      }
+    }
+  },
+  "This invitation belongs to the other version of the app. Open test invitations in TestFlight and real invitations in the App Store version.": {
+    "comment": "Distribution environment preparation and isolation.",
+    "extractionState": "manual",
+    "localizations": {
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Esta invitación pertenece a la otra versión de la app. Abre las invitaciones de prueba en TestFlight y las reales en la versión del App Store."
+        }
+      }
+    }
+  },
+  "Try again": {
+    "comment": "Distribution environment preparation and isolation.",
+    "extractionState": "manual",
+    "localizations": {
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Reintentar"
+        }
+      }
+    }
+  },
+  "Invitation": {
+    "comment": "Distribution environment preparation and isolation.",
+    "extractionState": "manual",
+    "localizations": {
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Invitación"
+        }
+      }
+    }
+  },
+  "This purchase belongs to a different test or App Store environment. Open the version that started it; your purchase is kept.": {
+    "comment": "Distribution environment preparation and isolation.",
+    "extractionState": "manual",
+    "localizations": {
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Esta compra pertenece a otro entorno de pruebas o del App Store. Abre la versión en la que se inició; la compra se conserva."
+        }
+      }
+    }
+  },
+  "Your saved purchase is kept, but its environment could not be verified on this device. Refresh to try again.": {
+    "comment": "Distribution environment preparation and isolation.",
+    "extractionState": "manual",
+    "localizations": {
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Tu compra guardada se conserva, pero no se ha podido verificar su entorno en este dispositivo. Actualiza para volver a intentarlo."
+        }
+      }
+    }
+  },
     "During the transition you can use your current groups, but cannot add another. Your groups and draft are kept.": {
       "comment": "Shown when server admission is blocked during the seven-day group transition and the account already has a group.",
       "extractionState": "manual",

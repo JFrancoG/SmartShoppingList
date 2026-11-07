@@ -2,6 +2,17 @@
 
 La unidad [#39](https://github.com/JFrancoG/SmartShoppingList/issues/39) prepara StoreKit, verificación en servidor y vuelta al plan gratuito conforme al [contrato 0.5](../contracts/premium-subscriptions.md). Esta guía no acredita productos creados, credenciales disponibles, sandbox completado, notificaciones recibidas ni cobros activados. Esos pasos externos se registran con evidencia al realizarlos.
 
+La [conciliación final de #39](../validation/issue-39-premium-subscriptions.md) acredita el alcance Sandbox
+cerrado el 29 de octubre. La preparación de producción corresponde a [#54](https://github.com/JFrancoG/SmartShoppingList/issues/54).
+El [diseño de entornos de distribución](../architecture/distribution-environments.md) está aprobado e
+integrado localmente: Release resuelve evidencia verificada de `AppTransaction` antes de componer sesión,
+datos y compras. Sandbox y Production conservan sus bases y namespaces independientes. La validación
+distribuida de **1.0 (4)** acredita compra/restauración y notificaciones V2 de compra/renovación
+Sandbox en el iPhone 16; también controles, dictado/Siri e invitación/sincronización con el iPhone 11.
+La [evidencia de #54](../validation/issue-54-distribution-environments.md) conserva fechas y límites.
+El siguiente build interno comprueba las correcciones de #49. App Review y el recorrido App Store
+siguen pendientes; no se amplían las guardas del servidor.
+
 ## Productos y entorno Apple
 
 Crear una única oferta personal premium con dos productos de suscripción autorrenovable en **el mismo grupo de suscripciones de Apple**: mensual y anual, con el mismo nivel de servicio 5/10/100. Este identificador de Apple es distinto del UUID de un grupo de compra de Smart List. El servidor exige que las transacciones y el estado actual correspondan al grupo de suscripciones configurado. StoreKit debe devolver ambos productos, sus periodos esperados y pertenencia al mismo grupo antes de ofrecer la compra. Los IDs reales, precios, localizaciones, disponibilidad y aprobación de Apple se concretan antes de distribuir. No reutilizar los IDs `.example` de los ejemplos HTTP.
@@ -90,16 +101,19 @@ La integración distingue renovación cancelada de caducidad, gracia acreditada 
 ## Instalación iOS para el catálogo real de Sandbox
 
 El target conserva `com.plusprojects.SmartShoppingList` y el equipo de firma de Apple. **Debug** usa
-`https://smartshoppinglistsandbox-sandbox.up.railway.app` para API e invitaciones y se muestra como **Smart List Sandbox**.
-**Release** conserva el origen de producción y el nombre **Smart List**. `SHARED_ASSOCIATED_DOMAIN` selecciona el dominio
-correspondiente en los entitlements. Los valores pertenecen al artefacto compilado: abrir desde el icono o mediante Siri
-no depende de variables temporales de ejecución de Xcode.
+`https://smartshoppinglistsandbox-sandbox.up.railway.app` para API e invitaciones. El nombre visible es **Smart List** también en Debug; el aviso dentro de la app
+identifica los datos de prueba.
+**Release** conserva el nombre **Smart List** y selecciona Sandbox o Production únicamente después de verificar
+la transacción de la app. `AppEnvironment` define ambos pares de orígenes; la fábrica no lee el par único antiguo de
+`Info.plist`. Los entitlements incluyen ambos dominios. Abrir desde el icono o mediante un App Intent comparte la
+misma resolución; los fallos requieren recuperación y no eligen un servidor por defecto.
 
 La fábrica separa sesión, ambas invitaciones, operación pendiente, verificación premium y borrador según los orígenes
 normalizados de API e invitaciones. Producción conserva su servicio Keychain y archivo anterior sin migrarlos ni borrarlos.
-Cada origen distinto utiliza un namespace estable; una configuración ausente usa uno separado y no conecta como respaldo a
-producción. Mantener el mismo bundle ID sustituye el binario instalado; no permite conservar dos apps simultáneamente.
-No eliminar la aplicación para cambiar de entorno: reinstalar una compilación Release recupera sus datos locales anteriores.
+Cada origen distinto utiliza un namespace estable. Durante una resolución ausente o fallida no se compone ningún
+almacén ni se conecta como respaldo a producción. Mantener el mismo bundle ID sustituye el binario instalado; no permite conservar dos apps simultáneamente.
+No eliminar la aplicación para cambiar de entorno: sustituir el binario conserva cada namespace. Una Release con
+evidencia Sandbox recupera sus datos de prueba; una descarga App Store con evidencia Production recupera los reales.
 StoreKit mantiene su propia cuenta e historial de Apple; el namespace local no reinicia esos datos.
 
 Para comprobar primero identidad y catálogo:
