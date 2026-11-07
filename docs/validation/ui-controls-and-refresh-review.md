@@ -2,7 +2,7 @@
 
 Seguimiento: [issue #49](https://github.com/JFrancoG/SmartShoppingList/issues/49).
 
-## Estado vigente — 7 de noviembre: correcciones de #49 para el siguiente build
+## Estado vigente — 7 de noviembre: ronda física aceptada; pendiente integración
 
 El propietario autoriza corregir los tres hallazgos antes de preparar el siguiente build. Se trabaja
 en `codex/issue-54-production-readiness`, partiendo de `3dd5237` y conservando los cambios de distribución
@@ -57,18 +57,26 @@ Evidencia local de ejecución:
 Log de compilación:
 `/var/folders/wt/r327qtw12_s5tbbcnx9dzqv80000gn/T/ActionArtifacts/default/BuildProject/BuildProject-Log-20261107-131757.txt`.
 
-### Próxima aceptación física, sólo en el nuevo build
+### Aceptación física de 1.0 (5)
 
-1. Con una invitación pendiente de prueba, cambiar grupo activo y comprobar que vuelve su vista
-   previa sin Actualizar; no repetir la incorporación y sincronización ya aceptadas para probar esto.
-2. Arrancar sin red: no sugerir crear/unirse por el fallo de consulta; recuperar Internet y comprobar
-   la misma cuenta, grupo, tienda y productos, con el borrador conservado.
-3. Volver varias veces desde segundo plano en Añadir, Comprar y Premium: sin modal de envío incierto
-   por una lectura. Con un fallo de red, mostrar recuperación inline; después, cargar correctamente.
-   Comprobar los controles modificados con texto grande y VoiceOver sin repetir la matriz anterior.
+El propietario informa de tres recorridos correctos: retornos conectados en Añadir/Comprar/Premium
+del iPhone 16 sin el aviso y con Test1/productos conservados; arranque sin red del iPhone 11 con
+grupos sin comprobar y recuperación de Test1/Aldi/productos al conectar; vista previa de Test1
+recuperada automáticamente al cambiar Test1 → B en el iPhone 11, sin Actualizar ni aceptar/descartar.
+La última comprobación en Comprar del iPhone 11 también pasa: VoiceOver lee el error y Actualizar,
+texto máximo sin solapamientos; al recuperar Internet desaparece el error y vuelven los mismos
+productos sin avisos. No se atribuye activación manual de Actualizar con VoiceOver ni conservación
+física del borrador, que no se han informado.
+La ronda acotada de los tres arreglos queda completada; no repetir esos recorridos.
+[Detalle y límites de la evidencia física](testflight-1.0-5.md#aceptación-física-de-esta-ronda).
 
-**#49 continúa abierta** hasta esa confirmación física y su entrega en main. El siguiente build se
-asocia al commit publicado de la rama; no se repiten las compras ni los recorridos ya aceptados.
+La última comprobación no exige crear un borrador: Añadir a mano con acceso completo publica
+directamente, como informa el propietario y confirma la fuente. Se corrige la instrucción de
+prueba, sin registrar ese comportamiento como fallo ni modificar la app.
+
+**#49 continúa abierta hasta su entrega en main**, pendiente de PR, CI e integración autorizada.
+El build distribuido conserva el código validado de `464118d`; este registro sólo modifica
+documentación y reutiliza las pruebas previas, sin atribuir cobertura global de accesibilidad.
 
 ## Antecedente — 30 de octubre: aviso de envío al volver a primer plano
 

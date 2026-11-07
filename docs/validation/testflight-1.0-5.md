@@ -97,34 +97,64 @@ para estas tres regresiones en el campo de Inglés (EE. UU.), único idioma habi
 - [Build 1.0 (5)](https://appstoreconnect.apple.com/teams/69a6de96-c6fd-47e3-e053-5b8c7c11a4d1/apps/6814161606/testflight/ios/d3950308-8434-4ba4-9d4b-fe5549269864).
 - [Disponibilidad comprobada en core](evidence/issue-54-commercial-build-5-testflight-core.jpg).
 
-La disponibilidad no acredita la instalación de build 5 en los teléfonos ni su aceptación física.
+La disponibilidad por sí sola no acredita instalación ni aceptación física; los resultados informados
+por el propietario se recogen a continuación.
 
-## Aceptación física pendiente
+## Aceptación física de esta ronda
 
-Tras instalar el build nuevo, comprobar sólo los tres recorridos de
-[regresión de #49](ui-controls-and-refresh-review.md#próxima-aceptación-física-sólo-en-el-nuevo-build).
-No repetir compra, salida del grupo A·2, incorporación a Test1 ni sincronización ya aceptadas.
-Las issues #49/#54 permanecen abiertas; esta subida no acredita su aceptación física, App Review
-ni el recorrido de producción. No se fusiona la rama ni se despliega Railway.
+### Retornos desde segundo plano — iPhone 16
 
-### Guion acotado para los dos iPhone
+En la ronda solicitada para 1.0 (5), el propietario confirma que ha salido a la pantalla de inicio
+del iPhone y vuelto a Smart List desde **Añadir, Comprar y Premium**: **no aparece el aviso** y
+**Test1 y sus productos se conservan**. Se acepta este recorrido visible con conexión; no hace
+falta repetirlo. La instalación/número de build no se ha inspeccionado independientemente.
 
-Actualizar ambos a 1.0 (5) en TestFlight, abrir desde el icono y conservar las cuentas y Datos de prueba.
-No comprar ni restaurar como requisito de estas regresiones.
+Este resultado no mide el número de peticiones ni, por sí solo, acepta fallos de lectura sin conexión,
+arranque offline/recuperación, vista previa de invitación tras cambiar grupo o accesibilidad de
+los estados modificados. El ensayo offline posterior se recoge a continuación.
 
-1. En el iPhone 16, con conexión, ir a Inicio y volver desde Añadir, Comprar y Premium, esperando cada
-   carga. No debe aparecer la alerta de envío incierto por una consulta. Si aparece, registrar texto,
-   pantalla y hora; la ausencia de duplicación HTTP se comprueba con tests/trazas, no sólo por la UI.
-2. En el iPhone 11, con Test1 activo y el borrador anotado, cerrar la app, desactivar la red y abrirla.
-   Si llega a Añadir/Comprar, debe mostrar grupos sin verificar y recuperación, sin pedir crear/unirse
-   ni mostrar un destino vacío. Si AppTransaction impide completar el arranque, anotar ese estado:
-   no acredita todavía la presentación offline de grupos. Recuperar red y primer plano (o Reintentar
-   en el arranque); comprobar Test1, Aldi/productos y borrador conservados.
-3. En el iPhone 11, abrir el enlace original de Test1 que esa misma cuenta ya aceptó; el servidor permite
-   su vista previa mientras conserve la pertenencia, sin crear/aceptar otra invitación. Con el enlace
-   pendiente visible, cambiar Test1 → B y esperar: Test1 debe reaparecer en la vista previa sin Actualizar.
-   No pulsar Aceptar. Si no conserva ese enlace, su administrador puede generar uno nuevo de Test1;
-   no hace falta abandonar ni crear grupos. No confundir cupo personal con el resultado de la vista previa.
+### Arranque sin conexión y recuperación — iPhone 11
+
+El propietario confirma que, sin conexión, la app indica que **todavía no se han comprobado los
+grupos**. Al recuperar Internet vuelven **Test1**, **Aldi al seleccionarlo** y **los productos**,
+**sin avisos**. Se acepta la presentación de grupos sin verificar y la recuperación observada;
+no hace falta repetir este recorrido. No se informa del contenido del borrador ni de VoiceOver
+en este estado, por lo que no se amplía esa evidencia.
+
+### Vista previa al cambiar grupo — iPhone 11
+
+Tras abrir un enlace de Test1 y ver **Invitación pendiente → Test1**, el propietario confirma
+que cambia el grupo activo **Test1 → B** y la invitación vuelve a mostrar **Test1 automáticamente**,
+**sin pulsar Actualizar, aceptar ni descartar**. Se acepta la reconsulta de la vista previa después
+del cambio de grupo. No se repite la incorporación ni se cambia la pertenencia del usuario.
+
+### Error de lectura, accesibilidad y recuperación — iPhone 11
+
+En Comprar, el propietario confirma que **VoiceOver lee el error y el botón Actualizar** y que
+con **texto al máximo no se tapa nada**. Al recuperar Internet, **desaparece el error y vuelven
+los mismos productos, sin avisos**. Queda aceptado el feedback de lectura observado, su legibilidad
+y la recuperación. No se infiere que haya activado Actualizar con VoiceOver: sólo se informó de su
+lectura, y la recuperación puede producirse automáticamente al volver a primer plano.
+
+Los tres recorridos funcionales y esta comprobación accesible completan la ronda acotada de #49
+en los iPhone. No se solicitan más repeticiones de estas pruebas ni de compra, salida del grupo A·2,
+incorporación a Test1 o sincronización ya aceptadas. No equivale a una auditoría global de accesibilidad.
+
+### Corrección del guion y límites
+
+Corrección del guion: el propietario señala que Añadir a mano incorpora el producto directamente.
+La fuente lo confirma: DraftItemEditor llama a addManualItem cuando añade directamente al grupo;
+la petición de preparar un borrador con ese recorrido era incorrecta, no un defecto observado de
+la app. No se pide fabricar un borrador, cambiar acceso o repetir incorporaciones para este ensayo.
+
+No se acredita conservación física de un borrador en esta ronda ni medición física de peticiones HTTP.
+Se conservan las pruebas automatizadas previas de persistencia/coordinación y sus límites; el código
+del Archive no cambia durante esta aceptación y no se repiten suites por actualizar documentación.
+
+Siguiente gate: revisión mediante PR, CI e integración autorizada en main. #49 permanece abierta
+hasta su entrega; #54 conserva requisitos de publicación dentro de la app, preparación de producción,
+App Store Connect, App Review y sustitución por App Store. Esta ronda no acredita esos recorridos.
+No se fusiona la rama ni se despliega Railway al registrar la aceptación.
 
 ## Resumen del alcance publicado en «Qué se debe probar»
 

@@ -3,7 +3,14 @@
 Fecha: 29 de octubre–7 de noviembre de 2026. [Issue #54](https://github.com/JFrancoG/SmartShoppingList/issues/54).
 Rama local: `codex/issue-54-production-readiness`; base `e3d47c66ac57349cedfb518d3e9491e033d90387`.
 
-**Estado actual:** el ensayo físico de la app comercial **1.0 (3)** detecta que el aviso Sandbox oculta
+**Estado actual — 7/11:** **1.0 (5)** está distribuida a los dos testers de **core**, mediante
+TestFlight Internal Only. El propietario completa la ronda física de los tres arreglos de #49:
+retorno a primer plano sin aviso, arranque offline/recuperación, vista previa de invitación tras
+cambiar grupo y lectura/legibilidad del error y Actualizar con VoiceOver y texto máximo. Se conservan
+los datos observados. [Entrega y aceptación acotada](testflight-1.0-5.md). Quedan PR/CI/integración
+y los requisitos posteriores de publicación y producción de #54; no se despliega producción.
+
+**Antecedentes de los builds 3 y 4:** el ensayo físico de la app comercial **1.0 (3)** detecta que el aviso Sandbox oculta
 Ajustes. La corrección está validada visual e interactivamente en Simulator; **1.0 (4)** tiene Archive
 validado, está procesada y **En pruebas** en TestFlight Internal Only para **core**, con Jesús Franco como
 tester. El ensayo posterior muestra Gratis incluso después de restaurar con autenticación Sandbox.
@@ -48,9 +55,9 @@ El diagnóstico **1.0 (1)** obtuvo **Verificada / sandbox** en el iPhone 16 a la
 Integration pasan; queda completar el recorrido comercial físico, App Review y Production.
 Los apartados siguientes conservan la secuencia y los límites de cada comprobación.
 
-Actualización del **7/11**: [corrección local y guion acotado de #49](ui-controls-and-refresh-review.md)
+Actualización del **7/11**: [corrección y aceptación acotada de #49](ui-controls-and-refresh-review.md)
 para invitaciones al cambiar grupo, presentación sin conexión y coordinación de refrescos/avisos.
-La consolidación posterior autorizada de #54/#49, commit/push y preparación del nuevo Archive se
+La consolidación posterior autorizada de #54/#49, commit/push, distribución y aceptación del Archive se
 registra en [TestFlight 1.0 (5)](testflight-1.0-5.md). Las aceptaciones de 1.0 (4) se conservan como
 evidencia histórica; no se atribuyen a los cambios nuevos.
 
