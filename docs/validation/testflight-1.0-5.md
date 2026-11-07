@@ -59,9 +59,11 @@ Creado con **Product → Archive**, esquema SmartShoppingList y configuración R
 - Log **del Archive**: `~/Library/Developer/Xcode/DerivedData/SmartShoppingList-cnedcbvxlssppmejeutmxomopscm/Logs/Build/48DD0105-4CCD-427A-873C-5B70FC2FA6BD.xcactivitylog`.
   Finaliza a las 13:46:16 CET: configuración Release, optimización `-O`, sin `-D DEBUG`, 0 errores
   y 0 warnings. El GetBuildLog del servicio corresponde a Fast y no se usa como prueba del Archive.
-- Composición: 101 fuentes (97 comerciales y 4 generadas), ninguna de DistributionDiagnostics;
-  sin símbolos del diagnóstico, fixtures ni reembolso Debug en el ejecutable. Los ficheros Debug
-  incluidos en el listado quedan excluidos por compilación condicional.
+- Composición: 101 fuentes (97 comerciales y 4 generadas), ninguna de DistributionDiagnostics.
+  Los puntos de entrada a fixtures y reembolso de pruebas están protegidos por `#if DEBUG`, excluido
+  por los flags Release comprobados. El ejecutable está stripped: la ausencia de símbolos por sí sola
+  no prueba esa exclusión. Conserva literales de argumentos usados por AppIconController para inhibir
+  el cambio de icono; no son puntos de entrada a fixtures.
 - UUID arm64 de app y dSYM coincidente: `22F38F7F-82C2-38A4-8699-7AA11B6B8A83`.
 - **Validate App** de Xcode termina correctamente a las **13:48 CET**: “SmartShoppingList 1.0 (5)
   validated — Your app successfully passed all validation checks.” Organizer conserva Validation succeeded.

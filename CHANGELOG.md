@@ -39,6 +39,8 @@
 
 ### Documentation
 
+- 2026-11-07 | 📝 docs(release): clarify Release audit evidence
+
 - 2026-11-07 | 📝 docs(release): record validated internal build 5
 
 - 2026-11-04 | 📝 docs(ci): clarify validation by change
