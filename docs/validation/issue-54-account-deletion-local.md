@@ -42,6 +42,8 @@ Durante la validación se corrigieron un acceso incorrecto a índices de `ArrayS
 
 ## Pendiente antes de activar
 
+El [ensayo Sandbox/TestFlight](issue-54-account-deletion-rehearsal.md) concreta recursos, identidades, copia, distribución, pasos y criterios de parada. Está preparado, no ejecutado.
+
 1. **Ensayo en Sandbox y TestFlight:** configurar App Attest/App Store y firma del nuevo build; comprobar con Apple real compra → eliminación → nueva cuenta → Restaurar compras → renovación V2. Validar otro comprador, otro dispositivo, cadena todavía vinculada, caducidad y respuesta incierta. La atestación usa producción en TestFlight aunque las compras sean Sandbox.
 2. **Dispositivos físicos:** recorrer eliminación, cancelación, red perdida, segundo plano y limpieza del otro iPhone; VoiceOver y texto máximo. Las previews y pruebas de lógica no sustituyen esa interacción.
 3. **Infraestructura:** ensayo de migración con datos representativos, copia y restauración; reaplicar supresiones antes de abrir una restauración. Comprobar retenciones, seguimiento de trabajos demorados y conciliación de recuperaciones en cuarentena. Coordinar servidor/cliente 0.6 sin escritores antiguos.

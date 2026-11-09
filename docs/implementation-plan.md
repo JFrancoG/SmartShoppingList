@@ -45,7 +45,9 @@ Eliminar cuenta y mis datos es independiente de salir de un grupo y cerrar sesi�
 La activación requiere cliente compatible, validación Apple/TestFlight, copia/restauración,
 retenciones verificadas y textos públicos completos; esta implementación no despliega servicios.
 La [validación local de eliminación](validation/issue-54-account-deletion-local.md) separa las pruebas
-automatizadas de los ensayos con Apple y dispositivos pendientes.
+automatizadas de los ensayos con Apple y dispositivos pendientes. El
+[procedimiento de ensayo](validation/issue-54-account-deletion-rehearsal.md) prepara Sandbox y
+TestFlight Internal Only con identidades dedicadas; no ejecuta borrados ni cambios en producción.
 El [diseño de entornos de distribución](architecture/distribution-environments.md) está aprobado para
 implementación local: arranque antes de sesión/datos, App Intents, compras e invitaciones separados.
 La [validación de #54](validation/issue-54-distribution-environments.md) registra 441 ejecuciones Fast y

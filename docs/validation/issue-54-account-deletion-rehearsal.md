@@ -1,0 +1,127 @@
+# #54 — Ensayo de eliminación de cuenta y recuperación de Premium
+
+**Preparado el 9 de noviembre de 2026. No ejecutado.** Este procedimiento prepara un ensayo en el backend Sandbox y un build comercial distribuido mediante **TestFlight Internal Only** al grupo `core`. No acredita despliegue, Archive, carga, instalación, compra, eliminación ni recuperación real. El número de build se elegirá después de consultar App Store Connect; el valor de ejemplo de `APP_ATTEST_MIN_BUILD` no reserva un número.
+
+Base técnica: [validación local](issue-54-account-deletion-local.md), [diseño de eliminación](../architecture/account-deletion.md), [entornos de distribución](../architecture/distribution-environments.md), [servidor](../../server/README.md) y [configuración de compras](../setup/premium-subscriptions.md). La evidencia local y la de builds anteriores no sustituyen este ensayo.
+
+## Alcance y condiciones de entrada
+
+El ensayo no modifica la API, PostgreSQL, variables, despliegue, DNS, URL de notificaciones ni datos de producción. Tampoco utiliza cuentas reales para demostrar un efecto de revocación sobre producción. La preparación de este documento no ejecuta ninguna acción externa. Antes de la ventana se identificarán el commit y los recursos concretos incluidos en el ensayo autorizado.
+
+| Condición | Evidencia necesaria antes de continuar | Estado |
+|---|---|---|
+| Revisión entregada | SHA de PR revisada y CI correcta sobre ese SHA; relación entre SHA de servidor y Archive. | Pendiente |
+| Recursos Sandbox | Proyecto/entorno, API, PostgreSQL y volumen exactos, revisión desplegada y destino de sus referencias. Confirmar que cualquier despliegue automático queda dentro del alcance aprobado. | Pendiente |
+| Identidades seguras | Matriz privada de SIWA, acceso TestFlight y comprador Sandbox; ninguna autorización de producción o de otra app real puede verse afectada por las identidades que se eliminarán. | Pendiente |
+| Datos destinados a prueba | Inventario de todas las pertenencias y aportaciones de A, incluidas antiguas/cerradas; todos sus efectos de purga están aceptados para este ensayo. | Pendiente |
+| Copia recuperable | Copia Sandbox cifrada, restaurada y comprobada en una base aislada antes de migrar; ubicación y retención privadas. | Pendiente |
+| Entrega coordinada | Backend y clientes 0.6, sin escritores del servidor anterior; instalación compatible preparada para ambos iPhone. | Pendiente |
+| Apple y firma | Configuración Sandbox y App Attest comprobada, perfil de distribución válido, Archive y build procesado como Internal Only. | Pendiente |
+| Observación | Acceso de lectura a estado de trabajo, propiedad de la suscripción y recepción V2, sin exportar credenciales ni payloads firmados. | Pendiente |
+
+### Identidades: tres funciones distintas
+
+| Alias privado | Función | Restricción |
+|---|---|---|
+| `TF16` / `TF11` | Cuenta Apple real que descarga el build desde TestFlight. | Tester interno con acceso a `core`. No confundir con la identidad de Smart List ni con el comprador. |
+| `SIWA-A` | Identidad de Sign in with Apple para crear A y, después del borrado, B. | Identidad dedicada sin uso en producción ni autorizaciones reales en apps agrupadas. B tendrá un UUID nuevo aunque use la misma identidad Apple. |
+| `SIWA-C` | Identidad del otro miembro, si se ensaya el grupo compartido en el iPhone 11. | También dedicada; sus datos son sintéticos y se conservan al borrar A. |
+| `BUYER-1` | Tester de compras Sandbox que compra para A y restaura para B. | Mantener el mismo comprador durante el recorrido; registrar su renovación acelerada vigente sin asumir la duración histórica. |
+| `BUYER-2` | Otro tester Sandbox para el control negativo posterior. | No debe poseer la cadena comprada por `BUYER-1`. |
+
+**La separación de bases no aísla la revocación SIWA.** El proyecto distribuye el mismo bundle ID y utiliza Sign in with Apple, cuya revocación llama a Apple, no a un servicio de identidad Sandbox independiente. Revisar en Apple Developer el App ID primario y su agrupación, sin modificarlos. El [diseño del proyecto](../architecture/account-deletion.md#entornos-y-sign-in-with-apple) trata como posible efecto la invalidación de autorizaciones del otro entorno o de apps agrupadas; no se presupone un alcance menor al token presentado. [Apple TN3194](https://developer.apple.com/documentation/technotes/tn3194-handling-account-deletions-and-revoking-tokens-for-sign-in-with-apple) documenta la revocación y su alternativa manual.
+
+Los correos y las cuentas usados en pruebas anteriores **no quedan seleccionados automáticamente**. Antes de eliminar, el propietario identificará una cuenta SIWA dedicada que no use producción ni apps reales relacionadas. Si los iPhone 16 y 11 no pueden utilizar esas identidades sin alterar su uso personal, el ensayo destructivo se detiene hasta disponer de una preparación segura de dispositivos. No cerrar la sesión principal de iCloud, borrar una cuenta existente ni cambiar la agrupación SIWA para resolverlo de forma improvisada. Elegir un tester de compras nuevo, por sí solo, no resuelve esta condición.
+
+## Preparar Sandbox y el build
+
+### Copia, migración y compatibilidad
+
+1. Inventariar la revisión, las migraciones aplicadas y los datos de Sandbox. Verificar qué usuarios dependen de este backend: la actualización 0.6 afectará también a testers ajenos al ensayo que sigan con un cliente anterior.
+2. Crear una copia lógica consistente de **Sandbox**, por ejemplo en formato `pg_dump -Fc`, usando credenciales por un canal privado. Cifrar el archivo fuera del repositorio, conservar su checksum y comprobar que se dispone de las versiones de claves necesarias para una recuperación autorizada. Confirmar la disponibilidad actual de copias del proveedor; no suponer que el plan contratado las ofrece.
+3. Restaurar esa copia en PostgreSQL aislado, sin endpoints públicos, clientes ni salida a Apple. Comparar migraciones, tablas, recuentos y comprobaciones de integridad. No arrancar contra esa copia un worker con credenciales Apple reales: podría revocar autorizaciones o modificar asociaciones comerciales. Ensayar allí las nuevas migraciones y la purga con datos sintéticos o expresamente destinados a prueba; registrar duración y resultado.
+4. Preparar el Archive y su distribución interna compatible antes de retirar el servicio antiguo. En la ventana Sandbox, detener sus escritores, tomar la copia final consistente y desplegar una única revisión nueva. El arranque ejecuta migraciones: no mezclar procesos antiguos y nuevos ni dar por segura una reversión de esquema.
+5. Verificar `/hello`, cierre de `/todos`, esquema y worker. Una petición controlada sin contrato a `/v1/me` debe obtener `426 client_update_required`; con `X-SmartList-Contract: 0.6` y sin sesión válida debe obtener el error de autenticación esperado. La excepción es `/v1/app-store/notifications`, que conserva su verificación Apple sin ese header. No usar un bearer real en comandos o logs públicos.
+6. Instalar el cliente compatible en los dos dispositivos del ensayo. Los builds anteriores, incluido el 1.0 (5) histórico, no acreditan compatibilidad con 0.6. No desbloquearlos quitando el middleware ni añadiendo un header desde un proxy.
+
+### Configuración verificable
+
+Comprobar presencia, coherencia y resultado sin imprimir secretos. Completar las variables únicamente en el servicio Sandbox durante su ventana autorizada.
+
+| Elemento | Valor o comprobación |
+|---|---|
+| Vapor y base | Arranque `--env sandbox`; referencias de `DATABASE_*` y CA únicamente al PostgreSQL Sandbox. |
+| Origen de API e invitaciones | `https://smartshoppinglistsandbox-sandbox.up.railway.app`, confirmado contra los recursos actuales. Release debe resolver Sandbox mediante `AppTransaction` verificada antes de cargar la sesión. |
+| SIWA y cifrado | Familia `APPLE_*` completa, client ID correcto y claves de cifrado disponibles. Claves separadas no crean por sí solas aislamiento de autorización SIWA. |
+| Compras | Familia `APP_STORE_*` completa y `APP_STORE_ENVIRONMENT=Sandbox`; productos mensual/anual y grupo comercial correctos. La clave In-App Purchase es distinta de la de SIWA. |
+| Notificaciones | Sandbox Server URL de App Store Connect apunta al endpoint Sandbox `/v1/app-store/notifications` con V2. No cambiar la URL de producción ni depender del fallback hacia ella. |
+| App Attest | `APP_ATTEST_APP_ID` igual al `application-identifier` firmado: prefijo real de diez caracteres y `com.plusprojects.SmartShoppingList`. Verificar el prefijo del perfil, no asumir que siempre coincide con Team ID. |
+| Build mínimo | `APP_ATTEST_MIN_BUILD` igual al primer build distribuido y comprobado que contiene este recorrido. Determinarlo tras consultar App Store Connect y verificar el Archive. |
+| Desarrollo | `APP_ATTEST_ALLOW_DEVELOPMENT=false`. No relajar la validación si falla TestFlight. |
+| Recursos del servidor | Imagen contiene las raíces públicas App Attest y Apple G3 en el bundle SwiftPM; arranque y recuperación configurados sin fallback a un JWS sin atestación. |
+
+TestFlight usa **App Attest de producción**, aunque las compras y los datos de Smart List sean Sandbox. Es el servicio de atestación de Apple, no una compra ni una escritura en nuestro backend de producción. [Apple documenta este comportamiento de distribución](https://developer.apple.com/documentation/bundleresources/entitlements/com.apple.developer.devicecheck.appattest-environment).
+
+### Archive, carga e instalación
+
+1. Consultar App Store Connect para elegir un número libre; registrar versión/build y SHA exactos. No usar el diagnóstico antiguo ni asignar aquí el siguiente número.
+2. Crear Archive Release del target comercial con Xcode. Inspeccionar firma y perfil: bundle ID, `application-identifier`, Sign in with Apple, App Attest y dominios asociados previstos. Confirmar que el nombre visible sigue siendo **Smart List** y que el Archive contiene eliminación y restauración verificadas.
+3. Cargar por **TestFlight Internal Only**, esperar procesamiento y revisar los avisos de Apple. Añadir el build concreto a `core`; no presentarlo a App Review, pruebas externas ni App Store. Confirmar la asignación y la versión instalada en cada iPhone.
+4. Descargar desde TestFlight con la cuenta real autorizada. Para controlar el comprador Sandbox, después de instalar seguir el recorrido de Apple: cerrar únicamente **Contenido y compras**, acceder al tester en **Desarrollador → Cuenta de Apple de Sandbox** y abrir Smart List desde su icono. No intentar acceder a TestFlight con el tester Sandbox. Volver a entrar en Contenido y compras cambia la atribución de compras de TestFlight; no hacerlo a mitad de la prueba. [Instrucciones oficiales de Sandbox para TestFlight](https://developer.apple.com/documentation/storekit/testing-in-app-purchases-with-sandbox).
+5. Comprobar **Datos de prueba**, acceso al entorno esperado y catálogo Sandbox. Si no puede verificarse el entorno, detenerse antes de iniciar sesión o comprar; no forzar la URL de producción como respaldo. No desinstalar la app ni borrar el Keychain para recuperar un estado dudoso.
+
+## Recorrido mínimo: compra A → borrado A → alta B → restauración → V2
+
+Usar alias en el informe y nombres sintéticos, por ejemplo `Ensayo eliminación`, `Tienda ensayo`, `Producto A` y `Producto C`. No reutilizar `Test1`, Aldi, Alpro ni grupos históricos sin revisar todos sus datos y acordar expresamente su eliminación.
+
+| Paso | Acción física y observación privada del backend | Resultado exigido |
+|---|---|---|
+| 1. Crear A | En iPhone 16, iniciar sesión con `SIWA-A`; anotar privadamente su UUID. Confirmar que no aparece contenido previo inesperado. | Cuenta nueva de Sandbox, sin datos reales ni operaciones heredadas. |
+| 2. Comprar | Comprar mensual con `BUYER-1`, una vez. Comprobar Premium, periodo vigente, entorno y asociación comercial de la cadena con A. Esperar o consultar la V2 de compra sin inventar que ya llegó. | Backend y UI concuerdan; derecho Sandbox atribuido a A, sin concesión manual. |
+| 3. Preparar contenido | A crea un grupo con un producto propio. Si el iPhone 11 usa `SIWA-C`, C se une y añade `Producto C`; después A crea un grupo solo suyo con texto sintético. Anotar contenido esperado de cada autor. | Todo lo que puede verse afectado está destinado a prueba; se podrá distinguir purga propia, conservación de C y eliminación del grupo sin otros miembros. |
+| 4. Previsualizar y cancelar | A abre Ajustes → eliminación de cuenta. Revisar grupos, efectos y aviso de que la suscripción no se cancela. Con VoiceOver y texto máximo comprobar lectura y controles. Cancelar la preparación una vez, volver a abrir y revisar el impacto actualizado. | Cancelar antes de aceptar mantiene cuenta y datos; no queda un trabajo aceptado oculto. Si aparece texto histórico incierto o un grupo no inventariado, parar. |
+| 5. Aceptar | Reautenticar a `SIWA-A` y confirmar una sola vez. Registrar hora y comprobante únicamente en el almacén privado. Cerrar/reabrir la app y consultar **la misma solicitud** si no se conoce el resultado. | Estado durable; cuenta bloqueada desde `accepted`; no se crea una segunda solicitud tras pérdida de respuesta. |
+| 6. Verificar purga | Esperar resultado y consultar estado del job. Comprobar ausencia de A, sesiones/grants utilizables y contenido propio; cadena comercial desvinculada sin recuperar identidad. En iPhone 11, C comprueba su producto y el grupo pendiente de administración; puede asumirla una vez. | `completed` con resultado Apple explícito. Para cerrar el recorrido automático se exige `confirmed`; `manual_action_required` acredita un resultado distinto y requiere resolverlo antes de continuar. Grupo exclusivo eliminado; aportaciones comprobadas de C conservadas. |
+| 7. Alta B | Tras completar, solicitar un nuevo acceso SIWA con la misma identidad dedicada. Registrar que UUID B es diferente de A. | Cuenta vacía: sin pertenencias, borrador ni operaciones de A. Un desafío nuevo puede entrar inmediatamente; los anteriores no deben recrear A. |
+| 8. Recuperar Premium | Mantener `BUYER-1`; pulsar **Restaurar compras** una vez, sin comprar de nuevo. Observar resultado de recuperación, propietario de la misma cadena y periodo actual. | App Attest real aceptada; job comercial `completed`, cadena exclusivamente vinculada a B y Premium vigente. No reaparecen listas ni grupos de A; no se inicia un periodo por cálculo local. |
+| 9. Reabrir/restaurar | Cerrar/reabrir Smart List en B y restaurar una vez más. | Mismo titular y derecho, sin compra nueva, duplicados ni cambio de cuenta. |
+| 10. Renovación V2 | Esperar una renovación real según el ritmo actual de `BUYER-1`. Correlacionar tipo/fecha de V2, procesamiento durable, estado firmado actual de Apple y periodo mostrado. | Renovación atribuida a B; A sigue ausente. Un TEST o un `204` aislado no acredita esta renovación ni su asignación. |
+
+La reasociación utiliza [Set App Account Token](https://developer.apple.com/documentation/appstoreserverapi/set-app-account-token). Mantener la misma cadena y el mismo comprador; no editar `appAccountToken` en PostgreSQL ni llamar manualmente a esa API para hacer pasar el ensayo.
+
+### Comprobaciones siguientes, después del recorrido principal
+
+| Caso | Preparación y criterio |
+|---|---|
+| Otro comprador | En una cuenta de servicio de ensayo sin derecho, usar `BUYER-2`: Restaurar no debe recibir la cadena de `BUYER-1` ni cambiar a B. No provocar una compra adicional para disimular un rechazo. |
+| Cadena con titular activo | Con B todavía activa, intentar restaurar su cadena desde C y `BUYER-1`, solo si la preparación segura del segundo dispositivo lo permite. Debe conservar a B como titular; el JWS del comprador no autoriza trasladarla. |
+| Otro dispositivo | Con el mismo build y cuentas correctas, abrir B en el segundo dispositivo y restaurar. Debe mantener titular y periodo. La posibilidad real de seleccionar esa identidad SIWA se comprueba antes; no se improvisa un cambio de iCloud. |
+| Limpieza remota | En un ciclo separado, preparar la misma cuenta A de prueba en ambos dispositivos **antes** de eliminar. Tras aceptar desde uno, el otro conectado confirma eliminación y limpia solo ese contexto. Un fallo de red conserva lo necesario para comprobarla después y bloquea envíos. No mezclar este montaje con C como miembro observador. |
+| Red y estado incierto | En un ciclo dedicado, interrumpir solo la conexión del iPhone, nunca el backend ni Apple. Reabrir y consultar la misma eliminación o repetir Restaurar con su prueba persistida. Si aparece `subscription_recovery_pending_review`, parar y conciliar; no borrar el estado ni crear sucesivos titulares. |
+| Fin del derecho | Tras acreditar renovación, usar los controles Sandbox para el caso elegido de caducidad/revocación. Verificar estado Apple y backend; Restaurar no debe fabricar un periodo vigente. No presentar este caso como probado mediante adelantar solo el reloj del dispositivo. |
+
+Estas comprobaciones quedan pendientes por separado. No repetir compras ni eliminaciones de una matriz ya acreditada salvo que el cambio o un fallo concreto lo justifique. No se acredita el cruce TestFlight/App Store instalando producción durante este ensayo.
+
+## Evidencia y criterios de parada
+
+Informe público mínimo: fecha/huso, SHA, versión/build, dispositivo/iOS, alias A/B/C, paso ejecutado, resultado observado, capturas recortadas y limitaciones. Mantener **fuera del repositorio, PR y logs públicos** correos, Apple subject, UUID de cuenta, IDs de transacción, comprobantes/secrets, bearers, tokens, JWS, atestaciones, claves y copias de base. Usar correlaciones privadas para demostrar `A ≠ B`, misma cadena y entorno; publicar solo la conclusión comprobada. No activar logging de cuerpos para investigar un fallo.
+
+Detener compras, nuevas eliminaciones y reasociaciones si ocurre cualquiera de estos hechos:
+
+- Identidad SIWA compartida con producción, entorno indeterminado/Production, datos no destinados a prueba o configuración de notificaciones que pueda caer en producción.
+- No existe copia restaurada, no está claro el destino de una credencial/referencia, hay escritores antiguos o no se puede instalar el cliente 0.6.
+- Fallo de firma/App Attest, `503` persistente, revocación manual inesperada, trabajo que no progresa, o imposibilidad de correlacionar UI y estado durable.
+- Se restaura A, reaparece contenido eliminado, se pierde contenido ajeno comprobado, dos cuentas reciben la misma cadena o una V2 cambia el titular incorrectamente.
+- Recuperación en cuarentena, aceptación incierta o error de persistencia local: conservar la evidencia y consultar la misma operación; no «resetear» claves, Keychain, jobs ni base.
+
+El reintento de consultas puede ser seguro; una nueva compra, nuevo borrado o liberación de una reserva no se deduce de que haya transcurrido tiempo. Una espera de cinco minutos tampoco demuestra por sí sola purga, revocación ni renovación.
+
+## Recuperación operativa y cierre
+
+- Antes de aceptar una eliminación, se puede cancelar la preparación. Después de `accepted`, la eliminación es irreversible; cerrar la app o restaurar una copia no la cancela.
+- Ante un fallo del despliegue Sandbox, detener sus escritores y elegir una corrección hacia delante que preserve trabajos, comprobantes y reservas. No arrancar un servidor anterior sobre el esquema nuevo ni eludir sus guardas de reversión.
+- Una restauración se ensaya primero en una base aislada. No exponer una copia que devuelva cuentas o contenido ya eliminados: hay que acreditar cómo reaplicar las supresiones aceptadas y reconciliar las operaciones posteriores a la copia antes de admitir tráfico. Si no puede demostrarse, no abrir esa restauración.
+- PostgreSQL no revierte la revocación SIWA ni un `Set App Account Token` ya ejecutado en Apple. Un backup anterior tampoco permite liberar una reserva incierta: contrastar el estado actual de Apple y resolver la cuarentena mediante un procedimiento específico, sin reactivar A.
+- Mantener la copia y evidencia privada según la retención aprobada y destruirlas al vencer. No conservar dumps ni datos eliminados como fixtures permanentes. Registrar cuándo se han retirado las credenciales de prueba de los dispositivos, sin cambiar sus cuentas personales de forma automática.
+
+El cierre registrará cada paso como **aprobado, fallido o no ejecutado**, las incidencias encontradas y los límites de evidencia. Este ensayo puede acreditar el recorrido distribuido Sandbox; no autoriza ni acredita una migración, eliminación, compra, envío a App Review o publicación en producción.

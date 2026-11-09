@@ -41,6 +41,8 @@
 
 ### Documentation
 
+- 2026-11-09 | 📝 docs(account): prepare Sandbox deletion rehearsal
+
 - 2026-11-07 | 📝 docs(release): record device acceptance
 
 - 2026-11-07 | 📝 docs(release): record build 5 distribution
