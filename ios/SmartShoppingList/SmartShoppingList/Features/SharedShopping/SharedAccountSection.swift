@@ -5,9 +5,50 @@ struct SharedAccountSection: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.scenePhase) private var scenePhase
     @ScaledMetric(relativeTo: .body) private var appleButtonHeight = ShoppingControlMetrics.minimumTargetSize
+    @State private var confirmsDraftRemoval = false
     let viewModel: SharedShoppingViewModel
 
     var body: some View {
+        if viewModel.requiresDeletedAccountCleanup {
+            Section("Account deletion") {
+                Text("Account deletion is confirmed. Local cleanup still needs to finish.")
+                Button("Retry local cleanup") {
+                    Task {
+                        await viewModel.retryDeletedAccountCleanup()
+                    }
+                }
+            }
+            .listRowBackground(Color.surface)
+        }
+        if viewModel.accountDeletion.isAvailable,
+           viewModel.session != nil || viewModel.accountDeletion.blocksAccountUse {
+            Section("Account deletion") {
+                NavigationLink("Delete account") {
+                    SharedAccountDeletionView(viewModel: viewModel)
+                }
+            }
+            .listRowBackground(Color.surface)
+        }
+        if viewModel.session == nil, !viewModel.draft.items.isEmpty || !viewModel.draft.text.isEmpty {
+            Section("Local draft") {
+                Text("This draft is stored on this device. Review it before adding its products to another account.")
+                Button("Delete this device’s draft", role: .destructive) {
+                    confirmsDraftRemoval = true
+                }
+                    .disabled(viewModel.isBusy)
+                    .alert("Permanently delete this device’s draft?", isPresented: $confirmsDraftRemoval) {
+                        Button("Delete draft", role: .destructive) {
+                            Task {
+                                await viewModel.discardSignedOutDraft()
+                            }
+                        }
+                        Button("Cancel", role: .cancel) {}
+                    } message: {
+                        Text("The local products and text will be removed. Shared lists will not change.")
+                    }
+            }
+            .listRowBackground(Color.surface)
+        }
         if !viewModel.isConfigured {
             Section("Group access") {
                 Text("The group connection is not configured yet. You can prepare products in Add.")

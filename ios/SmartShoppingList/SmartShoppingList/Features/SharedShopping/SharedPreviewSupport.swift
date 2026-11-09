@@ -59,6 +59,7 @@ enum SharedPreviewState: CaseIterable, Hashable {
     case storeManagement
     case emptyStore
     case groupManagementOwner
+    case groupPendingAdministration
     case groupTransferRecipient
 }
 
@@ -343,6 +344,7 @@ enum SharedPreviewSupport {
         )
         let managementScenario: GroupManagementPreviewScenario = switch state {
         case .groupManagementOwner: .owner
+        case .groupPendingAdministration: .pending
         case .groupTransferRecipient: .recipient
         default: .solo
         }
@@ -417,7 +419,7 @@ enum SharedPreviewSupport {
             await model.loadSelectedStore()
         case .storeManagement:
             await model.loadStoreManagement()
-        case .groupManagementOwner, .groupTransferRecipient:
+        case .groupManagementOwner, .groupTransferRecipient, .groupPendingAdministration:
             await model.loadGroupManagement()
             model.selectedSuccessorID = PreviewSharedShoppingAPI.successorID
         case .signedOut, .offline, .signInUnavailable, .invitation, .pending, .unconfigured,
@@ -514,8 +516,19 @@ private final class PreviewSharedShoppingAPI: SharedShoppingAPI {
         ((user.group.map { [$0] } ?? []) + additionalGroups).map(projectedGroup)
     }
     private func projectedGroup(_ original: SharedGroup) -> SharedGroup {
-        guard let premiumScenario else { return original }
         var group = original
+        if managementScenario == .pending {
+            group = SharedGroup(
+                id: original.id,
+                name: original.name,
+                creatorUserId: nil,
+                createdAt: original.createdAt,
+                administratorUserId: nil,
+                capabilities: original.capabilities,
+                state: "pending_administration"
+            )
+        }
+        guard let premiumScenario else { return group }
         group.capabilities = SharedGroupAccess(
             canUseShopping: premiumIsActive || premiumScenario == .premiumTransition
                 || group.id == additionalGroups.first?.id,
@@ -582,14 +595,14 @@ private final class PreviewSharedShoppingAPI: SharedShoppingAPI {
             memberCount: managementScenario == .solo ? 1 : 3,
             pendingTransfer: transfer,
             capabilities: SharedGroupCapabilities(
-                canManageInvitations: !isRecipient,
+                canManageInvitations: !isRecipient && managementScenario != .pending,
                 canProposeTransfer: managementScenario == .owner,
                 canAcceptTransfer: isRecipient,
                 canRejectTransfer: isRecipient,
                 canWithdrawTransfer: false,
                 canLeave: managementScenario != .owner,
                 requiresClosureConfirmation: managementScenario == .solo,
-                capacityOwnerUserId: fixture.session.user.id,
+                capacityOwnerUserId: managementScenario == .pending ? nil : fixture.session.user.id,
                 limits: SharedGroupLimits(
                     groupsPerAccount: SharedResourceLimit(maximum: 1, enforced: true),
                     storesPerGroup: SharedResourceLimit(maximum: 3, enforced: true),
@@ -631,12 +644,12 @@ private final class PreviewSharedShoppingAPI: SharedShoppingAPI {
     private func currentStore(_ original: SharedStore, archivedAt: Date?) throws -> SharedStore {
         var store = original
         let count = storedItems.filter { $0.storeId == store.id && $0.status == "pending" }.count
-        let isAdministrator = user.id == fixture.group.administratorUserId
+        let isAdministrator = managementScenario != .pending && user.id == fixture.group.administratorUserId
         store.state = try SharedStoreState(
             archivedAt: archivedAt,
             pendingItemCount: count,
             capabilities: SharedStoreCapabilities(
-                canAddItems: archivedAt == nil && count < 20,
+                canAddItems: managementScenario != .pending && archivedAt == nil && count < 20,
                 canArchive: archivedAt == nil && count == 0 && isAdministrator,
                 canRestore: archivedAt != nil && storedStores.count < 3 && isAdministrator
             )
@@ -648,13 +661,13 @@ private final class PreviewSharedShoppingAPI: SharedShoppingAPI {
         let count = storedStores.filter { $0.groupId == groupID }.count
         return try SharedGroupCapacity(
             groupId: groupID,
-            capacityOwnerUserId: fixture.session.user.id,
+            capacityOwnerUserId: managementScenario == .pending ? nil : fixture.session.user.id,
             activeStoreCount: count,
             limits: SharedStoreLimits(
                 storesPerGroup: SharedResourceLimit(maximum: 3, enforced: true),
                 pendingItemsPerStore: SharedResourceLimit(maximum: 20, enforced: true)
             ),
-            canCreateStore: count < 3
+            canCreateStore: managementScenario != .pending && count < 3
         )
     }
     @MainActor
@@ -770,7 +783,7 @@ private struct PreviewStoreReceipt {
 }
 
 private enum GroupManagementPreviewScenario {
-    case solo, owner, recipient
+    case solo, owner, recipient, pending
 }
 
 private struct PreviewStoreQuerySpeech: SpeechCapturing {

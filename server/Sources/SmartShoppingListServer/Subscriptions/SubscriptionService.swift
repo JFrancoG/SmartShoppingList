@@ -77,7 +77,7 @@ struct SubscriptionService: Sendable {
         }
         guard let user = claim.appAccountToken else { throw Self.problem("invalid_app_store_notification") }
         // A valid event for an account this service has never created is acknowledged without granting access.
-        guard try await sql.raw("SELECT id FROM users WHERE id = \(bind: user)").first() != nil else {
+        guard try await sql.raw("SELECT id FROM users WHERE id = \(bind: user) AND deleting_at IS NULL").first() != nil else {
             try await recordNotification(receipt)
             return
         }
@@ -144,7 +144,8 @@ extension SubscriptionService {
         user: UUID,
         snapshots: [VerifiedAppStoreSubscription],
         claim: AppStoreTransaction?,
-        notification: NotificationReceipt?
+        notification: NotificationReceipt?,
+        recoveredOriginal: String? = nil
     ) async throws {
         guard let environment = gateway.configuration?.environment else {
             throw Self.problem("subscription_unavailable")
@@ -152,7 +153,7 @@ extension SubscriptionService {
         let database = try databases.database()
         for _ in 0..<8 {
             do {
-                try await database.transaction { transaction in
+                try await database.accountTransaction { transaction in
                     let sql = try shoppingSQL(transaction)
                     let groups = try await administeredGroups(user: user, on: sql)
                     for group in groups {
@@ -166,6 +167,7 @@ extension SubscriptionService {
                         accountCapacity: accountCapacity
                     )
                     try await shopping.lockUser(user, on: sql)
+                    try await requireActiveAccount(user, on: sql)
                     guard try await administeredGroups(user: user, on: sql) == groups else {
                         throw LockRetry.administratorSetChanged
                     }
@@ -173,6 +175,14 @@ extension SubscriptionService {
                         return
                     }
                     let now = try await databaseClock(sql)
+                    if let recoveredOriginal {
+                        try await bindRecoveredChain(
+                            original: recoveredOriginal,
+                            environment: environment,
+                            user: user,
+                            on: sql
+                        )
+                    }
                     for snapshot in snapshots {
                         try await persist(snapshot, user: user, now: now, on: sql)
                     }
@@ -210,6 +220,14 @@ extension SubscriptionService {
                     if let notification {
                         try await insertNotification(notification, now: now, on: sql)
                     }
+                    if let recoveredOriginal {
+                        try await sql.raw("""
+                            UPDATE subscription_recovery_jobs SET state = 'completed', completed_at = \(bind: now),
+                                request_in_flight = false
+                            WHERE environment = \(bind: environment.rawValue)
+                                AND original_transaction_id = \(bind: recoveredOriginal) AND user_id = \(bind: user)
+                            """).run()
+                    }
                 }
                 return
             } catch LockRetry.administratorSetChanged {
@@ -238,7 +256,17 @@ extension SubscriptionService {
         if let owner = try await sql.raw("""
             SELECT user_id FROM app_store_subscriptions
             WHERE environment = \(bind: environment) AND original_transaction_id = \(bind: value.originalTransactionId)
-            """).first(), try owner.decode(column: "user_id", as: UUID.self) != user {
+            """).first(), try owner.decode(column: "user_id", as: UUID?.self) != user {
+            if try owner.decode(column: "user_id", as: UUID?.self) == nil,
+               try await sql.raw("""
+                SELECT 1 FROM subscription_recovery_jobs
+                WHERE environment = \(bind: environment)
+                    AND original_transaction_id = \(bind: value.originalTransactionId)
+                    AND user_id = \(bind: user) AND state = 'reserved'
+                """).first() != nil {
+                // Apple may deliver V2 after PUT but before the reserved recovery commits locally.
+                throw Self.problem("subscription_unavailable")
+            }
             throw Self.problem("transaction_already_bound")
         }
         guard let expiry = value.expiresDate else { throw Self.problem("invalid_app_store_transaction") }
@@ -271,7 +299,7 @@ extension SubscriptionService {
             guard let existing = try await sql.raw("""
                 SELECT user_id FROM app_store_subscriptions
                 WHERE environment = \(bind: environment) AND original_transaction_id = \(bind: value.originalTransactionId)
-                """).first(), try existing.decode(column: "user_id", as: UUID.self) == user
+                """).first(), try existing.decode(column: "user_id", as: UUID?.self) == user
             else {
                 throw Self.problem("transaction_already_bound")
             }
@@ -295,11 +323,59 @@ extension SubscriptionService {
         guard let existing = try await sql.raw("""
             SELECT user_id,original_transaction_id FROM app_store_transactions
             WHERE environment = \(bind: value.environment.rawValue) AND transaction_id = \(bind: value.transactionId)
-            """).first(), try existing.decode(column: "user_id", as: UUID.self) == user,
+            """).first(), try existing.decode(column: "user_id", as: UUID?.self) == user,
             try existing.decode(column: "original_transaction_id", as: String.self) == value.originalTransactionId
         else {
             throw Self.problem("transaction_already_bound")
         }
+    }
+
+    func completeRecovery(
+        user: UUID,
+        original: String,
+        snapshots: [VerifiedAppStoreSubscription]
+    ) async throws -> SubscriptionStatus {
+        let values = snapshots.filter { $0.transaction.originalTransactionId == original }
+        guard !values.isEmpty, let environment = gateway.configuration?.environment,
+              values.allSatisfy({ $0.transaction.appAccountToken == user && $0.transaction.environment == environment })
+        else {
+            throw Self.problem("subscription_unavailable")
+        }
+        try await ingest(user: user, snapshots: values, claim: nil, notification: nil, recoveredOriginal: original)
+        return try await storedStatus(user: user)
+    }
+
+    private func bindRecoveredChain(
+        original: String,
+        environment: AppStoreEnvironment,
+        user: UUID,
+        on sql: any SQLDatabase
+    ) async throws {
+        guard let subscription = try await sql.raw("""
+            SELECT user_id,detached_at FROM app_store_subscriptions
+            WHERE environment = \(bind: environment.rawValue) AND original_transaction_id = \(bind: original) FOR UPDATE
+            """).first(),
+              let job = try await sql.raw("""
+                SELECT user_id FROM subscription_recovery_jobs
+                WHERE environment = \(bind: environment.rawValue) AND original_transaction_id = \(bind: original)
+                """).first(), try job.decode(column: "user_id", as: UUID.self) == user
+        else {
+            throw Self.problem("transaction_already_bound")
+        }
+        let owner = try subscription.decode(column: "user_id", as: UUID?.self)
+        let detached = try subscription.decode(column: "detached_at", as: Date?.self)
+        guard owner == user || owner == nil && detached != nil else {
+            throw Self.problem("transaction_already_bound")
+        }
+        try await sql.raw("""
+            UPDATE app_store_subscriptions SET user_id = \(bind: user), detached_at = NULL
+            WHERE environment = \(bind: environment.rawValue) AND original_transaction_id = \(bind: original)
+            """).run()
+        try await sql.raw("""
+            UPDATE app_store_transactions SET user_id = \(bind: user)
+            WHERE environment = \(bind: environment.rawValue) AND original_transaction_id = \(bind: original)
+                AND user_id IS NULL
+            """).run()
     }
 }
 
@@ -351,31 +427,34 @@ extension SubscriptionService {
     }
 
     private func storedStatus(user: UUID) async throws -> SubscriptionStatus {
-        let sql = try shoppingSQL(databases.database())
-        let environment = gateway.configuration?.environment ?? accountCapacity.verificationEnvironment
-        let now = try await databaseClock(sql)
-        let rows = try await storedSubscriptions(user: user, environment: environment, on: sql)
-        let effective = effectiveSubscription(rows, now: now)
-        let state: SubscriptionState
-        if let effective {
-            if effective.state == .revoked {
-                state = .revoked
+        try await databases.database().accountTransaction { transaction in
+            let sql = try shoppingSQL(transaction)
+            try await requireActiveAccount(user, on: sql)
+            let environment = gateway.configuration?.environment ?? accountCapacity.verificationEnvironment
+            let now = try await databaseClock(sql)
+            let rows = try await storedSubscriptions(user: user, environment: environment, on: sql)
+            let effective = effectiveSubscription(rows, now: now)
+            let state: SubscriptionState
+            if let effective {
+                if effective.state == .revoked {
+                    state = .revoked
+                } else {
+                    state = effective.accessDeadline > now ? effective.state : .expired
+                }
             } else {
-                state = effective.accessDeadline > now ? effective.state : .expired
+                state = .free
             }
-        } else {
-            state = .free
+            return SubscriptionStatus(
+                appAccountToken: user,
+                isConfigured: gateway.configuration != nil,
+                productIDs: gateway.configuration?.productIDs ?? [],
+                state: state,
+                expiresAt: effective.map { APIEncoding.timestamp($0.expiry) },
+                gracePeriodExpiresAt: effective?.graceExpiry.map(APIEncoding.timestamp),
+                autoRenewEnabled: effective?.autoRenew,
+                verifiedAt: effective.map { APIEncoding.timestamp($0.verifiedAt) }
+            )
         }
-        return SubscriptionStatus(
-            appAccountToken: user,
-            isConfigured: gateway.configuration != nil,
-            productIDs: gateway.configuration?.productIDs ?? [],
-            state: state,
-            expiresAt: effective.map { APIEncoding.timestamp($0.expiry) },
-            gracePeriodExpiresAt: effective?.graceExpiry.map(APIEncoding.timestamp),
-            autoRenewEnabled: effective?.autoRenew,
-            verifiedAt: effective.map { APIEncoding.timestamp($0.verifiedAt) }
-        )
     }
 
     private func existingNotification(_ receipt: NotificationReceipt, on sql: any SQLDatabase) async throws -> Bool {

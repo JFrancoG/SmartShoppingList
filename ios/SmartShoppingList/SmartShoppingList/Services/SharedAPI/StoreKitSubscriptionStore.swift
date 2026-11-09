@@ -50,12 +50,14 @@ protocol SharedSubscriptionStore: Sendable {
     func purchase(id: String, appAccountToken: UUID) async throws -> SharedSubscriptionPurchaseResult
     func restore() async throws
     func transactions() async throws -> [SharedStoreTransaction]
+    func recoveryTransactions() async throws -> [SharedStoreTransaction]
     func updates() async -> AsyncStream<SharedStoreTransaction>
     func finish(transactionID: String) async
 }
 
 extension SharedSubscriptionStore {
     var expectedEnvironment: SharedStoreEnvironment { .production }
+    func recoveryTransactions() async throws -> [SharedStoreTransaction] { [] }
 }
 
 /// StoreKit verifies device transactions; only the server decides membership rights and quota limits.
@@ -138,6 +140,17 @@ actor StoreKitSubscriptionStore: SharedSubscriptionStore {
             }
         }
         return transactions.values.sorted { $0.id < $1.id }
+    }
+
+    /// Recovery is fed only by verified current device entitlements after explicit AppStore.sync.
+    func recoveryTransactions() async throws -> [SharedStoreTransaction] {
+        var result: [SharedStoreTransaction] = []
+        for await verification in Transaction.currentEntitlements {
+            if let transaction = try remember(verification) {
+                result.append(transaction)
+            }
+        }
+        return result.sorted { $0.id < $1.id }
     }
 
     func updates() -> AsyncStream<SharedStoreTransaction> {

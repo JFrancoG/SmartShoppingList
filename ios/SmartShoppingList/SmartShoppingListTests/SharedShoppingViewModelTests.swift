@@ -1332,7 +1332,26 @@ enum ShortcutConnectionFailure: CaseIterable {
     case signedOut, sessionLookup, storeLookup
 }
 
-private actor SharedFlowAPI: SharedShoppingAPI {
+private actor SharedFlowAPI: SharedShoppingAPI, SharedAccountDeletionAPI {
+    private var remotelyDeleted = false
+    private var remoteDeletionCheckFails = false
+    func failRemoteDeletionCheck(_ fails: Bool) { remoteDeletionCheckFails = fails }
+    func confirmRemoteDeletion() { remotelyDeleted = true }
+    func deletionSessionStatus(token: String) throws -> Bool {
+        if remoteDeletionCheckFails {
+            throw SharedAPIError.transport
+        }
+        return remotelyDeleted
+    }
+    func deletionPreview(token: String) throws -> SharedDeletionPreview { throw SharedAPIError.configuration }
+    func deletionChallenge(_ request: SharedDeletionPreparation, token: String) throws -> SharedChallenge { throw SharedAPIError.configuration }
+    func deleteAccount(_ request: SharedDeletionRequest, token: String) throws -> SharedDeletionStatus { throw SharedAPIError.configuration }
+    func deletionStatus(_ receipt: SharedDeletionReceipt) throws -> SharedDeletionStatus { throw SharedAPIError.configuration }
+    func cancelDeletion(_ receipt: SharedDeletionReceipt) throws -> SharedDeletionStatus { throw SharedAPIError.configuration }
+    func claimAdministration(_ request: ResolveGroupTransferRequest, groupID: UUID, token: String) throws -> SharedGroup {
+        throw SharedAPIError.configuration
+    }
+
     func groupMembers(groupID: UUID, token: String) async throws -> [SharedGroupMember] {
         throw SharedAPIError.configuration
     }
@@ -1500,6 +1519,10 @@ private actor SharedFlowAPI: SharedShoppingAPI {
 
     func removeFirstPurchaseItem() {
         purchaseItems.removeFirst()
+    }
+
+    func rejectPurchaseWithRemovedResult() {
+        purchaseError = .server(status: 410, code: "result_removed", requestID: UUID(), retryAfter: nil)
     }
 
     func rejectPurchaseWithConflict(removingStore: Bool = false) {
@@ -2850,5 +2873,105 @@ private struct ProposalDraftInterpreter: DraftInterpreting {
             SuggestedProduct(name: "Bread", quantity: nil, store: "Aldi"),
             SuggestedProduct(name: "Milk", quantity: "2 litres", store: "Aldi")
         ]
+    }
+}
+
+
+extension SharedShoppingViewModelTests {
+    @Test(arguments: [false, true])
+    func `Only confirmed remote deletion removes the original account's pending operation`(deleted: Bool) async throws {
+        let api = SharedFlowAPI()
+        await api.setReadError(.server(status: 401, code: "invalid_session", requestID: nil, retryAfter: nil))
+        if deleted {
+            await api.confirmRemoteDeletion()
+        }
+        let operation = PendingSharedOperation.createGroup(
+            userID: api.session.user.id, request: CreateGroupRequest(operationId: UUID(), name: "Pending original group")
+        )
+        let credentials = MemorySharedCredentialStore(session: api.session, operation: operation)
+        let draft = ShoppingDraftItem(name: "Local guest product", store: "Aldi")
+        let model = try makeModel(api: api, credentials: credentials, items: [draft])
+
+        await model.load()
+
+        #expect(model.session == nil)
+        #expect(await credentials.loadSession() == nil)
+        #expect(await credentials.loadOperation() == (deleted ? nil : operation))
+        #expect(model.draft.items == [draft])
+        #expect(await credentials.loadDeletedAccountUserID() == nil)
+    }
+
+    @Test
+    func `A confirmed remote cleanup resumes after the original bearer has already been removed`() async throws {
+        let api = SharedFlowAPI()
+        let operation = PendingSharedOperation.createGroup(
+            userID: api.session.user.id, request: CreateGroupRequest(operationId: UUID(), name: "Pending original group")
+        )
+        let credentials = MemorySharedCredentialStore(operation: operation)
+        await credentials.saveDeletedAccountUserID(api.session.user.id)
+        let draft = ShoppingDraftItem(name: "Unattributed local draft")
+        let model = try makeModel(api: api, credentials: credentials, items: [draft])
+
+        await model.load()
+
+        #expect(await credentials.loadOperation() == nil)
+        #expect(await credentials.loadDeletedAccountUserID() == nil)
+        #expect(model.draft.items == [draft])
+        #expect(!model.requiresDeletedAccountCleanup)
+        #expect(!model.isBusy)
+    }
+}
+
+
+extension SharedShoppingViewModelTests {
+    @Test
+    func `A removed purchase receipt clears the retry without repeating the historical purchase`() async throws {
+        let api = SharedFlowAPI()
+        let items = try await api.preparePurchaseItems()
+        let credentials = MemorySharedCredentialStore(session: api.session)
+        let model = try makeModel(api: api, credentials: credentials)
+        await model.load()
+        model.selectedStoreID = items[0].storeId
+        await model.loadSelectedStore()
+        model.togglePurchaseItem(items[0])
+        await api.rejectPurchaseWithRemovedResult()
+
+        await model.finalizePurchase()
+        await model.retryPendingOperation()
+
+        #expect(model.pendingOperation == nil)
+        #expect(await credentials.loadOperation() == nil)
+        #expect(await api.sentPurchases.count == 1)
+        #expect(model.notice != nil)
+    }
+}
+
+
+extension SharedShoppingViewModelTests {
+    @Test
+    func `An unavailable remote deletion check preserves verification access across relaunch`() async throws {
+        let api = SharedFlowAPI()
+        await api.setReadError(.server(status: 401, code: "invalid_session", requestID: nil, retryAfter: nil))
+        await api.confirmRemoteDeletion()
+        await api.failRemoteDeletionCheck(true)
+        let operation = PendingSharedOperation.createGroup(
+            userID: api.session.user.id, request: CreateGroupRequest(operationId: UUID(), name: "Pending old group")
+        )
+        let credentials = MemorySharedCredentialStore(session: api.session, operation: operation)
+        let draft = ShoppingDraftItem(name: "Local guest product")
+        let model = try makeModel(api: api, credentials: credentials, items: [draft])
+
+        await model.load()
+
+        #expect(await credentials.loadSession()?.accessToken == api.session.accessToken)
+        #expect(await credentials.loadOperation() == operation)
+        #expect(!model.sessionIsVerified)
+        #expect(!model.canMutate)
+        await api.failRemoteDeletionCheck(false)
+        let relaunched = try makeModel(api: api, credentials: credentials, items: [draft])
+        await relaunched.load()
+        #expect(await credentials.loadSession() == nil)
+        #expect(await credentials.loadOperation() == nil)
+        #expect(relaunched.draft.items == [draft])
     }
 }

@@ -1,3 +1,4 @@
+import DeviceCheck
 import Foundation
 import Observation
 
@@ -5,6 +6,7 @@ import Observation
 final class SharedPremiumViewModel {
     private(set) var status: SharedSubscriptionStatus?
     private(set) var products: [SharedSubscriptionProduct] = []
+    private(set) var pendingRecovery: PendingSubscriptionRecovery?
     private(set) var pendingVerification: PendingSubscriptionVerification?
     private(set) var isBusy = false
     private(set) var notice: LocalizedStringResource?
@@ -12,20 +14,23 @@ final class SharedPremiumViewModel {
     private var ownerID: UUID?
     @ObservationIgnored private let api: (any SharedSubscriptionAPI)?
     @ObservationIgnored private let store: (any SharedSubscriptionStore)?
+    @ObservationIgnored private let recoveryAttester: any SharedRecoveryAttesting
     @ObservationIgnored private let credentials: (any SharedSubscriptionCredentialStoring)?
 
     init(
         api: (any SharedSubscriptionAPI)?,
         store: (any SharedSubscriptionStore)?,
-        credentials: (any SharedSubscriptionCredentialStoring)?
+        credentials: (any SharedSubscriptionCredentialStoring)?,
+        recoveryAttester: any SharedRecoveryAttesting = AppleSubscriptionRecoveryAttester()
     ) {
         self.api = api
         self.store = store
         self.credentials = credentials
+        self.recoveryAttester = recoveryAttester
     }
 
     var canPurchase: Bool {
-        !isBusy && pendingVerification == nil && status?.isConfigured == true && !products.isEmpty
+        !isBusy && pendingRecovery == nil && pendingVerification == nil && status?.isConfigured == true && !products.isEmpty
     }
 
     var canRestore: Bool { !isBusy && status?.isConfigured == true && pendingVerification == nil }
@@ -58,6 +63,13 @@ final class SharedPremiumViewModel {
         }
         var receivedAuthority = false
         do {
+            let storedRecovery = try await (credentials as? any SharedSubscriptionRecoveryStoring)?.loadSubscriptionRecovery()
+            // Keep a proof returned by Apple if its following Keychain write failed in this process.
+            if pendingRecovery?.userID != session.user.id || pendingRecovery?.keyID != storedRecovery?.keyID {
+                pendingRecovery = storedRecovery
+            } else if pendingRecovery?.request == nil && pendingRecovery?.challenge == nil {
+                pendingRecovery = storedRecovery
+            }
             pendingVerification = try await credentials.loadSubscriptionVerification()
             guard isCurrentSession(session) else { return false }
             let current = try await api.subscription(token: session.accessToken)
@@ -169,7 +181,145 @@ final class SharedPremiumViewModel {
         }
         isBusy = false
         guard isCurrentSession(session) else { return false }
-        return await load(session: session, isCurrentSession: isCurrentSession)
+        let loaded = await load(session: session, isCurrentSession: isCurrentSession)
+        guard isCurrentSession(session), pendingVerification == nil, let status else { return loaded }
+        isBusy = true
+        defer { isBusy = false }
+        do {
+            let candidates = try await store.recoveryTransactions().filter {
+                $0.appAccountToken != status.appAccountToken && status.productIDs.contains($0.productID)
+                    && store.expectedEnvironment.accepts($0.environment)
+            }
+            guard isCurrentSession(session) else { return false }
+            if pendingRecovery != nil || !candidates.isEmpty {
+                return await recover(candidates.first, session: session, isCurrentSession: isCurrentSession) || loaded
+            }
+            if status.state == .free || status.state == .expired || status.state == .revoked {
+                notice = "No active subscription was found for this Apple purchase account."
+            }
+            return loaded
+        } catch {
+            if isCurrentSession(session) {
+                notice = message(for: error)
+            }
+            return loaded
+        }
+    }
+
+    private func recover(
+        _ transaction: SharedStoreTransaction?,
+        session: SharedSession,
+        isCurrentSession: @MainActor (SharedSession) -> Bool
+    ) async -> Bool {
+        guard let api = api as? any SharedSubscriptionRecoveryAPI,
+              let credentials = credentials as? any SharedSubscriptionRecoveryStoring,
+              let store, status?.appAccountToken == session.user.id else {
+            notice = "Premium recovery is not available on this device. Your purchase is kept."
+            return false
+        }
+        do {
+            // Before any POST, an expired challenge starts a new explicit attempt with a new key.
+            // A submitted proof remains unchanged because its server reservation may already exist.
+            if let pendingRecovery, pendingRecovery.userID == session.user.id,
+               store.expectedEnvironment.accepts(pendingRecovery.environment), pendingRecovery.request == nil,
+               let challenge = pendingRecovery.challenge, challenge.expiresAt <= Date() {
+                try await credentials.saveSubscriptionRecovery(nil)
+                self.pendingRecovery = nil
+            }
+            var recovery: PendingSubscriptionRecovery
+            if let pendingRecovery {
+                guard pendingRecovery.userID == session.user.id,
+                      store.expectedEnvironment.accepts(pendingRecovery.environment) else {
+                    notice = "Sign in with the account that started this recovery to finish it."
+                    return false
+                }
+                recovery = pendingRecovery
+            } else {
+                guard let transaction else { return false }
+                let key = try await recoveryAttester.generateKey()
+                guard isCurrentSession(session) else { return false }
+                recovery = PendingSubscriptionRecovery(
+                    userID: session.user.id,
+                    transactionID: transaction.id,
+                    environment: transaction.environment,
+                    keyID: key,
+                    signedTransaction: transaction.signedTransaction
+                )
+                try await credentials.saveSubscriptionRecovery(recovery)
+                pendingRecovery = recovery
+            }
+            if recovery.request == nil {
+                if recovery.challenge == nil {
+                    recovery.challenge = try await api.subscriptionRecoveryChallenge(
+                        SharedRecoveryChallengeRequest(signedTransaction: recovery.signedTransaction, keyId: recovery.keyID),
+                        token: session.accessToken
+                    )
+                    guard isCurrentSession(session) else { return false }
+                    pendingRecovery = recovery
+                    try await credentials.saveSubscriptionRecovery(recovery)
+                }
+                guard let challenge = recovery.challenge else { throw SharedAPIError.invalidResponse }
+                let hash = try challenge.verifiedHash(
+                    userID: session.user.id,
+                    keyID: recovery.keyID,
+                    transaction: recovery.signedTransaction,
+                    storeEnvironment: recovery.environment
+                )
+                let attestation = try await recoveryAttester.attest(keyID: recovery.keyID, hash: hash)
+                guard isCurrentSession(session) else { return false }
+                recovery.request = SharedRecoveryRequest(
+                    challengeId: challenge.id,
+                    keyId: recovery.keyID,
+                    attestation: attestation.base64EncodedString(),
+                    signedTransaction: recovery.signedTransaction
+                )
+                // Save the exact proof before submission: a lost acknowledgement must replay this proof.
+                pendingRecovery = recovery
+                try await credentials.saveSubscriptionRecovery(recovery)
+            }
+            guard let request = recovery.request else { throw SharedAPIError.invalidResponse }
+            // Also retry a failed local proof write before attempting delivery.
+            try await credentials.saveSubscriptionRecovery(recovery)
+            guard isCurrentSession(session) else { return false }
+            let acknowledgement = try await api.recoverSubscription(request, token: session.accessToken)
+            guard isCurrentSession(session) else { return false }
+            guard acknowledgement.acknowledgedTransactionId == recovery.transactionID,
+                  acknowledgement.subscription.appAccountToken == session.user.id else { throw SharedAPIError.invalidResponse }
+            status = acknowledgement.subscription
+            await store.finish(transactionID: recovery.transactionID)
+            guard isCurrentSession(session) else { return false }
+            try await credentials.saveSubscriptionRecovery(nil)
+            pendingRecovery = nil
+            notice = "Premium was restored to this account. Deleted lists and groups have not been recovered."
+            return true
+        } catch {
+            guard isCurrentSession(session) else { return false }
+            let definitiveServerRejection: Bool
+            if let apiError = error as? SharedAPIError {
+                definitiveServerRejection = !apiError.isUncertain && !apiError.isSessionInvalid
+            } else {
+                definitiveServerRejection = false
+            }
+            let failedUnsubmittedKey = pendingRecovery?.request == nil && (
+                (error as? DCError).map { $0.code != .serverUnavailable } == true
+                    || (error as? SharedAPIError) == .invalidResponse
+            )
+            if definitiveServerRejection || failedUnsubmittedKey {
+                do {
+                    try await credentials.saveSubscriptionRecovery(nil)
+                    pendingRecovery = nil
+                } catch {
+                    notice = message(for: error)
+                    return false
+                }
+            }
+            if case SharedAPIError.server(_, "subscription_recovery_pending_review", _, _) = error {
+                notice = "This subscription recovery needs review. Contact soporte@jesusfranco.dev."
+            } else {
+                notice = "Premium recovery could not be confirmed. Your purchase is kept. Use Restore purchases to retry."
+            }
+            return false
+        }
     }
 
     func receiveUpdate(

@@ -231,6 +231,10 @@ private actor ControlledAppleGateway: AppleGateway {
         refreshError = error
     }
 
+    func revoke(refreshToken: String) async throws {
+        throw AppleGatewayError.unavailable
+    }
+
     func waitForExchange() async {
         if exchangeWaiting != nil {
             return

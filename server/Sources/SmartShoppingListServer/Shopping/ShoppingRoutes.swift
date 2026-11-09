@@ -11,6 +11,15 @@ struct ShoppingRoutes: RouteCollection {
 
     func boot(routes: any RoutesBuilder) throws {
         let api = routes.grouped("v1").grouped(APIErrorMiddleware())
+        api.post("groups", ":groupId", "administration-claim") { request async throws -> Response in
+            let user = try await authentication.authenticate(request)
+            let body = try APIObject.body(request, allowed: ["operationId"], required: ["operationId"])
+            return try await service().claimAdministration(
+                user: user,
+                group: parameter("groupId", request: request),
+                operation: body.uuid("operationId")
+            ).response()
+        }
         api.post("groups", use: createGroup)
         api.get("groups", use: listGroups)
         api.post("account", "free-group", use: selectFreeGroup)

@@ -38,7 +38,7 @@ struct GroupAdministrationTransfer: Sendable {
 enum GroupCapabilityPolicy {
     static func capabilities(
         user: UUID,
-        administrator: String,
+        administrator: String?,
         memberCount: Int64,
         pending: GroupAdministrationTransfer?,
         accountMaximum: Int64,
@@ -53,7 +53,8 @@ enum GroupCapabilityPolicy {
             "canWithdrawTransfer": .bool(isAdministrator && pending?.proposerID == user),
             "canLeave": .bool(!isAdministrator || memberCount == 1),
             "requiresClosureConfirmation": .bool(memberCount == 1),
-            "capacityOwnerUserId": .string(administrator),
+            "capacityOwnerUserId": .optional(administrator),
+            "canClaimAdministration": .bool(administrator == nil),
             "limits": .object([
                 "groupsPerAccount": .object(["maximum": .integer(accountMaximum), "enforced": .bool(true)]),
                 "storesPerGroup": .object(["maximum": .integer(groupLimits.activeStores), "enforced": .bool(true)]),

@@ -8,7 +8,7 @@ enum SharedCredentialError: Error, Equatable {
 }
 
 /// Each update replaces one value atomically; a locked or unreadable item is never treated as absent.
-actor SharedKeychainStore: SharedCredentialStoring, SharedSubscriptionCredentialStoring {
+actor SharedKeychainStore: SharedCredentialStoring, SharedSubscriptionCredentialStoring, SharedDeletionCredentialStoring, SharedSubscriptionRecoveryStoring, SharedDeletedAccountCleanupStoring {
     private let service: String
     private let maximumBytes = 512 * 1_024
 
@@ -61,6 +61,30 @@ actor SharedKeychainStore: SharedCredentialStoring, SharedSubscriptionCredential
 
     func saveSubscriptionVerification(_ verification: PendingSubscriptionVerification?) throws {
         try save(verification, account: "subscription-verification")
+    }
+
+    func loadSubscriptionRecovery() throws -> PendingSubscriptionRecovery? {
+        try load(PendingSubscriptionRecovery.self, account: "subscription-recovery")
+    }
+
+    func saveSubscriptionRecovery(_ recovery: PendingSubscriptionRecovery?) throws {
+        try save(recovery, account: "subscription-recovery")
+    }
+
+    func loadDeletedAccountUserID() throws -> UUID? {
+        try load(UUID.self, account: "deleted-account-cleanup")
+    }
+
+    func saveDeletedAccountUserID(_ userID: UUID?) throws {
+        try save(userID, account: "deleted-account-cleanup")
+    }
+
+    func loadAccountDeletion() throws -> PendingAccountDeletion? {
+        try load(PendingAccountDeletion.self, account: "account-deletion")
+    }
+
+    func saveAccountDeletion(_ deletion: PendingAccountDeletion?) throws {
+        try save(deletion, account: "account-deletion")
     }
 
     private func load<Value: Decodable>(_ type: Value.Type, account: String) throws -> Value? {

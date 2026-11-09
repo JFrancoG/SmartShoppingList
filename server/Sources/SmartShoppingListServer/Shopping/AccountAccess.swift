@@ -82,7 +82,7 @@ extension AccountCapacityPolicy {
                     ORDER BY group_memberships.joined_at ASC,groups.id ASC LIMIT 1) AS fallback_group_id
             FROM users LEFT JOIN account_premium_access AS access ON access.user_id = users.id
                 AND access.verification_environment = \(bind: verificationEnvironment.rawValue)
-            WHERE users.id = \(bind: user)
+            WHERE users.id = \(bind: user) AND users.deleting_at IS NULL
             """).first() else { throw APIProblem.notFound }
         let now = try row.decode(column: "now", as: Date.self)
         let expires = try row.decode(column: "premium_until", as: Date?.self)

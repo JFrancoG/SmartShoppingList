@@ -1,5 +1,5 @@
 {
-  "contractVersion": "0.5.0",
+  "contractVersion": "0.6.0",
   "cases": [
     {
       "id": "challenge-fresh",
@@ -7,7 +7,10 @@
       "request": {
         "path": {},
         "query": {},
-        "body": {}
+        "body": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        }
       },
       "response": {
         "status": 201,
@@ -29,6 +32,9 @@
           "identityToken": "FAKE_NATIVE_ID_TOKEN",
           "authorizationCode": "FAKE_ONE_USE_CODE",
           "displayName": "Alex"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -72,6 +78,9 @@
           "challengeId": "00000000-0000-4000-8000-000000000050",
           "identityToken": "FAKE_WRONG_NONCE_TOKEN",
           "authorizationCode": "FAKE_ONE_USE_CODE"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -93,6 +102,9 @@
           "challengeId": "00000000-0000-4000-8000-000000000050",
           "identityToken": "FAKE_NATIVE_ID_TOKEN",
           "authorizationCode": "FAKE_USED_CODE"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -109,7 +121,10 @@
       "operationId": "getCurrentUser",
       "request": {
         "path": {},
-        "query": {}
+        "query": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        }
       },
       "response": {
         "status": 200,
@@ -152,7 +167,10 @@
       "operationId": "getCurrentUser",
       "request": {
         "path": {},
-        "query": {}
+        "query": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        }
       },
       "response": {
         "status": 401,
@@ -168,7 +186,10 @@
       "operationId": "logout",
       "request": {
         "path": {},
-        "query": {}
+        "query": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        }
       },
       "response": {
         "status": 204
@@ -183,6 +204,9 @@
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000100",
           "name": "Casa"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -209,6 +233,9 @@
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000100",
           "name": "Casa"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -235,6 +262,9 @@
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000103",
           "name": "Otro grupo"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -255,6 +285,9 @@
         },
         "query": {
           "limit": 50
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -285,7 +318,10 @@
         "path": {
           "groupId": "00000000-0000-4000-8000-000000000099"
         },
-        "query": {}
+        "query": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        }
       },
       "response": {
         "status": 404,
@@ -304,7 +340,10 @@
           "groupId": "00000000-0000-4000-8000-000000000010"
         },
         "query": {},
-        "body": {}
+        "body": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        }
       },
       "response": {
         "status": 201,
@@ -330,7 +369,10 @@
           "groupId": "00000000-0000-4000-8000-000000000010"
         },
         "query": {},
-        "body": {}
+        "body": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        }
       },
       "response": {
         "status": 403,
@@ -348,7 +390,10 @@
         "path": {
           "groupId": "00000000-0000-4000-8000-000000000010"
         },
-        "query": {}
+        "query": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        }
       },
       "response": {
         "status": 200,
@@ -376,7 +421,10 @@
           "groupId": "00000000-0000-4000-8000-000000000010",
           "invitationId": "00000000-0000-4000-8000-000000000040"
         },
-        "query": {}
+        "query": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        }
       },
       "response": {
         "status": 204
@@ -390,7 +438,10 @@
           "groupId": "00000000-0000-4000-8000-000000000010",
           "invitationId": "00000000-0000-4000-8000-000000000040"
         },
-        "query": {}
+        "query": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        }
       },
       "response": {
         "status": 204
@@ -404,7 +455,10 @@
           "groupId": "00000000-0000-4000-8000-000000000010",
           "invitationId": "00000000-0000-4000-8000-000000000040"
         },
-        "query": {}
+        "query": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        }
       },
       "response": {
         "status": 409,
@@ -425,6 +479,9 @@
         "query": {},
         "body": {
           "token": "IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -456,6 +513,9 @@
         "query": {},
         "body": {
           "token": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXA"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -477,6 +537,9 @@
         "query": {},
         "body": {
           "token": "IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -498,6 +561,9 @@
         "query": {},
         "body": {
           "token": "IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -525,6 +591,9 @@
         "query": {},
         "body": {
           "token": "IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -552,6 +621,9 @@
         "query": {},
         "body": {
           "token": "IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -573,6 +645,9 @@
         "query": {},
         "body": {
           "token": "IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -594,6 +669,9 @@
         "query": {},
         "body": {
           "token": "IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -638,6 +716,9 @@
               }
             }
           ]
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -720,6 +801,9 @@
               }
             }
           ]
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -788,6 +872,9 @@
               }
             }
           ]
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -830,6 +917,9 @@
               }
             }
           ]
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -849,7 +939,10 @@
           "groupId": "00000000-0000-4000-8000-000000000010",
           "storeId": "00000000-0000-4000-8000-000000000020"
         },
-        "query": {}
+        "query": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        }
       },
       "response": {
         "status": 200,
@@ -942,6 +1035,9 @@
           "store": {
             "id": "00000000-0000-4000-8000-000000000020"
           }
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -973,6 +1069,9 @@
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000107",
           "expectedVersion": 1
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -1017,6 +1116,9 @@
               "expectedVersion": 1
             }
           ]
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -1092,6 +1194,9 @@
               "expectedVersion": 1
             }
           ]
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -1167,6 +1272,9 @@
               "expectedVersion": 1
             }
           ]
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -1214,6 +1322,9 @@
           "store": {
             "id": "00000000-0000-4000-8000-000000000020"
           }
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -1252,7 +1363,10 @@
           "groupId": "00000000-0000-4000-8000-000000000010",
           "storeId": "00000000-0000-4000-8000-000000000020"
         },
-        "query": {}
+        "query": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        }
       },
       "response": {
         "status": 200,
@@ -1323,6 +1437,9 @@
               "expectedVersion": 2
             }
           ]
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -1359,6 +1476,9 @@
               }
             }
           ]
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -1391,6 +1511,9 @@
         },
         "query": {
           "limit": 50
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -1417,7 +1540,10 @@
         "path": {
           "groupId": "00000000-0000-4000-8000-000000000010"
         },
-        "query": {}
+        "query": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        }
       },
       "response": {
         "status": 200,
@@ -1457,7 +1583,8 @@
                 "maximum": 20,
                 "enforced": true
               }
-            }
+            },
+            "canClaimAdministration": false
           }
         }
       }
@@ -1469,7 +1596,10 @@
         "path": {
           "groupId": "00000000-0000-4000-8000-000000000010"
         },
-        "query": {}
+        "query": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        }
       },
       "response": {
         "status": 200,
@@ -1518,7 +1648,8 @@
                 "maximum": 20,
                 "enforced": true
               }
-            }
+            },
+            "canClaimAdministration": false
           }
         }
       }
@@ -1530,7 +1661,10 @@
         "path": {
           "groupId": "00000000-0000-4000-8000-000000000010"
         },
-        "query": {}
+        "query": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        }
       },
       "response": {
         "status": 200,
@@ -1570,7 +1704,8 @@
                 "maximum": 20,
                 "enforced": true
               }
-            }
+            },
+            "canClaimAdministration": false
           }
         }
       }
@@ -1586,6 +1721,9 @@
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000300",
           "recipientUserId": "00000000-0000-4000-8000-000000000002"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -1626,6 +1764,9 @@
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000300",
           "recipientUserId": "00000000-0000-4000-8000-000000000002"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -1662,6 +1803,9 @@
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000301",
           "recipientUserId": "00000000-0000-4000-8000-000000000002"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -1684,6 +1828,9 @@
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000302",
           "recipientUserId": "00000000-0000-4000-8000-000000000001"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -1706,6 +1853,9 @@
         "query": {},
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000303"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -1746,6 +1896,9 @@
         "query": {},
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000303"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -1782,6 +1935,9 @@
         "query": {},
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000304"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -1822,6 +1978,9 @@
         "query": {},
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000305"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -1862,6 +2021,9 @@
         "query": {},
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000306"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -1884,6 +2046,9 @@
         "query": {},
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000307"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -1906,6 +2071,9 @@
         "query": {},
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000308"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -1928,6 +2096,9 @@
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000309",
           "confirmClosure": false
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -1950,6 +2121,9 @@
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000310",
           "confirmClosure": false
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -1972,6 +2146,9 @@
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000311",
           "confirmClosure": false
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -1995,6 +2172,9 @@
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000311",
           "confirmClosure": false
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -2018,6 +2198,9 @@
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000312",
           "confirmClosure": true
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -2041,6 +2224,9 @@
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000312",
           "confirmClosure": true
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -2064,6 +2250,9 @@
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000312",
           "confirmClosure": false
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -2082,7 +2271,10 @@
         "path": {
           "groupId": "00000000-0000-4000-8000-000000000010"
         },
-        "query": {}
+        "query": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        }
       },
       "response": {
         "status": 404,
@@ -2102,6 +2294,9 @@
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000299",
           "name": "Casa"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -2119,7 +2314,10 @@
       "operationId": "listGroups",
       "request": {
         "path": {},
-        "query": {}
+        "query": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        }
       },
       "response": {
         "status": 200,
@@ -2134,7 +2332,10 @@
       "operationId": "listGroups",
       "request": {
         "path": {},
-        "query": {}
+        "query": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        }
       },
       "response": {
         "status": 200,
@@ -2174,6 +2375,9 @@
         "path": {},
         "query": {
           "limit": 1
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -2204,6 +2408,9 @@
         "query": {
           "limit": 1,
           "cursor": "opaque-account-groups-cursor"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -2231,7 +2438,10 @@
       "operationId": "getCurrentUser",
       "request": {
         "path": {},
-        "query": {}
+        "query": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        }
       },
       "response": {
         "status": 200,
@@ -2274,7 +2484,10 @@
       "operationId": "getCurrentUser",
       "request": {
         "path": {},
-        "query": {}
+        "query": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        }
       },
       "response": {
         "status": 200,
@@ -2307,7 +2520,10 @@
       "operationId": "getCurrentUser",
       "request": {
         "path": {},
-        "query": {}
+        "query": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        }
       },
       "response": {
         "status": 200,
@@ -2344,6 +2560,9 @@
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000109",
           "name": "Otro grupo"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -2364,6 +2583,9 @@
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000109",
           "name": "Otro grupo"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -2385,6 +2607,9 @@
         "query": {},
         "body": {
           "token": "IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -2411,6 +2636,9 @@
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000110",
           "name": "Trabajo"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -2435,7 +2663,10 @@
         "path": {
           "groupId": "00000000-0000-4000-8000-000000000010"
         },
-        "query": {}
+        "query": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        }
       },
       "response": {
         "status": 200,
@@ -2464,7 +2695,10 @@
         "path": {
           "groupId": "00000000-0000-4000-8000-000000000010"
         },
-        "query": {}
+        "query": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        }
       },
       "response": {
         "status": 200,
@@ -2493,7 +2727,10 @@
         "path": {
           "groupId": "00000000-0000-4000-8000-000000000010"
         },
-        "query": {}
+        "query": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        }
       },
       "response": {
         "status": 200,
@@ -2524,6 +2761,9 @@
         },
         "query": {
           "state": "active"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -2554,7 +2794,10 @@
         "path": {
           "groupId": "00000000-0000-4000-8000-000000000010"
         },
-        "query": {}
+        "query": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        }
       },
       "response": {
         "status": 200,
@@ -2586,6 +2829,9 @@
         },
         "query": {
           "state": "archived"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -2618,6 +2864,9 @@
         },
         "query": {
           "state": "archived"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -2650,6 +2899,9 @@
         },
         "query": {
           "state": "archived"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -2681,7 +2933,10 @@
           "groupId": "00000000-0000-4000-8000-000000000010",
           "storeId": "00000000-0000-4000-8000-000000000020"
         },
-        "query": {}
+        "query": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        }
       },
       "response": {
         "status": 200,
@@ -2702,6 +2957,9 @@
         "query": {},
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000120"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -2731,6 +2989,9 @@
         "query": {},
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000121"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -2760,6 +3021,9 @@
         "query": {},
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000122"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -2782,6 +3046,9 @@
         "query": {},
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000123"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -2804,6 +3071,9 @@
         "query": {},
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000124"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -2833,6 +3103,9 @@
         "query": {},
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000125"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -2862,6 +3135,9 @@
         "query": {},
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000126"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -2884,6 +3160,9 @@
         "query": {},
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000126"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -2906,6 +3185,9 @@
         "query": {},
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000124"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -2943,6 +3225,9 @@
               }
             }
           ]
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -2973,6 +3258,9 @@
               }
             }
           ]
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -3003,6 +3291,9 @@
               }
             }
           ]
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -3033,6 +3324,9 @@
               }
             }
           ]
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -3077,6 +3371,9 @@
               }
             }
           ]
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -3143,6 +3440,9 @@
           "store": {
             "id": "00000000-0000-4000-8000-000000000020"
           }
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -3165,6 +3465,9 @@
         "query": {},
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000122"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -3181,7 +3484,10 @@
       "operationId": "getAccountSubscription",
       "request": {
         "path": {},
-        "query": {}
+        "query": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        }
       },
       "response": {
         "status": 200,
@@ -3202,7 +3508,10 @@
       "operationId": "getAccountSubscription",
       "request": {
         "path": {},
-        "query": {}
+        "query": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        }
       },
       "response": {
         "status": 200,
@@ -3226,7 +3535,10 @@
       "operationId": "getAccountSubscription",
       "request": {
         "path": {},
-        "query": {}
+        "query": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        }
       },
       "response": {
         "status": 200,
@@ -3250,7 +3562,10 @@
       "operationId": "getAccountSubscription",
       "request": {
         "path": {},
-        "query": {}
+        "query": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        }
       },
       "response": {
         "status": 200,
@@ -3274,7 +3589,10 @@
       "operationId": "getAccountSubscription",
       "request": {
         "path": {},
-        "query": {}
+        "query": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        }
       },
       "response": {
         "status": 200,
@@ -3301,6 +3619,9 @@
         "query": {},
         "body": {
           "signedTransaction": "FAKE_HEADER.FAKE_TRANSACTION.FAKE_SIGNATURE"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -3331,6 +3652,9 @@
         "query": {},
         "body": {
           "signedTransaction": "FAKE_HEADER.TAMPERED_TRANSACTION.FAKE_SIGNATURE"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -3350,6 +3674,9 @@
         "query": {},
         "body": {
           "signedTransaction": "FAKE_HEADER.OTHER_ACCOUNT.FAKE_SIGNATURE"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -3369,6 +3696,9 @@
         "query": {},
         "body": {
           "signedTransaction": "FAKE_HEADER.BOUND_TRANSACTION.FAKE_SIGNATURE"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -3388,6 +3718,9 @@
         "query": {},
         "body": {
           "signedTransaction": "FAKE_HEADER.FAKE_TRANSACTION.FAKE_SIGNATURE"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -3408,6 +3741,9 @@
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000140",
           "groupId": "00000000-0000-4000-8000-000000000011"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -3440,6 +3776,9 @@
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000141",
           "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -3472,6 +3811,9 @@
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000142",
           "groupId": "00000000-0000-4000-8000-000000000011"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -3492,6 +3834,9 @@
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000143",
           "groupId": "00000000-0000-4000-8000-000000000011"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -3524,6 +3869,9 @@
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000144",
           "groupId": "00000000-0000-4000-8000-000000000019"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -3540,7 +3888,10 @@
       "operationId": "getCurrentUser",
       "request": {
         "path": {},
-        "query": {}
+        "query": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        }
       },
       "response": {
         "status": 200,
@@ -3573,7 +3924,10 @@
       "operationId": "getCurrentUser",
       "request": {
         "path": {},
-        "query": {}
+        "query": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        }
       },
       "response": {
         "status": 200,
@@ -3606,7 +3960,10 @@
       "operationId": "listGroups",
       "request": {
         "path": {},
-        "query": {}
+        "query": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        }
       },
       "response": {
         "status": 200,
@@ -3672,6 +4029,9 @@
               }
             }
           ]
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -3700,6 +4060,9 @@
           "store": {
             "id": "00000000-0000-4000-8000-000000000020"
           }
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -3736,6 +4099,9 @@
               "expectedVersion": 1
             }
           ]
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -3758,6 +4124,9 @@
         "query": {},
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000124"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       },
       "response": {
@@ -3777,7 +4146,10 @@
           "groupId": "00000000-0000-4000-8000-000000000010"
         },
         "query": {},
-        "body": {}
+        "body": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        }
       },
       "response": {
         "status": 409,
@@ -3820,6 +4192,242 @@
           "requestId": "00000000-0000-4000-8000-000000000900"
         }
       }
+    },
+    {
+      "id": "deletion-impact-legacy",
+      "operationId": "getAccountDeletionPreview",
+      "request": {
+        "path": {},
+        "query": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "groups": [
+            {
+              "id": "00000000-0000-4000-8000-000000000010",
+              "name": "Casa",
+              "memberCount": 2,
+              "administers": true,
+              "willDelete": false
+            }
+          ],
+          "ownContentCount": 2,
+          "legacyContentCount": 4,
+          "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      }
+    },
+    {
+      "id": "deletion-prepared",
+      "operationId": "prepareAccountDeletion",
+      "request": {
+        "path": {},
+        "query": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        },
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000700",
+          "statusSecret": "SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSQ",
+          "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      },
+      "response": {
+        "status": 201,
+        "body": {
+          "id": "00000000-0000-4000-8000-000000000701",
+          "nonce": "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNM",
+          "expiresAt": "2026-11-09T14:05:00Z"
+        }
+      }
+    },
+    {
+      "id": "deletion-accepted",
+      "operationId": "acceptAccountDeletion",
+      "request": {
+        "path": {},
+        "query": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        },
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000700",
+          "statusSecret": "SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSQ",
+          "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "challengeId": "00000000-0000-4000-8000-000000000701",
+          "identityToken": "FAKE_DELETION_TOKEN",
+          "authorizationCode": "FAKE_ONCE_CODE"
+        }
+      },
+      "response": {
+        "status": 202,
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000700",
+          "status": "accepted",
+          "appleRevocationOutcome": null
+        }
+      }
+    },
+    {
+      "id": "deletion-completed",
+      "operationId": "getAccountDeletionStatus",
+      "request": {
+        "path": {},
+        "query": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        },
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000700",
+          "statusSecret": "SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSQ"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000700",
+          "status": "completed",
+          "appleRevocationOutcome": "confirmed"
+        }
+      }
+    },
+    {
+      "id": "deletion-cancel-before-accept",
+      "operationId": "cancelAccountDeletionPreparation",
+      "request": {
+        "path": {},
+        "query": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        },
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000700",
+          "statusSecret": "SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSQ"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000700",
+          "status": "cancelled",
+          "appleRevocationOutcome": null
+        }
+      }
+    },
+    {
+      "id": "deletion-remote-confirmed",
+      "operationId": "getDeletedSessionStatus",
+      "request": {
+        "path": {},
+        "query": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        },
+        "body": {}
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "deletionAccepted": true
+        }
+      }
+    },
+    {
+      "id": "pending-admin-claim",
+      "operationId": "claimGroupAdministration",
+      "request": {
+        "path": {
+          "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "query": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        },
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000702"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "id": "00000000-0000-4000-8000-000000000010",
+          "name": "Casa",
+          "creatorUserId": "00000000-0000-4000-8000-000000000001",
+          "createdAt": "2026-09-19T10:00:00Z",
+          "administratorUserId": "00000000-0000-4000-8000-000000000001",
+          "capabilities": {
+            "canUseShopping": true,
+            "isFreeGroup": false
+          },
+          "state": "active"
+        }
+      }
+    },
+    {
+      "id": "recovery-challenge",
+      "operationId": "prepareSubscriptionRecovery",
+      "request": {
+        "path": {},
+        "query": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        },
+        "body": {
+          "signedTransaction": "FAKE_STOREKIT_JWS",
+          "keyId": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+        }
+      },
+      "response": {
+        "status": 201,
+        "body": {
+          "id": "00000000-0000-4000-8000-000000000701",
+          "nonce": "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNM",
+          "expiresAt": "2026-11-09T14:05:00Z",
+          "clientDataHash": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+          "appAccountToken": "00000000-0000-4000-8000-000000000001",
+          "environment": "Sandbox"
+        }
+      }
+    },
+    {
+      "id": "recovery-confirmed",
+      "operationId": "recoverSubscription",
+      "request": {
+        "path": {},
+        "query": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        },
+        "body": {
+          "signedTransaction": "FAKE_STOREKIT_JWS",
+          "keyId": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+          "challengeId": "00000000-0000-4000-8000-000000000701",
+          "attestation": "FAKE_BASE64_ATTESTATION"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "subscription": {
+            "appAccountToken": "00000000-0000-4000-8000-000000000001",
+            "isConfigured": true,
+            "productIDs": [
+              "com.plusprojects.SmartShoppingList.premium.monthly.example",
+              "com.plusprojects.SmartShoppingList.premium.yearly.example"
+            ],
+            "state": "subscribed",
+            "expiresAt": "2026-11-10T10:00:00Z",
+            "gracePeriodExpiresAt": null,
+            "autoRenewEnabled": true,
+            "verifiedAt": "2026-10-10T10:00:00Z"
+          },
+          "acknowledgedTransactionId": "EXAMPLE_TRANSACTION_1001"
+        }
+      }
     }
   ],
   "invalidRequests": [
@@ -3834,6 +4442,9 @@
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000201",
           "items": []
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       }
     },
@@ -4206,6 +4817,9 @@
               }
             }
           ]
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       }
     },
@@ -4228,6 +4842,9 @@
               }
             }
           ]
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       }
     },
@@ -4250,6 +4867,9 @@
               }
             }
           ]
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       }
     },
@@ -4270,6 +4890,9 @@
               "store": {}
             }
           ]
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       }
     },
@@ -4293,6 +4916,9 @@
               }
             }
           ]
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       }
     },
@@ -4330,6 +4956,9 @@
             }
           ],
           "transcript": "Añade automáticamente esto"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       }
     },
@@ -4352,6 +4981,9 @@
               }
             }
           ]
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       }
     },
@@ -4367,6 +4999,9 @@
           "operationId": "00000000-0000-4000-8000-000000000102",
           "storeId": "00000000-0000-4000-8000-000000000020",
           "items": []
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       }
     },
@@ -4386,6 +5021,9 @@
               "id": "00000000-0000-4000-8000-000000000030"
             }
           ]
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       }
     },
@@ -4410,6 +5048,9 @@
               "expectedVersion": 1
             }
           ]
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       }
     },
@@ -4431,6 +5072,9 @@
             "id": "00000000-0000-4000-8000-000000000020"
           },
           "status": "purchased"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       }
     },
@@ -4446,6 +5090,9 @@
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000203",
           "expectedVersion": 0
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       }
     },
@@ -4458,6 +5105,9 @@
         "body": {
           "operationId": "retry-1",
           "name": "Casa"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       }
     },
@@ -4471,6 +5121,9 @@
         "query": {},
         "body": {
           "token": "guess"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       }
     },
@@ -4485,6 +5138,9 @@
           "identityToken": "FAKE",
           "authorizationCode": "FAKE",
           "expectedNonce": "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNM"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       }
     },
@@ -4497,6 +5153,9 @@
         "body": {
           "challengeId": "00000000-0000-4000-8000-000000000050",
           "identityToken": "FAKE"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       }
     },
@@ -4509,6 +5168,9 @@
         },
         "query": {
           "limit": 101
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       }
     },
@@ -4519,7 +5181,10 @@
         "path": {
           "groupId": "foreign-group"
         },
-        "query": {}
+        "query": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        }
       }
     },
     {
@@ -4541,6 +5206,9 @@
               }
             }
           ]
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       }
     },
@@ -4554,6 +5222,9 @@
         "query": {},
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000320"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       }
     },
@@ -4568,6 +5239,9 @@
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000321",
           "confirmClosure": "true"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       }
     },
@@ -4581,6 +5255,9 @@
         "query": {},
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000322"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       }
     },
@@ -4596,6 +5273,9 @@
           "operationId": "00000000-0000-4000-8000-000000000323",
           "recipientUserId": "00000000-0000-4000-8000-000000000002",
           "administratorUserId": "00000000-0000-4000-8000-000000000002"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       }
     },
@@ -4608,7 +5288,10 @@
           "transferId": "00000000-0000-4000-8000-000000000060"
         },
         "query": {},
-        "body": {}
+        "body": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        }
       }
     },
     {
@@ -4620,6 +5303,9 @@
         },
         "query": {
           "limit": 101
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       }
     },
@@ -4632,6 +5318,9 @@
         },
         "query": {
           "userId": "00000000-0000-4000-8000-000000000002"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       }
     },
@@ -4642,6 +5331,9 @@
         "path": {},
         "query": {
           "limit": 0
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       }
     },
@@ -4652,6 +5344,9 @@
         "path": {},
         "query": {
           "limit": 101
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       }
     },
@@ -4662,6 +5357,9 @@
         "path": {},
         "query": {
           "cursor": ""
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       }
     },
@@ -4672,6 +5370,9 @@
         "path": {},
         "query": {
           "activeGroupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       }
     },
@@ -4685,6 +5386,9 @@
           "operationId": "00000000-0000-4000-8000-000000000111",
           "name": "Trabajo",
           "isPremium": true
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       }
     },
@@ -4697,6 +5401,9 @@
         },
         "query": {
           "state": "all"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       }
     },
@@ -4709,7 +5416,10 @@
           "storeId": "00000000-0000-4000-8000-000000000020"
         },
         "query": {},
-        "body": {}
+        "body": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        }
       }
     },
     {
@@ -4721,7 +5431,10 @@
           "storeId": "00000000-0000-4000-8000-000000000020"
         },
         "query": {},
-        "body": {}
+        "body": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        }
       }
     },
     {
@@ -4736,6 +5449,9 @@
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000140",
           "force": true
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       }
     },
@@ -4751,6 +5467,9 @@
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000141",
           "isPremium": true
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       }
     },
@@ -4764,6 +5483,9 @@
         "query": {},
         "body": {
           "plan": "premium"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       }
     },
@@ -4779,6 +5501,9 @@
             "active",
             "archived"
           ]
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       }
     },
@@ -4790,6 +5515,9 @@
         "query": {},
         "body": {
           "groupId": "00000000-0000-4000-8000-000000000010"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       }
     },
@@ -4802,6 +5530,9 @@
         "body": {
           "operationId": "00000000-0000-4000-8000-000000000145",
           "groupId": "not-a-uuid"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       }
     },
@@ -4814,6 +5545,9 @@
         "body": {
           "signedTransaction": "FAKE_JWS",
           "isPremium": true
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       }
     },
@@ -4825,6 +5559,9 @@
         "query": {},
         "body": {
           "signedTransaction": ""
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       }
     },
@@ -4834,7 +5571,10 @@
       "request": {
         "path": {},
         "query": {},
-        "body": {}
+        "body": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        }
       }
     },
     {
@@ -4846,6 +5586,9 @@
         "body": {
           "signedTransaction": "FAKE_JWS",
           "appAccountToken": "00000000-0000-4000-8000-000000000002"
+        },
+        "headers": {
+          "X-SmartList-Contract": "0.6"
         }
       }
     },
@@ -4870,6 +5613,44 @@
           "signedPayload": "FAKE_JWS",
           "premiumActive": true
         }
+      }
+    },
+    {
+      "id": "deletion-no-secret",
+      "operationId": "getAccountDeletionStatus",
+      "request": {
+        "path": {},
+        "query": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        },
+        "body": {
+          "operationId": "00000000-0000-4000-8000-000000000700"
+        }
+      }
+    },
+    {
+      "id": "recovery-no-proof",
+      "operationId": "recoverSubscription",
+      "request": {
+        "path": {},
+        "query": {},
+        "headers": {
+          "X-SmartList-Contract": "0.6"
+        },
+        "body": {
+          "challengeId": "00000000-0000-4000-8000-000000000701",
+          "keyId": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+          "signedTransaction": "FAKE"
+        }
+      }
+    },
+    {
+      "id": "legacy-client-missing-contract",
+      "operationId": "getCurrentUser",
+      "request": {
+        "path": {},
+        "query": {}
       }
     }
   ]

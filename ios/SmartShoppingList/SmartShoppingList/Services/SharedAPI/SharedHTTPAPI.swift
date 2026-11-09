@@ -23,8 +23,17 @@ struct SharedHTTPDiagnosticContext {
         "v1/me",
         "v1/groups",
         "v1/account/free-group",
+        "v1/account/deletion-preview",
+        "v1/account/deletion-session-status",
+        "v1/account/deletion-challenges",
+        "v1/account/deletions",
+        "v1/account/deletions/status",
+        "v1/account/deletions/cancel",
+        "v1/groups/:group/administration-claim",
         "v1/account/subscription",
         "v1/account/subscription/transactions",
+        "v1/account/subscription/recovery-challenges",
+        "v1/account/subscription/recovery",
         "v1/session",
         "v1/groups/:group/stores",
         "v1/groups/:group/capacity",
@@ -92,7 +101,7 @@ final class RejectSharedAPIRedirects: NSObject, URLSessionTaskDelegate {
     }
 }
 
-actor SharedHTTPAPI: SharedShoppingAPI {
+actor SharedHTTPAPI: SharedShoppingAPI, SharedAccountDeletionAPI, SharedSubscriptionRecoveryAPI {
     private static let logger = Logger(subsystem: "com.plusprojects.SmartShoppingList", category: "SharedHTTP")
     private let configuration: SharedAPIConfiguration
     private let transport: any SharedHTTPTransport
@@ -100,6 +109,92 @@ actor SharedHTTPAPI: SharedShoppingAPI {
     init(configuration: SharedAPIConfiguration, transport: any SharedHTTPTransport = URLSessionSharedTransport()) {
         self.configuration = configuration
         self.transport = transport
+    }
+
+    func deletionSessionStatus(token: String) async throws -> Bool {
+        struct Result: Decodable { let deletionAccepted: Bool }
+        let result: Result = try await send(
+            path: "v1/account/deletion-session-status",
+            method: "POST",
+            body: EmptySharedRequest(),
+            token: token,
+            status: 200
+        )
+        return result.deletionAccepted
+    }
+
+    func deletionPreview(token: String) async throws -> SharedDeletionPreview {
+        let preview: SharedDeletionPreview = try await get(path: "v1/account/deletion-preview", token: token)
+        guard !preview.revision.isEmpty, preview.ownContentCount >= 0, preview.legacyContentCount >= 0,
+              preview.groups.allSatisfy({ $0.memberCount >= 0 }),
+              Set(preview.groups.map(\.id)).count == preview.groups.count else {
+            throw SharedAPIError.invalidResponse
+        }
+        return preview
+    }
+
+    func deletionChallenge(_ request: SharedDeletionPreparation, token: String) async throws -> SharedChallenge {
+        let challenge: SharedChallenge = try await send(
+            path: "v1/account/deletion-challenges",
+            method: "POST",
+            body: request,
+            token: token,
+            status: 201
+        )
+        guard SharedAPIConfiguration.isCanonicalSecret(challenge.nonce) else { throw SharedAPIError.invalidResponse }
+        return challenge
+    }
+
+    func deleteAccount(_ request: SharedDeletionRequest, token: String) async throws -> SharedDeletionStatus {
+        let result: SharedDeletionStatus = try await send(
+            path: "v1/account/deletions",
+            method: "POST",
+            body: request,
+            token: token,
+            status: 202
+        )
+        guard result.operationId == request.operationId, result.status.wasAccepted else {
+            throw SharedAPIError.invalidResponse
+        }
+        return result
+    }
+
+    func deletionStatus(_ receipt: SharedDeletionReceipt) async throws -> SharedDeletionStatus {
+        try await deletionReceiptResult(receipt, action: "status")
+    }
+
+    func cancelDeletion(_ receipt: SharedDeletionReceipt) async throws -> SharedDeletionStatus {
+        try await deletionReceiptResult(receipt, action: "cancel")
+    }
+
+    private func deletionReceiptResult(_ receipt: SharedDeletionReceipt, action: String) async throws -> SharedDeletionStatus {
+        let result: SharedDeletionStatus = try await send(
+            path: "v1/account/deletions/" + action,
+            method: "POST",
+            body: receipt,
+            token: nil,
+            status: 200
+        )
+        guard result.operationId == receipt.operationId else { throw SharedAPIError.invalidResponse }
+        return result
+    }
+
+    func claimAdministration(
+        _ request: ResolveGroupTransferRequest,
+        groupID: UUID,
+        token: String
+    ) async throws -> SharedGroup {
+        let result: SharedGroup = try await send(
+            path: "v1/groups/\(id(groupID))/administration-claim",
+            method: "POST",
+            body: request,
+            token: token,
+            status: 200
+        )
+        guard result.id == groupID, result.administratorUserId != nil, !result.isPendingAdministration else {
+            throw SharedAPIError.invalidResponse
+        }
+        return result
     }
 
     func createChallenge() async throws -> SharedChallenge {
@@ -148,6 +243,20 @@ actor SharedHTTPAPI: SharedShoppingAPI {
         )
         guard result.membershipAccess?.freeGroupId == request.groupId else { throw SharedAPIError.invalidResponse }
         return result
+    }
+
+    func subscriptionRecoveryChallenge(
+        _ request: SharedRecoveryChallengeRequest,
+        token: String
+    ) async throws -> SharedRecoveryChallenge {
+        try await send(path: "v1/account/subscription/recovery-challenges", method: "POST", body: request, token: token, status: 201)
+    }
+
+    func recoverSubscription(
+        _ request: SharedRecoveryRequest,
+        token: String
+    ) async throws -> SharedSubscriptionAcknowledgement {
+        try await send(path: "v1/account/subscription/recovery", method: "POST", body: request, token: token, status: 200)
     }
 
     func subscription(token: String) async throws -> SharedSubscriptionStatus {
@@ -244,7 +353,11 @@ actor SharedHTTPAPI: SharedShoppingAPI {
             path: "v1/groups/\(id(groupID))/administration",
             token: token
         )
-        guard result.group.id == groupID, let administratorID = result.group.administratorUserId,
+        let administratorID = result.group.administratorUserId
+        guard result.group.id == groupID,
+              administratorID != nil || result.group.isPendingAdministration,
+              !result.group.isPendingAdministration || (administratorID == nil && result.pendingTransfer == nil
+                  && !result.capabilities.canManageInvitations && !result.capabilities.canProposeTransfer),
               result.memberCount > 0, result.capabilities.capacityOwnerUserId == administratorID,
               result.capabilities.limits.groupsPerAccount.maximum.map({ $0 >= 0 }) ?? true,
               result.capabilities.limits.storesPerGroup.maximum.map({ $0 >= 0 }) ?? true,
@@ -575,6 +688,7 @@ actor SharedHTTPAPI: SharedShoppingAPI {
         request.httpMethod = method
         request.httpBody = body
         request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("0.6", forHTTPHeaderField: "X-SmartList-Contract")
         if body != nil {
             request.setValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
         }

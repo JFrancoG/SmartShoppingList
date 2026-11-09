@@ -1,6 +1,6 @@
 # Plan de implementación
 
-Fecha de creación: 18 de septiembre de 2026. Última revisión: 7 de noviembre de 2026.
+Fecha de creación: 18 de septiembre de 2026. Última revisión: 9 de noviembre de 2026.
 
 Especificación de referencia: [MVP aprobado](mvp-spec.md). Este documento conserva las fases, dependencias y condiciones para avanzar; no amplía el contrato funcional ni registra el progreso de cada tarea.
 
@@ -31,6 +31,21 @@ La evidencia se registra en la issue con fecha, entorno, resultados y referencia
 La [#54](https://github.com/JFrancoG/SmartShoppingList/issues/54) reúne la preparación de distribución,
 requisitos dentro de la app, migración del backend real, App Store Connect y publicación controlada.
 Parte del alcance Sandbox cerrado en #39, sin extender esa evidencia a distribución ni producción.
+El siguiente bloque dispone de [borradores de Privacidad y Términos](legal/README.md) y un
+[diseño de eliminación de cuenta](architecture/account-deletion.md). El 9/11 el propietario aprueba
+grupos pendientes de administración con asunción voluntaria, bloqueo inmediato y objetivo de purga
+en 24 horas, copias de hasta 30 días, logs de hasta 30 días, soporte hasta 12 meses tras cerrar la consulta
+y recuperación de Premium vigente mediante Restaurar compras, sin recuperar datos borrados.
+Autoriza actualizar los borradores e iniciar la implementación local en
+`codex/issue-54-privacy-account-deletion`. La implementación local incorpora proceso persistente,
+reautenticación específica, purga y señal explícita para otros dispositivos, grupos pendientes,
+recuperación de Premium acreditada con App Attest y contrato **0.6**. El propietario aprueba
+retirar texto histórico incierto con aviso previo, conservando contenido ajeno demostrado.
+Eliminar cuenta y mis datos es independiente de salir de un grupo y cerrar sesión.
+La activación requiere cliente compatible, validación Apple/TestFlight, copia/restauración,
+retenciones verificadas y textos públicos completos; esta implementación no despliega servicios.
+La [validación local de eliminación](validation/issue-54-account-deletion-local.md) separa las pruebas
+automatizadas de los ensayos con Apple y dispositivos pendientes.
 El [diseño de entornos de distribución](architecture/distribution-environments.md) está aprobado para
 implementación local: arranque antes de sesión/datos, App Intents, compras e invitaciones separados.
 La [validación de #54](validation/issue-54-distribution-environments.md) registra 441 ejecuciones Fast y

@@ -9,6 +9,8 @@ protocol AppleGateway: Sendable {
     func verifyIdentityToken(_ token: String, nonce: String) async throws -> String
     func exchange(code: String) async throws -> AppleTokenResponse
     func validate(refreshToken: String) async throws -> AppleTokenResponse
+    /// Contacts Apple to revoke authorization; callers must not hold a database transaction across this request.
+    func revoke(refreshToken: String) async throws
 }
 
 struct AppleTokenResponse: Decodable, Sendable {
@@ -36,6 +38,7 @@ struct AppleHTTPResponse: Sendable {
 protocol AppleHTTPTransport: Sendable {
     func fetchKeys() async throws -> AppleHTTPResponse
     func sendTokenForm(_ fields: [String: String]) async throws -> AppleHTTPResponse
+    func sendRevocationForm(_ fields: [String: String]) async throws -> AppleHTTPResponse
 }
 
 /// Apple's endpoints are fixed; credentials never follow a redirect to another origin.
@@ -45,7 +48,15 @@ final class AppleURLSessionTransport: NSObject, AppleHTTPTransport, URLSessionTa
     }
 
     func sendTokenForm(_ fields: [String: String]) async throws -> AppleHTTPResponse {
-        var request = URLRequest(url: URL(string: "https://appleid.apple.com/auth/token")!)
+        try await sendForm(fields, to: URL(string: "https://appleid.apple.com/auth/token")!)
+    }
+
+    func sendRevocationForm(_ fields: [String: String]) async throws -> AppleHTTPResponse {
+        try await sendForm(fields, to: URL(string: "https://appleid.apple.com/auth/revoke")!)
+    }
+
+    private func sendForm(_ fields: [String: String], to url: URL) async throws -> AppleHTTPResponse {
+        var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
         let allowed = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")
@@ -123,6 +134,24 @@ actor LiveAppleGateway: AppleGateway {
 
     func validate(refreshToken: String) async throws -> AppleTokenResponse {
         try await tokenRequest(fields: ["grant_type": "refresh_token", "refresh_token": refreshToken])
+    }
+
+    func revoke(refreshToken: String) async throws {
+        guard !refreshToken.isEmpty else { throw AppleGatewayError.rejected }
+        do {
+            let fields = [
+                "client_id": configuration.clientID,
+                "client_secret": try await configuration.clientSecret(now: now()),
+                "token": refreshToken,
+                "token_type_hint": "refresh_token"
+            ]
+            let response = try await transport.sendRevocationForm(fields)
+            // Apple confirms both a new revocation and an already invalid token with an empty 200 response.
+            guard response.status == 200, response.body.isEmpty else { throw AppleGatewayError.unavailable }
+        } catch {
+            // Neither an OAuth error nor a network failure proves that Apple revoked this grant.
+            throw AppleGatewayError.unavailable
+        }
     }
 
     private func tokenRequest(fields: [String: String]) async throws -> AppleTokenResponse {

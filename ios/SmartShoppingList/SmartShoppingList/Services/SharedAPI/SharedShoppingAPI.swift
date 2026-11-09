@@ -77,7 +77,7 @@ enum SharedAPIError: Error, Equatable {
         case 400: ["invalid_request", "invalid_app_store_transaction"].contains(code)
         case 401: ["invalid_session", "invalid_apple_credentials", "challenge_expired"].contains(code)
         case 403:
-            ["creator_required", "administrator_required", "transfer_recipient_required", "transaction_account_mismatch"]
+            ["creator_required", "administrator_required", "transfer_recipient_required", "transaction_account_mismatch", "invalid_subscription_recovery"]
                 .contains(code)
         case 404: code == "not_found"
         case 409:
@@ -85,10 +85,12 @@ enum SharedAPIError: Error, Equatable {
              "transfer_required", "closure_confirmation_required", "transfer_not_pending", "transfer_pending",
              "invalid_transfer_recipient", "group_limit_reached", "store_limit_reached", "pending_item_limit_reached",
              "store_archived", "store_not_empty", "group_access_restricted", "free_group_change_cooldown",
-             "transaction_already_bound"]
+             "transaction_already_bound", "deletion_impact_changed", "deletion_in_progress",
+             "administration_pending", "administration_already_assigned", "subscription_expired", "subscription_recovery_pending_review"]
                 .contains(code)
-        case 410: ["invitation_expired", "invitation_revoked", "invitation_consumed"].contains(code)
+        case 410: ["invitation_expired", "invitation_revoked", "invitation_consumed", "result_removed"].contains(code)
         case 413: code == "body_too_large"
+        case 426: code == "client_update_required"
         default: false
         }
     }
@@ -103,11 +105,14 @@ struct SharedChallenge: Codable, Equatable {
 struct SharedGroup: Identifiable, Codable, Equatable {
     let id: UUID
     let name: String
-    let creatorUserId: UUID
+    let creatorUserId: UUID?
     let createdAt: Date
     // Legacy Keychain sessions predate this field; absence never grants creator permissions.
     var administratorUserId: UUID? = nil
     var capabilities: SharedGroupAccess? = .ordinary
+    var state: String? = nil
+
+    var isPendingAdministration: Bool { state == "pending_administration" }
 }
 
 struct SharedUser: Identifiable, Codable, Equatable {
@@ -170,7 +175,7 @@ struct SharedItem: Identifiable, Codable, Equatable {
     let quantity: String?
     let status: String
     let version: Int
-    let createdBy: UUID
+    let createdBy: UUID?
     let createdAt: Date
     let purchasedBy: UUID?
     let purchasedAt: Date?
@@ -353,7 +358,10 @@ protocol SharedCredentialStoring: Sendable {
     func saveOperation(_ operation: PendingSharedOperation?) async throws
 }
 
-actor MemorySharedCredentialStore: SharedCredentialStoring, SharedSubscriptionCredentialStoring {
+actor MemorySharedCredentialStore: SharedCredentialStoring, SharedSubscriptionCredentialStoring, SharedDeletionCredentialStoring, SharedSubscriptionRecoveryStoring, SharedDeletedAccountCleanupStoring {
+    private var deletedAccountUserID: UUID?
+    private var accountDeletion: PendingAccountDeletion?
+    private var subscriptionRecovery: PendingSubscriptionRecovery?
     private var subscriptionVerification: PendingSubscriptionVerification?
     private var session: SharedSession?
     private var invitation: PendingInvitation?
@@ -370,6 +378,22 @@ actor MemorySharedCredentialStore: SharedCredentialStoring, SharedSubscriptionCr
         self.invitation = invitation
         self.operation = operation
         self.subscriptionVerification = subscriptionVerification
+    }
+
+    func loadSubscriptionRecovery() -> PendingSubscriptionRecovery? { subscriptionRecovery }
+
+    func saveSubscriptionRecovery(_ recovery: PendingSubscriptionRecovery?) {
+        subscriptionRecovery = recovery
+    }
+
+    func loadDeletedAccountUserID() -> UUID? { deletedAccountUserID }
+
+    func saveDeletedAccountUserID(_ userID: UUID?) { deletedAccountUserID = userID }
+
+    func loadAccountDeletion() -> PendingAccountDeletion? { accountDeletion }
+
+    func saveAccountDeletion(_ deletion: PendingAccountDeletion?) {
+        accountDeletion = deletion
     }
 
     func loadSubscriptionVerification() -> PendingSubscriptionVerification? { subscriptionVerification }

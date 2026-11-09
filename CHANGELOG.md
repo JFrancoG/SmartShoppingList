@@ -4,6 +4,8 @@
 
 ### Added
 
+- 2026-11-09 | ✨ feat(account)!: add persistent account deletion
+
 - 2026-11-07 | ✨ feat(ios): isolate distributed data and stabilize refreshes
 
 - 2026-10-16 | ✨ feat(ui): polish controls and Sandbox tools

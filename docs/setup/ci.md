@@ -8,7 +8,7 @@ Pull requests targeting `main` and pushes to `main` run three independent jobs. 
 
 - **Contract and design system:** Python validates the API contract/examples and the documented color pairs, generated reports and color assets. Validation is read-only.
 - **Server tests (Linux arm64):** the pinned Swift 6.4.0 image builds the server and all existing tests with `Package.resolved`, then executes Swift Testing against an isolated PostgreSQL service. The database name ends in `_testing`; the `db-test` host is already allowed by the test harness. Each job owns its temporary database, without published host ports or production credentials.
-- **Server runtime image (Linux amd64)** builds the final Release image and starts it against disposable PostgreSQL with test Apple credentials. The [image check](../../scripts/check_server_image.sh) verifies migrations, the health response, authentication on protected routes and removal of the legacy todos routes.
+- **Server runtime image (Linux amd64)** builds the final Release image and starts it against disposable PostgreSQL with test Apple credentials and App Attest configuration. The [image check](../../scripts/check_server_image.sh) verifies migrations, the health response, the contract 0.6 requirement (426 for clients without it), authentication on compatible protected routes (401 without a session), and removal of the legacy todos routes. Startup also loads the bundled App Attest roots; no live Apple request is made.
 
 The database image matches `server/docker-compose.yml`. Images are pinned by digest and actions by commit SHA. The repository token only has `contents: read`, and checkout does not persist it. There is no deploy step, self-hosted runner, signing material or connection to Railway.
 

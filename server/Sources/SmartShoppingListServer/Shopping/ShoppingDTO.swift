@@ -5,15 +5,16 @@ import FluentSQL
 struct ShoppingGroupDTO: Codable, Sendable {
     let id: String
     let name: String
-    let creatorUserId: String
-    let administratorUserId: String
+    let creatorUserId: String?
+    let administratorUserId: String?
     let createdAt: String
     let capabilities: APIJSON
+    var state = "active"
 
     var json: APIJSON {
         .object([
             "id": .string(id), "name": .string(name),
-            "creatorUserId": .string(creatorUserId), "administratorUserId": .string(administratorUserId),
+            "creatorUserId": .optional(creatorUserId), "administratorUserId": .optional(administratorUserId), "state": .string(state),
             "createdAt": .string(createdAt), "capabilities": capabilities
         ])
     }
@@ -38,16 +39,16 @@ func loadShoppingUser(
     on database: any Database,
     capacity: AccountCapacityPolicy = .init()
 ) async throws -> ShoppingUserDTO {
-    try await database.transaction { transaction in
+    try await database.accountTransaction { transaction in
         let sql = try shoppingSQL(transaction)
-        guard try await sql.raw("SELECT id FROM users WHERE id = \(bind: id) FOR NO KEY UPDATE").first() != nil else {
+        guard try await sql.raw("SELECT id FROM users WHERE id = \(bind: id) AND deleting_at IS NULL FOR NO KEY UPDATE").first() != nil else {
             throw APIProblem.notFound
         }
         let access = try await capacity.access(for: id, on: sql)
         // The account lock keeps access, membership count and legacy projection coherent with selection and departure.
         guard let row = try await sql.raw("""
             SELECT users.id, users.display_name, groups.id AS group_id, groups.name AS group_name,
-                groups.creator_user_id, groups.administrator_user_id, groups.created_at AS group_created_at,
+                groups.creator_user_id, groups.administrator_user_id, groups.pending_administration, groups.created_at AS group_created_at,
                 (SELECT COUNT(*) FROM group_memberships JOIN groups AS member_group ON member_group.id = group_memberships.group_id
                     WHERE user_id = users.id AND member_group.closed_at IS NULL) AS membership_count
             FROM users
@@ -63,10 +64,11 @@ func loadShoppingUser(
             group = try ShoppingGroupDTO(
                 id: groupID.uuidString.lowercased(),
                 name: row.decode(column: "group_name", as: String.self),
-                creatorUserId: row.decode(column: "creator_user_id", as: UUID.self).uuidString.lowercased(),
-                administratorUserId: row.decode(column: "administrator_user_id", as: UUID.self).uuidString.lowercased(),
+                creatorUserId: row.decode(column: "creator_user_id", as: UUID?.self)?.uuidString.lowercased(),
+                administratorUserId: row.decode(column: "administrator_user_id", as: UUID?.self)?.uuidString.lowercased(),
                 createdAt: APIEncoding.timestamp(row.decode(column: "group_created_at", as: Date.self)),
-                capabilities: access.groupCapabilities(groupID)
+                capabilities: access.groupCapabilities(groupID),
+                state: row.decode(column: "pending_administration", as: Bool.self) ? "pending_administration" : "active"
             )
         } else {
             group = nil
@@ -88,10 +90,11 @@ func loadShoppingGroup(id: UUID, capabilities: APIJSON, on sql: any SQLDatabase)
     return ShoppingGroupDTO(
         id: id.uuidString.lowercased(),
         name: try row.decode(column: "name", as: String.self),
-        creatorUserId: try row.decode(column: "creator_user_id", as: UUID.self).uuidString.lowercased(),
-        administratorUserId: try row.decode(column: "administrator_user_id", as: UUID.self).uuidString.lowercased(),
+        creatorUserId: try row.decode(column: "creator_user_id", as: UUID?.self)?.uuidString.lowercased(),
+        administratorUserId: try row.decode(column: "administrator_user_id", as: UUID?.self)?.uuidString.lowercased(),
         createdAt: APIEncoding.timestamp(try row.decode(column: "created_at", as: Date.self)),
-        capabilities: capabilities
+        capabilities: capabilities,
+        state: try row.decode(column: "pending_administration", as: Bool.self) ? "pending_administration" : "active"
     )
 }
 
