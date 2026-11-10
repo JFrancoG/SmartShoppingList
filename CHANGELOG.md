@@ -139,6 +139,8 @@
 
 ### Maintenance
 
+- 2026-11-10 | 📦 build(ios): prepare internal build 6
+
 - 2026-10-12 | 🔧 chore(ios): isolate Sandbox builds and local storage
 
 - 2026-09-27 | 🔧 chore: finalize delivery documentation and UI
