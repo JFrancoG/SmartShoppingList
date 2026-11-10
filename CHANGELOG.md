@@ -88,6 +88,8 @@
 
 ### Fixed
 
+- 2026-11-10 | 🐛 fix(ios): isolate deletion previews from Release
+
 - 2026-10-29 | 🐛 fix(groups): allow the first free group during downgrade transition
 
 - 2026-10-19 | 🐛 fix(ios): stabilize refunds and acknowledge notices

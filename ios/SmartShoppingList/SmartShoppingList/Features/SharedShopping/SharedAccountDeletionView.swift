@@ -144,7 +144,7 @@ struct SharedAccountDeletionView: View {
     }
 }
 
-
+#if DEBUG
 #Preview("Deletion · ES AX5", traits: .sharedShopping) {
     @Previewable @Environment(SharedShoppingViewModel.self) var viewModel
     NavigationStack {
@@ -163,3 +163,4 @@ struct SharedAccountDeletionView: View {
     .task { viewModel.accountDeletion.preparePreview(completed: true) }
     .environment(\.locale, Locale(identifier: "en"))
 }
+#endif
