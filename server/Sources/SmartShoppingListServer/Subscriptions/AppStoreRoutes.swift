@@ -37,7 +37,7 @@ struct AppStoreRoutes: RouteCollection, Sendable {
             guard let id = UUID(uuidString: try body.string("challengeId")),
                   let proof = Data(base64Encoded: try body.string("attestation"))
             else {
-                throw SubscriptionRecoveryService.rejected
+                throw SubscriptionRecoveryService.rejected(at: .recoveryRequest, logger: request.logger)
             }
             do {
                 return try await APIEncoding.response(recovery.recover(
@@ -45,7 +45,8 @@ struct AppStoreRoutes: RouteCollection, Sendable {
                     challengeID: id,
                     keyID: body.string("keyId"),
                     attestation: proof,
-                    signed: body.string("signedTransaction")
+                    signed: body.string("signedTransaction"),
+                    logger: request.logger
                 ))
             } catch let error as AppStoreGatewayError {
                 throw error == .rejected ? SubscriptionRecoveryService.rejected

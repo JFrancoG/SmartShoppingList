@@ -1,6 +1,8 @@
 # #54 — Ensayo de eliminación de cuenta y recuperación de Premium
 
-**Preparado el 9 de noviembre de 2026. No ejecutado.** Este procedimiento prepara un ensayo en el backend Sandbox y un build comercial distribuido mediante **TestFlight Internal Only** al grupo `core`. No acredita despliegue, Archive, carga, instalación, compra, eliminación ni recuperación real. El número de build se elegirá después de consultar App Store Connect; el valor de ejemplo de `APP_ATTEST_MIN_BUILD` no reserva un número.
+**Ensayo parcial del 10–11 de noviembre de 2026.** En el iPhone 11, con la 1.0 (6) de TestFlight Internal Only, se verificaron la compra mensual en Sandbox, el borrado de la cuenta y su grupo exclusivo, la desvinculación de la mensual y el alta de una cuenta nueva sin grupos ni Premium.
+
+En el primer intento de restauración, Apple confirmó un periodo vigente y el servidor emitió el desafío (201). Dos segundos después rechazó la recuperación (403). La mensual seguía sin titular; el servidor no había guardado una prueba verificada ni reservado la reasignación. El registro de esa petición no identificaba la comprobación concreta. Para completar el paso 8 hay que observar la misma cadena vinculada a la cuenta nueva mediante una restauración desde el dispositivo.
 
 Base técnica: [validación local](issue-54-account-deletion-local.md), [diseño de eliminación](../architecture/account-deletion.md), [entornos de distribución](../architecture/distribution-environments.md), [servidor](../../server/README.md) y [configuración de compras](../setup/premium-subscriptions.md). La evidencia local y la de builds anteriores no sustituyen este ensayo.
 
@@ -8,7 +10,7 @@ Base técnica: [validación local](issue-54-account-deletion-local.md), [diseño
 
 El ensayo no modifica la API, PostgreSQL, variables, despliegue, DNS, URL de notificaciones ni datos de producción. Tampoco utiliza cuentas reales para demostrar un efecto de revocación sobre producción. La preparación de este documento no ejecuta ninguna acción externa. Antes de la ventana se identificarán el commit y los recursos concretos incluidos en el ensayo autorizado.
 
-| Condición | Evidencia necesaria antes de continuar | Estado |
+| Condición | Evidencia necesaria antes de continuar | Estado al preparar el ensayo (9 de noviembre) |
 |---|---|---|
 | Revisión entregada | SHA de PR revisada y CI correcta sobre ese SHA; relación entre SHA de servidor y Archive. | Pendiente |
 | Recursos Sandbox | Proyecto/entorno, API, PostgreSQL y volumen exactos, revisión desplegada y destino de sus referencias. Confirmar que cualquier despliegue automático queda dentro del alcance aprobado. | Pendiente |

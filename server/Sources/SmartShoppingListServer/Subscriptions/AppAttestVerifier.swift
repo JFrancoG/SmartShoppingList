@@ -27,7 +27,9 @@ struct AppAttestConfiguration: Sendable {
 }
 
 protocol AppAttestVerifying: Sendable {
-    func verify(_ attestation: Data, keyID: String, clientDataHash: Data, environment: AppStoreEnvironment) async throws
+    func verify(
+        _ attestation: Data, keyID: String, clientDataHash: Data, environment: AppStoreEnvironment, logger: Logger?
+    ) async throws
 }
 
 /// One attestation is bound to one explicit recovery request; it is not accepted as an Apple-account identity.
@@ -38,20 +40,21 @@ struct LiveAppAttestVerifier: AppAttestVerifying {
 
 
     static func live(configuration: AppAttestConfiguration) throws -> Self {
-        guard let path = Bundle.module.url(forResource: "Apple_App_Attestation_Root_CA", withExtension: "pem"),
-              let receiptPath = Bundle.module.url(forResource: "AppleRootCA-G3", withExtension: "cer")
-        else {
+        guard let path = Bundle.module.url(forResource: "Apple_App_Attestation_Root_CA", withExtension: "pem") else {
             throw AppStoreGatewayError.invalidConfiguration
         }
         let root = try Certificate(pemEncoded: String(contentsOf: path, encoding: .utf8))
         return try Self(
             configuration: configuration,
             rootCertificates: [Data(root.serializeAsPEM().derBytes)],
-            receiptRootCertificates: [Data(contentsOf: receiptPath)]
+            receiptRootCertificates: [AppAttestReceiptVerifier.appleRootCertificate()]
         )
     }
 
-    func verify(_ attestation: Data, keyID: String, clientDataHash: Data, environment: AppStoreEnvironment) async throws {
+    func verify(
+        _ attestation: Data, keyID: String, clientDataHash: Data, environment: AppStoreEnvironment, logger: Logger? = nil
+    ) async throws {
+        var stage = RecoveryRejectionStage.attestationObject
         do {
             guard let keyBytes = Data(base64Encoded: keyID), keyBytes.count == 32, clientDataHash.count == 32 else {
                 throw AppStoreGatewayError.rejected
@@ -66,6 +69,7 @@ struct LiveAppAttestVerifier: AppAttestVerifying {
             else {
                 throw AppStoreGatewayError.rejected
             }
+            stage = .certificateChain
             let leaf = try Certificate(derEncoded: Array(leafBytes))
             let intermediate = try Certificate(derEncoded: Array(intermediateBytes))
             var verifier = Verifier(rootCertificates: roots) { RFC5280Policy() }
@@ -75,18 +79,26 @@ struct LiveAppAttestVerifier: AppAttestVerifying {
             ) else {
                 throw AppStoreGatewayError.rejected
             }
+            stage = .certificateNonce
             let nonce = Data(SHA256.hash(data: authData + clientDataHash))
             let nonceOID: ASN1ObjectIdentifier = [1, 2, 840, 113635, 100, 8, 2]
             guard let extensionValue = leaf.extensions.first(where: { $0.oid == nonceOID }),
-                  Data(extensionValue.value) == Data([0x30, 0x24, 0xA1, 0x22, 0x04, 0x20]) + nonce,
-                  let key = P256.Signing.PublicKey(leaf.publicKey),
+                  Data(extensionValue.value) == Data([0x30, 0x24, 0xA1, 0x22, 0x04, 0x20]) + nonce
+            else {
+                throw AppStoreGatewayError.rejected
+            }
+            stage = .attestedKey
+            guard let key = P256.Signing.PublicKey(leaf.publicKey),
                   Data(SHA256.hash(data: key.x963Representation)) == keyBytes
             else {
                 throw AppStoreGatewayError.rejected
             }
-            try verifyAuthenticator(authData, key: key, keyID: keyBytes, environment: environment)
+            stage = .authenticatorData
+            try verifyAuthenticator(authData, key: key, keyID: keyBytes, environment: environment, stage: &stage)
+            stage = .receipt
             try await receiptVerifier.verify(receipt, appID: configuration.appID, attestedKey: key)
         } catch {
+            stage.log(to: logger)
             throw AppStoreGatewayError.rejected
         }
     }
@@ -95,7 +107,8 @@ struct LiveAppAttestVerifier: AppAttestVerifying {
         _ data: Data,
         key: P256.Signing.PublicKey,
         keyID: Data,
-        environment: AppStoreEnvironment
+        environment: AppStoreEnvironment,
+        stage: inout RecoveryRejectionStage
     ) throws {
         let bytes = Array(data)
         let production = Array("appattest".utf8) + Array(repeating: UInt8(0), count: 7)
@@ -109,24 +122,30 @@ struct LiveAppAttestVerifier: AppAttestVerifying {
         else {
             throw AppStoreGatewayError.rejected
         }
+        stage = .credentialPublicKey
         var reader = try AppAttestCBOR.Reader(Data(bytes.dropFirst(87)))
         let cose = try reader.read()
         guard cose[1]?.integer == 2, cose[3]?.integer == -7, cose[-1]?.integer == 1,
               let x = cose[-2]?.bytes, let y = cose[-3]?.bytes, x.count == 32, y.count == 32,
-              Data([4]) + x + y == key.x963Representation, !reader.isAtEnd
+              Data([4]) + x + y == key.x963Representation
         else {
             throw AppStoreGatewayError.rejected
         }
+        stage = .authenticatorExtensions
+        guard !reader.isAtEnd else { throw AppStoreGatewayError.rejected }
         let extensions = try reader.read()
-        guard reader.isAtEnd, let category = extensions["apple_validation_category_01"]?.bytes,
+        guard reader.isAtEnd else { throw AppStoreGatewayError.rejected }
+        stage = .distributionCategory
+        guard let category = extensions["apple_validation_category_01"]?.bytes,
               category.count == 4, category.dropFirst().allSatisfy({ $0 == 0 }),
-              let buildText = extensions["apple_bundle_version_01"]?.text, let build = Int(buildText),
-              build >= configuration.minimumBuild,
               category[0] == 4 || environment == .sandbox && category[0] == 2
                   || permitsDevelopment && aaguid == development && category[0] == 3
         else {
             throw AppStoreGatewayError.rejected
         }
+        stage = .bundleVersion
+        guard let buildText = extensions["apple_bundle_version_01"]?.text, let build = Int(buildText),
+              build >= configuration.minimumBuild else { throw AppStoreGatewayError.rejected }
     }
 }
 

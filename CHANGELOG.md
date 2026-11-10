@@ -88,6 +88,8 @@
 
 ### Fixed
 
+- 2026-11-11 | 🐛 fix(premium): verify Apple's App Attest receipts during recovery
+
 - 2026-11-10 | 🐛 fix(ios): isolate deletion previews from Release
 
 - 2026-10-29 | 🐛 fix(groups): allow the first free group during downgrade transition

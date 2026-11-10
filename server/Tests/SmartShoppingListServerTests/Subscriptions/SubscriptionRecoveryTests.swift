@@ -223,7 +223,9 @@ private struct RecoveryFixture: Sendable {
 
 /// This oracle tests service binding; real certificate and WebAuthn validation has its own independent fixtures.
 private struct RecoveryAttestationOracle: AppAttestVerifying {
-    func verify(_ attestation: Data, keyID: String, clientDataHash: Data, environment: AppStoreEnvironment) throws {
+    func verify(
+        _ attestation: Data, keyID: String, clientDataHash: Data, environment: AppStoreEnvironment, logger: Logger?
+    ) throws {
         guard attestation == clientDataHash else { throw AppStoreGatewayError.rejected }
     }
 }

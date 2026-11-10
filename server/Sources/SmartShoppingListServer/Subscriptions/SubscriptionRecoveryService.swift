@@ -3,6 +3,17 @@ import FluentKit
 import FluentSQL
 import Vapor
 
+/// Request logs contain only the failed check. The signed transaction, proof and account identifiers stay private.
+enum RecoveryRejectionStage: String {
+    case recoveryRequest, challengeContext, storedProof, subscriptionRecord, acknowledgedTransaction
+    case attestationObject, certificateChain, certificateNonce, attestedKey, authenticatorData
+    case credentialPublicKey, authenticatorExtensions, distributionCategory, bundleVersion, receipt
+
+    func log(to logger: Logger?) {
+        logger?.notice("Subscription recovery verification rejected", metadata: ["stage": .string(rawValue)])
+    }
+}
+
 /// A recovery reservation survives an uncertain Apple response; repeated attempts set the same new account token.
 struct SubscriptionRecoveryService: Sendable {
     let databases: Databases
@@ -93,36 +104,40 @@ struct SubscriptionRecoveryService: Sendable {
         challengeID: UUID,
         keyID: String,
         attestation proof: Data,
-        signed: String
+        signed: String,
+        logger: Logger? = nil
     ) async throws -> APIJSON {
-        guard proof.count <= 65_536, !proof.isEmpty, signed.utf8.count <= 65_536 else { throw Self.rejected }
+        guard proof.count <= 65_536, !proof.isEmpty, signed.utf8.count <= 65_536 else {
+            throw Self.rejected(at: .recoveryRequest, logger: logger)
+        }
         let database = try databases.database()
         let context = try await database.accountTransaction { transaction -> RecoveryContext in
             let sql = try shoppingSQL(transaction)
             try await requireActiveAccount(user, on: sql)
-            return try await loadContext(user: user, id: challengeID, keyID: keyID, signed: signed, on: sql)
+            return try await loadContext(user: user, id: challengeID, keyID: keyID, signed: signed, on: sql, logger: logger)
         }
         // The signed JWS is not sufficient. The genuine app attests only after local StoreKit device verification.
         let proofHash = Self.dataHash(proof)
         if let verifiedProof = context.attestationHash {
-            guard verifiedProof == proofHash else { throw Self.rejected }
+            guard verifiedProof == proofHash else { throw Self.rejected(at: .storedProof, logger: logger) }
         } else {
             try await attestation.verify(
                 proof,
                 keyID: keyID,
                 clientDataHash: context.clientDataHash,
-                environment: context.environment
+                environment: context.environment,
+                logger: logger
             )
         }
         let completed = try await database.accountTransaction { transaction -> Bool in
             let sql = try shoppingSQL(transaction)
             try await requireActiveAccount(user, on: sql)
-            _ = try await loadContext(user: user, id: challengeID, keyID: keyID, signed: signed, on: sql)
+            _ = try await loadContext(user: user, id: challengeID, keyID: keyID, signed: signed, on: sql, logger: logger)
             guard let subscription = try await sql.raw("""
                 SELECT user_id,detached_at FROM app_store_subscriptions
                 WHERE environment = \(bind: context.environment.rawValue)
                     AND original_transaction_id = \(bind: context.original) FOR UPDATE
-                """).first() else { throw Self.rejected }
+                """).first() else { throw Self.rejected(at: .subscriptionRecord, logger: logger) }
             let owner = try subscription.decode(column: "user_id", as: UUID?.self)
             let job = try await recoveryJob(context.environment, original: context.original, on: sql)
             if let job {
@@ -132,7 +147,7 @@ struct SubscriptionRecoveryService: Sendable {
                 guard try job.decode(column: "user_id", as: UUID?.self) == user else {
                     throw SubscriptionService.problem("transaction_already_bound")
                 }
-                guard owner == nil || owner == user else { throw Self.rejected }
+                guard owner == nil || owner == user else { throw Self.rejected(at: .subscriptionRecord, logger: logger) }
                 if try job.decode(column: "state", as: String.self) == "completed" {
                     return true
                 }
@@ -203,7 +218,9 @@ struct SubscriptionRecoveryService: Sendable {
         }
         let claim = try await gateway.verifyTransaction(signed)
         try validate(claim)
-        guard claim.originalTransactionId == context.original else { throw Self.rejected }
+        guard claim.originalTransactionId == context.original else {
+            throw Self.rejected(at: .acknowledgedTransaction, logger: logger)
+        }
         return .object([
             "subscription": status.json, "acknowledgedTransactionId": .string(claim.transactionId)
         ])
@@ -234,7 +251,8 @@ struct SubscriptionRecoveryService: Sendable {
         id: UUID,
         keyID: String,
         signed: String,
-        on sql: any SQLDatabase
+        on sql: any SQLDatabase,
+        logger: Logger?
     ) async throws -> RecoveryContext {
         guard let row = try await sql.raw("""
             SELECT * FROM subscription_recovery_challenges
@@ -246,7 +264,7 @@ struct SubscriptionRecoveryService: Sendable {
               let environment = try AppStoreEnvironment(rawValue: row.decode(column: "environment", as: String.self)),
               gateway.configuration?.environment == environment
         else {
-            throw Self.rejected
+            throw Self.rejected(at: .challengeContext, logger: logger)
         }
         return try RecoveryContext(
             id: id,
@@ -295,6 +313,11 @@ struct SubscriptionRecoveryService: Sendable {
 
     static var rejected: APIProblem {
         .init(status: .forbidden, code: "invalid_subscription_recovery", message: "No se ha podido verificar la recuperación.")
+    }
+
+    static func rejected(at stage: RecoveryRejectionStage, logger: Logger?) -> APIProblem {
+        stage.log(to: logger)
+        return rejected
     }
 
     private static var expired: APIProblem {
