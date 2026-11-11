@@ -1,8 +1,30 @@
 # #54 — Ensayo de eliminación de cuenta y recuperación de Premium
 
-**Ensayo parcial del 10–11 de noviembre de 2026.** En el iPhone 11, con la 1.0 (6) de TestFlight Internal Only, se verificaron la compra mensual en Sandbox, el borrado de la cuenta y su grupo exclusivo, la desvinculación de la mensual y el alta de una cuenta nueva sin grupos ni Premium.
+**Ensayo físico del 10–11 de noviembre de 2026.** En el iPhone 11 con Smart List 1.0 (6) de TestFlight Internal Only, la cuenta recreada recuperó la mensual de Sandbox, recibió su siguiente renovación y volvió al plan gratuito al caducar. El ensayo de Premium está cerrado. Se identificaron dos fallos de Ajustes al terminar el borrado.
 
-En el primer intento de restauración, Apple confirmó un periodo vigente y el servidor emitió el desafío (201). Dos segundos después rechazó la recuperación (403). La mensual seguía sin titular; el servidor no había guardado una prueba verificada ni reservado la reasignación. El registro de esa petición no identificaba la comprobación concreta. Para completar el paso 8 hay que observar la misma cadena vinculada a la cuenta nueva mediante una restauración desde el dispositivo.
+### Resultados del build 6
+
+A es la cuenta eliminada y B la cuenta creada después con la misma identidad de Sign in with Apple. Ambas usaron el mismo comprador Sandbox. La entrega inicial del build 6 y del servidor Sandbox correspondió a `9b58cca`. Horas de Madrid.
+
+| Caso | Resultado observado |
+|---|---|
+| Borrado y alta de B | **Aprobado para el grupo exclusivo de A.** Al cancelar la vista previa se conservó el producto pendiente. Al confirmar el borrado, el servidor completó la purga y confirmó la revocación de Sign in with Apple. Se eliminaron A, su grupo, su tienda y su producto. La mensual quedó sin titular. B se creó con un identificador nuevo, sin grupos y con plan gratuito. |
+| Primer intento de recuperar Premium | **Fallido (403).** Con la mensual vigente, el servidor emitió el desafío de App Attest (201) y rechazó la recuperación sin reasignar la compra. El registro de esa petición no permite identificar la comprobación exacta. En `4e823cb` se corrigió la lectura del recibo firmado de Apple en el servidor Sandbox y se mantuvo la comprobación de firma. |
+| Restauración con la compra vigente | **Aprobado tras la corrección.** El periodo del intento anterior había caducado. El comprador reactivó la misma mensual desde los ajustes de Sandbox. Con esa cadena aún sin titular, B pulsó **Restaurar compras** una vez. El servidor aceptó el desafío (201), completó una única recuperación y respondió 200 a las 13:03. Apple y PostgreSQL coincidieron en que B era la única titular, con Premium hasta las 13:57. El contenido eliminado siguió ausente. |
+| Reapertura y segunda restauración | **Aprobado.** Premium ya estaba activo al reabrir. Pulsar **Restaurar compras** conservó el mismo periodo y el mismo titular. El servidor seguía teniendo un solo trabajo de recuperación completado. |
+| Renovación automática | **Aprobado.** La notificación V2 firmada `DID_RENEW` coincidió con el recibo guardado en Sandbox. La siguiente transacción amplió el periodo de B hasta las 14:57:52. Al entrar en Premium, el iPhone mostró las 14:57 sin intervención adicional. |
+| Cancelación y fin del derecho | **Aprobado.** El servidor registró `AUTO_RENEW_DISABLED` y mantuvo Premium hasta el final del periodo. A las 14:57:52 caducó la mensual sin gracia. La notificación firmada `EXPIRED / VOLUNTARY` coincidió con el recibo de las 14:57:56. B tenía cero derechos Premium vigentes y el iPhone mostró **Plan gratuito**. Una última restauración mantuvo ese plan y mostró «No se ha encontrado una suscripción activa para esta cuenta de compras de Apple». |
+
+### Incidencias de Ajustes observadas en el build 6
+
+- Desde **Cuenta eliminada**, pulsar **Atrás** dejaba Ajustes en «Consultando el grupo…» y bloqueaba el acceso con Apple. Reabrir el resultado y pulsar **Hecho** permitió entrar. En el siguiente build se comprobará que, una vez completados el borrado y la limpieza local, **Atrás**, el gesto de volver y **Hecho** permiten iniciar sesión desde Ajustes.
+- Al entrar como B, **Crear un grupo** conservaba el nombre que A había escrito en el formulario. PostgreSQL confirmó que el grupo anterior se había eliminado y que B no pertenecía a ningún grupo. En el siguiente build se comprobará que el campo aparece vacío para B.
+
+### Corrección y prueba de la 1.0 (7)
+
+En la 1.0 (7), Ajustes permite iniciar sesión cuando el servidor ha completado la eliminación y la app ha terminado su limpieza local. Un resultado guardado por el build 6 también se puede consultar desde Ajustes. **Hecho** cierra el resultado y tiene el mismo estilo que las demás acciones de la cuenta. El nombre escrito en **Crear un grupo** se borra al terminar la sesión y se conserva durante un refresco de la misma cuenta.
+
+Xcode 27.2 ejecutó los planes Fast (517 ejecuciones) e Integration (22) en el simulador iPhone 18 Pro con iOS 27.0, sin fallos. Las regresiones cubren el acceso con un justificante completado guardado, la lectura o retirada fallida del justificante y la separación del texto del formulario entre cuentas. Queda pendiente la prueba física de las salidas por navegación y del campo vacío en TestFlight.
 
 Base técnica: [validación local](issue-54-account-deletion-local.md), [diseño de eliminación](../architecture/account-deletion.md), [entornos de distribución](../architecture/distribution-environments.md), [servidor](../../server/README.md) y [configuración de compras](../setup/premium-subscriptions.md). La evidencia local y la de builds anteriores no sustituyen este ensayo.
 
@@ -78,7 +100,7 @@ Usar alias en el informe y nombres sintéticos, por ejemplo `Ensayo eliminación
 
 | Paso | Acción física y observación privada del backend | Resultado exigido |
 |---|---|---|
-| 1. Crear A | En iPhone 16, iniciar sesión con `SIWA-A`; anotar privadamente su UUID. Confirmar que no aparece contenido previo inesperado. | Cuenta nueva de Sandbox, sin datos reales ni operaciones heredadas. |
+| 1. Crear A | En el dispositivo preparado para A, iniciar sesión con `SIWA-A`; anotar privadamente su UUID. Confirmar que no aparece contenido previo inesperado. | Cuenta nueva de Sandbox, sin datos reales ni operaciones heredadas. |
 | 2. Comprar | Comprar mensual con `BUYER-1`, una vez. Comprobar Premium, periodo vigente, entorno y asociación comercial de la cadena con A. Esperar o consultar la V2 de compra sin inventar que ya llegó. | Backend y UI concuerdan; derecho Sandbox atribuido a A, sin concesión manual. |
 | 3. Preparar contenido | A crea un grupo con un producto propio. Si el iPhone 11 usa `SIWA-C`, C se une y añade `Producto C`; después A crea un grupo solo suyo con texto sintético. Anotar contenido esperado de cada autor. | Todo lo que puede verse afectado está destinado a prueba; se podrá distinguir purga propia, conservación de C y eliminación del grupo sin otros miembros. |
 | 4. Previsualizar y cancelar | A abre Ajustes → eliminación de cuenta. Revisar grupos, efectos y aviso de que la suscripción no se cancela. Con VoiceOver y texto máximo comprobar lectura y controles. Cancelar la preparación una vez, volver a abrir y revisar el impacto actualizado. | Cancelar antes de aceptar mantiene cuenta y datos; no queda un trabajo aceptado oculto. Si aparece texto histórico incierto o un grupo no inventariado, parar. |
@@ -100,9 +122,9 @@ La reasociación utiliza [Set App Account Token](https://developer.apple.com/doc
 | Otro dispositivo | Con el mismo build y cuentas correctas, abrir B en el segundo dispositivo y restaurar. Debe mantener titular y periodo. La posibilidad real de seleccionar esa identidad SIWA se comprueba antes; no se improvisa un cambio de iCloud. |
 | Limpieza remota | En un ciclo separado, preparar la misma cuenta A de prueba en ambos dispositivos **antes** de eliminar. Tras aceptar desde uno, el otro conectado confirma eliminación y limpia solo ese contexto. Un fallo de red conserva lo necesario para comprobarla después y bloquea envíos. No mezclar este montaje con C como miembro observador. |
 | Red y estado incierto | En un ciclo dedicado, interrumpir solo la conexión del iPhone, nunca el backend ni Apple. Reabrir y consultar la misma eliminación o repetir Restaurar con su prueba persistida. Si aparece `subscription_recovery_pending_review`, parar y conciliar; no borrar el estado ni crear sucesivos titulares. |
-| Fin del derecho | Tras acreditar renovación, usar los controles Sandbox para el caso elegido de caducidad/revocación. Verificar estado Apple y backend; Restaurar no debe fabricar un periodo vigente. No presentar este caso como probado mediante adelantar solo el reloj del dispositivo. |
+| Fin del derecho | Caducidad por cancelación y restauración posterior **aprobadas** en el build 6. La revocación o el reembolso son casos distintos. |
 
-Estas comprobaciones quedan pendientes por separado. No repetir compras ni eliminaciones de una matriz ya acreditada salvo que el cambio o un fallo concreto lo justifique. No se acredita el cruce TestFlight/App Store instalando producción durante este ensayo.
+Quedan pendientes el grupo con otro miembro y sus aportaciones, los controles con otro comprador o una cadena que ya tenga titular, el segundo dispositivo, la limpieza remota y los fallos de red. La comprobación física de VoiceOver y texto máximo en la vista previa de eliminación también queda pendiente. No repetir compras ni eliminaciones de una matriz ya acreditada salvo que el cambio o un fallo concreto lo justifique.
 
 ## Evidencia y criterios de parada
 

@@ -903,6 +903,10 @@ final class SharedShoppingViewModel {
         await performAction {
             defer { resetAppleAttempt() }
             do {
+                guard await accountDeletion.dismissResult() else {
+                    notice = accountDeletion.notice ?? "Resolve the saved deletion request before using another account."
+                    return
+                }
                 let request = AppleLoginRequest(
                     challengeId: challenge.id,
                     identityToken: token,
@@ -2154,6 +2158,7 @@ final class SharedShoppingViewModel {
     private func clearSessionPresentation() {
         clearGroupPresentation()
         readFailure = nil
+        groupName = ""
         groups = []
         groupsAreVerified = false
         session = nil

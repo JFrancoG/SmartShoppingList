@@ -21,7 +21,7 @@ struct SharedAccountSection: View {
             .listRowBackground(Color.surface)
         }
         if viewModel.accountDeletion.isAvailable,
-           viewModel.session != nil || viewModel.accountDeletion.blocksAccountUse {
+           viewModel.session != nil || viewModel.accountDeletion.pending != nil || viewModel.accountDeletion.storageFailed {
             Section("Account deletion") {
                 NavigationLink("Delete account") {
                     SharedAccountDeletionView(viewModel: viewModel)

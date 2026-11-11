@@ -31,7 +31,10 @@ final class SharedAccountDeletionViewModel {
     }
 
     var isAvailable: Bool { api != nil && credentials != nil }
-    var blocksAccountUse: Bool { storageFailed || pending != nil }
+    var hasCompletedLocalDeletion: Bool {
+        pending?.lastStatus?.status == .completed && pending?.localDataCleared == true
+    }
+    var blocksAccountUse: Bool { storageFailed || (pending != nil && !hasCompletedLocalDeletion) }
     var canAuthorize: Bool {
         !isBusy && !storageFailed && pending != nil && pending?.submitted == false
             && (challenge?.expiresAt.timeIntervalSince(now()) ?? 0) > 30
@@ -41,7 +44,7 @@ final class SharedAccountDeletionViewModel {
         return pending?.userID
     }
     var canDismissResult: Bool {
-        !isBusy && !storageFailed && pending?.lastStatus?.status == .completed && pending?.localDataCleared == true
+        !isBusy && !storageFailed && hasCompletedLocalDeletion
     }
     var accessibilityMessage: String {
         String(localized: isBusy ? "Updating deletion request…" : notice ?? statusMessage)
@@ -191,7 +194,7 @@ final class SharedAccountDeletionViewModel {
     }
 
     func checkStatus() async {
-        guard !isBusy, let pending, let api else { return }
+        guard !isBusy, let pending, pending.lastStatus?.status != .completed, let api else { return }
         isBusy = true
         defer { isBusy = false }
         do {
@@ -225,15 +228,21 @@ final class SharedAccountDeletionViewModel {
         self.pending = pending
     }
 
-    func dismissResult() async {
-        guard canDismissResult, let credentials else { return }
+    @discardableResult
+    func dismissResult() async -> Bool {
+        guard pending != nil else { return !storageFailed }
+        guard canDismissResult, let credentials else { return false }
+        isBusy = true
+        defer { isBusy = false }
         do {
             try await credentials.saveAccountDeletion(nil)
             pending = nil
             preview = nil
             notice = nil
+            return true
         } catch {
             notice = "The saved deletion result could not be cleared. Unlock this device and try again."
+            return false
         }
     }
 

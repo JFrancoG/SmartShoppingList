@@ -112,8 +112,9 @@ struct AccountDeletionTests {
         await model.dismissResult()
         #expect(model.blocksAccountUse)
         try await model.markLocalDataCleared()
+        #expect(!model.blocksAccountUse)
         #expect(model.canDismissResult)
-        await model.dismissResult()
+        #expect(await model.dismissResult())
         #expect(!model.blocksAccountUse)
         #expect(await credentials.loadAccountDeletion() == nil)
     }
@@ -127,6 +128,7 @@ struct AccountDeletionTests {
         await model.prepare(session: fixture.session)
         #expect(model.blocksAccountUse)
         #expect(model.storageFailed)
+        #expect(await model.dismissResult() == false)
         #expect(await credentials.writes == 0)
         #expect(await api.challengeRequests == 0)
     }
@@ -139,6 +141,29 @@ struct AccountDeletionTests {
         await model.prepare(session: fixture.session)
         #expect(await api.challengeRequests == 0)
         #expect(await api.deletionRequests == 0)
+        #expect(model.notice != nil)
+    }
+
+    @Test
+    func `A completed result remains available when removing it from Keychain fails`() async {
+        let fixture = DeletionFixture()
+        let receipt = SharedDeletionReceipt(operationId: UUID(), statusSecret: "test-receipt")
+        let saved = PendingAccountDeletion(
+            userID: fixture.session.user.id,
+            receipt: receipt,
+            revision: "revision",
+            submitted: true,
+            lastStatus: SharedDeletionStatus(operationId: receipt.operationId, status: .completed),
+            localDataCleared: true
+        )
+        let credentials = FailingDeletionWrites(saved: saved)
+        let api = DeletionAPI(credentials: MemorySharedCredentialStore())
+        let model = fixture.model(api: api, credentials: credentials)
+        await model.restore()
+
+        #expect(await model.dismissResult() == false)
+        #expect(model.pending == saved)
+        #expect(model.canDismissResult)
         #expect(model.notice != nil)
     }
 
@@ -249,6 +274,8 @@ private actor UnreadableDeletionCredentials: SharedDeletionCredentialStoring {
 }
 
 private actor FailingDeletionWrites: SharedDeletionCredentialStoring {
-    func loadAccountDeletion() -> PendingAccountDeletion? { nil }
+    let saved: PendingAccountDeletion?
+    init(saved: PendingAccountDeletion? = nil) { self.saved = saved }
+    func loadAccountDeletion() -> PendingAccountDeletion? { saved }
     func saveAccountDeletion(_ deletion: PendingAccountDeletion?) throws { throw SharedCredentialError.unavailable(status: -1) }
 }

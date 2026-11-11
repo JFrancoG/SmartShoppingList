@@ -98,24 +98,26 @@ struct SharedAccountDeletionView: View {
 
             if deletion.pending != nil {
                 Section {
-                    Button("Check deletion status") {
-                        Task {
-                            await viewModel.checkAccountDeletion()
+                    if !deletion.hasCompletedLocalDeletion {
+                        Button("Check deletion status") {
+                            Task {
+                                await viewModel.checkAccountDeletion()
+                            }
                         }
+                        .disabled(deletion.isBusy)
                     }
-                    .disabled(deletion.isBusy)
                     if deletion.pending?.lastStatus?.appleRevocationOutcome == .manualActionRequired {
                         Text("Your account data has been deleted. Apple access could not be revoked automatically. Remove Smart List from Sign in with Apple in your Apple account settings.")
                     }
                     if deletion.canDismissResult {
                         Button("Done") {
                             Task {
-                                await deletion.dismissResult()
-                                if !deletion.blocksAccountUse {
+                                if await deletion.dismissResult() {
                                     dismiss()
                                 }
                             }
                         }
+                        .buttonStyle(ShoppingActionButtonStyle())
                     }
                 }
                 .listRowBackground(Color.surface)

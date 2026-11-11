@@ -306,6 +306,41 @@ struct SharedShoppingViewModelTests {
     }
 
     @Test
+    func `Settings can sign in again after leaving a completed deletion without tapping Done`() async throws {
+        let api = SharedFlowAPI()
+        let credentials = MemorySharedCredentialStore()
+        let receipt = SharedDeletionReceipt(operationId: UUID(), statusSecret: "test-completed-secret")
+        let completed = PendingAccountDeletion(
+            userID: UUID(),
+            receipt: receipt,
+            revision: "previous-account",
+            submitted: true,
+            lastStatus: SharedDeletionStatus(operationId: receipt.operationId, status: .completed),
+            localDataCleared: true
+        )
+        await credentials.saveAccountDeletion(completed)
+        let model = try makeModel(api: api, credentials: credentials)
+        await model.load()
+
+        #expect(!model.isBusy)
+        #expect(await credentials.loadAccountDeletion() == completed)
+        await model.prepareAppleLogin()
+        try #require(model.canRequestAppleLogin)
+        let request = ASAuthorizationAppleIDProvider().createRequest()
+        model.configureAppleRequest(request)
+        await model.completeAppleLogin(
+            token: "new-identity-token",
+            code: "authorization-code",
+            returnedState: request.state,
+            displayName: nil
+        )
+
+        #expect(model.session?.user.id == api.session.user.id)
+        #expect(model.accountDeletion.pending == nil)
+        #expect(await credentials.loadAccountDeletion() == nil)
+    }
+
+    @Test
     func `An existing session never prepares another Apple login`() async throws {
         let api = SharedFlowAPI()
         let model = try makeModel(api: api, credentials: MemorySharedCredentialStore(session: api.session))
