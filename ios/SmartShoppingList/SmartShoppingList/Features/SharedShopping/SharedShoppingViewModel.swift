@@ -131,6 +131,7 @@ final class SharedShoppingViewModel {
     @ObservationIgnored private var storeQueryRevision: UUID?
     @ObservationIgnored let storeQuery: StoreQueryViewModel
     @ObservationIgnored let draft: ShoppingDraftViewModel
+    @ObservationIgnored let accountDeletion: SharedAccountDeletionViewModel
     @ObservationIgnored let premium: SharedPremiumViewModel
     @ObservationIgnored private let subscriptionStore: (any SharedSubscriptionStore)?
     @ObservationIgnored private var subscriptionUpdatesTask: Task<Void, Never>?
@@ -142,6 +143,8 @@ final class SharedShoppingViewModel {
     @ObservationIgnored private var appleState: String?
     @ObservationIgnored private let appleLoginDate: @MainActor () -> Date
     @ObservationIgnored private var storageFailed = false
+    private var isClearingDeletedAccount = false
+    private var remotelyDeletedUserID: UUID?
     @ObservationIgnored private var hasRestoredLocalState = false
     @ObservationIgnored private var localStateLoadTask: Task<Void, Never>?
     @ObservationIgnored private var initialLoadTask: Task<Void, Never>?
@@ -162,6 +165,10 @@ final class SharedShoppingViewModel {
         appleLoginDate: @escaping @MainActor () -> Date = { Date() },
         subscriptionStore: (any SharedSubscriptionStore)? = nil
     ) {
+        accountDeletion = SharedAccountDeletionViewModel(
+            api: api as? any SharedAccountDeletionAPI,
+            credentials: credentials as? any SharedDeletionCredentialStoring
+        )
         self.subscriptionStore = subscriptionStore
         premium = SharedPremiumViewModel(
             api: api,
@@ -189,14 +196,20 @@ final class SharedShoppingViewModel {
     var isConfigured: Bool { api != nil && configuration != nil }
     var isBusy: Bool {
         isPerformingAction || isProcessingShoppingIntent || groupLoadID != nil || premium.isBusy || isClearingInvitation
+            || accountDeletion.blocksAccountUse || accountDeletion.isBusy || remotelyDeletedUserID != nil
     }
     var isPreparingAppleLogin: Bool { applePreparationID != nil }
     var shouldMaintainAppleLogin: Bool {
         hasLoaded && isConfigured && session == nil && !isAuthorizingWithApple && !storageFailed
+            && !accountDeletion.blocksAccountUse
             && appleLoginPreparationError == nil
     }
     var canRequestAppleLogin: Bool {
         shouldMaintainAppleLogin && !isBusy && !isPreparingAppleLogin && hasReadyAppleChallenge
+    }
+    var canRefresh: Bool {
+        hasLoaded && isConfigured && !isClearingDeletedAccount
+            && (accountDeletion.canRefreshStatus || (!isBusy && !storageFailed))
     }
     private var hasReadyAppleChallenge: Bool {
         appleState != nil && (challenge?.expiresAt.timeIntervalSince(appleLoginDate()) ?? 0) > 30
@@ -205,8 +218,16 @@ final class SharedShoppingViewModel {
         hasLoaded && sessionIsVerified && groupsAreVerified && !isBusy && !storageFailed && pendingOperation == nil
             && storeQuery.activity == .idle && !draft.isReceivingIntent
     }
+    var requiresDeletedAccountCleanup: Bool { remotelyDeletedUserID != nil }
+
+    func retryDeletedAccountCleanup() async {
+        guard let remotelyDeletedUserID else { return }
+        _ = await clearDeletedAccountContext(userID: remotelyDeletedUserID, includesDeviceDraft: false)
+    }
+
     var canUseShopping: Bool { group?.capabilities?.canUseShopping == true && groupsAreVerified }
     var canPerformShopping: Bool { canMutate && canUseShopping }
+    var canAddSharedContent: Bool { canPerformShopping && group?.isPendingAdministration != true }
     var membershipAccess: SharedMembershipAccess? { session?.user.accountCapabilities?.membershipAccess }
     var freeGroupName: String? { groups.first { $0.id == membershipAccess?.freeGroupId }?.name }
     var canSelectFreeGroup: Bool {
@@ -226,7 +247,7 @@ final class SharedShoppingViewModel {
             && administration?.capabilities.canManageInvitations == true
     }
     var canConfirmReview: Bool {
-        canPerformShopping && reviewOwner != nil && reviewOwner?.userID == session?.user.id
+        canAddSharedContent && reviewOwner != nil && reviewOwner?.userID == session?.user.id
             && reviewOwner?.groupID == group?.id && !reviewedItems.isEmpty
             && storeChoices.allSatisfy { !$0.selection.isEmpty }
             && submissionCapacityMessage == nil
@@ -239,7 +260,7 @@ final class SharedShoppingViewModel {
     }
 
     var canSelectGroup: Bool {
-        hasLoaded && sessionIsVerified && groupsAreVerified && !storageFailed
+        hasLoaded && sessionIsVerified && groupsAreVerified && !storageFailed && !accountDeletion.blocksAccountUse
             && !isPerformingAction && !isProcessingShoppingIntent && !isClearingInvitation && pendingOperation == nil
             && !isReviewPresentationActive && !isItemEditorPresentationActive && !isInvitationsPresentationActive
             && !draft.isEditorPresentationActive && !draft.isReceivingIntent && draft.activity == .idle
@@ -318,7 +339,16 @@ final class SharedShoppingViewModel {
         refreshLogger.debug("Refresh requested trigger=activation")
         let wasLoaded = hasLoaded
         await load()
-        guard hasLoaded, !storageFailed, !Task.isCancelled else { return }
+        guard hasLoaded, !Task.isCancelled else { return }
+        if accountDeletion.needsStatusRefresh {
+            activationRefreshPending = false
+            // Initial loading already reconciles a saved deletion; a later activation performs one fresh check.
+            if wasLoaded, canRefresh {
+                await checkAccountDeletion()
+            }
+            return
+        }
+        guard !storageFailed else { return }
         // A failed initial read waits for recovery instead of immediately repeating the same offline request.
         guard wasLoaded || sessionIsVerified else { return }
         guard refreshTask != nil || !isBusy else {
@@ -477,7 +507,8 @@ final class SharedShoppingViewModel {
 #endif
 
     private func isCurrentSubscriptionSession(_ candidate: SharedSession) -> Bool {
-        sessionIsVerified && session?.user.id == candidate.user.id && session?.accessToken == candidate.accessToken
+        !accountDeletion.blocksAccountUse && sessionIsVerified
+            && session?.user.id == candidate.user.id && session?.accessToken == candidate.accessToken
     }
 
     private func startSubscriptionUpdates() {
@@ -601,6 +632,16 @@ final class SharedShoppingViewModel {
                 }
                 await restoreLocalState()
                 guard !storageFailed else { return }
+                if let remotelyDeletedUserID {
+                    _ = await clearDeletedAccountContext(userID: remotelyDeletedUserID, includesDeviceDraft: false)
+                    return
+                }
+                if accountDeletion.pending != nil {
+                    await accountDeletion.checkStatus()
+                    await applyConfirmedAccountDeletion()
+                    return
+                }
+                guard !accountDeletion.blocksAccountUse else { return }
                 guard isConfigured else {
                     notice = "The group connection is not configured yet. You can prepare your draft manually."
                     return
@@ -621,10 +662,12 @@ final class SharedShoppingViewModel {
         }
         let task = Task {
             await draft.load()
+            await accountDeletion.restore()
             do {
                 pendingOperation = try await credentials.loadOperation()
                 pendingInvitation = try await credentials.loadInvitation()
                 session = try await credentials.loadSession()
+                remotelyDeletedUserID = try await (credentials as? any SharedDeletedAccountCleanupStoring)?.loadDeletedAccountUserID()
             } catch {
                 storageFailed = true
                 notice = "Your saved access could not be restored. Unlock the device and reopen the app; your data is kept without overwriting it."
@@ -643,7 +686,7 @@ final class SharedShoppingViewModel {
         guard !isProcessingShoppingIntent else { throw DraftIntentError.busy }
         await restoreLocalState()
         try Task.checkCancellation()
-        guard !storageFailed else { throw DraftIntentError.storageUnavailable }
+        guard !storageFailed, !accountDeletion.blocksAccountUse else { throw DraftIntentError.storageUnavailable }
         guard !isProcessingShoppingIntent, pendingOperation == nil, !(hasLoaded && isBusy),
               storeQuery.activity == .idle,
               !isReviewPresented, !isReviewPresentationActive,
@@ -677,7 +720,7 @@ final class SharedShoppingViewModel {
     private func processShoppingItemFromIntent(_ item: ShoppingDraftItem) async throws -> ShoppingIntentOutcome {
         await restoreLocalState()
         try Task.checkCancellation()
-        guard !storageFailed else { throw DraftIntentError.storageUnavailable }
+        guard !storageFailed, !accountDeletion.blocksAccountUse else { throw DraftIntentError.storageUnavailable }
         guard pendingOperation == nil, storeQuery.activity == .idle,
               !isReviewPresented, !isReviewPresentationActive,
               !isItemEditorPresented, !isItemEditorPresentationActive,
@@ -696,7 +739,7 @@ final class SharedShoppingViewModel {
             await load()
         }
         try Task.checkCancellation()
-        guard sessionIsVerified, groupsAreVerified, groups.count == 1, canUseShopping, !storageFailed,
+        guard sessionIsVerified, groupsAreVerified, groups.count == 1, canUseShopping, group?.isPendingAdministration != true, !storageFailed,
               let api, let session, let group, let context = groupContext else {
             return keepShoppingIntentInDraft()
         }
@@ -711,7 +754,7 @@ final class SharedShoppingViewModel {
             return keepShoppingIntentInDraft()
         }
         try Task.checkCancellation()
-        guard groupContext == context, sessionIsVerified, groupsAreVerified, groups.count == 1, canUseShopping else {
+        guard groupContext == context, sessionIsVerified, groupsAreVerified, groups.count == 1, canUseShopping, !group.isPendingAdministration else {
             return keepShoppingIntentInDraft()
         }
         stores = fetchedStores
@@ -754,8 +797,14 @@ final class SharedShoppingViewModel {
     }
 
     func refresh() async {
-        guard hasLoaded, !storageFailed else { return }
+        guard hasLoaded, !Task.isCancelled else { return }
         refreshLogger.debug("Refresh requested trigger=manual")
+        if accountDeletion.needsStatusRefresh {
+            guard canRefresh else { return }
+            await checkAccountDeletion()
+            return
+        }
+        guard !storageFailed else { return }
         await refreshSharedAccess(includingPremium: false)
     }
 
@@ -873,6 +922,10 @@ final class SharedShoppingViewModel {
         await performAction {
             defer { resetAppleAttempt() }
             do {
+                guard await accountDeletion.dismissResult() else {
+                    notice = accountDeletion.notice ?? "Resolve the saved deletion request before using another account."
+                    return
+                }
                 let request = AppleLoginRequest(
                     challengeId: challenge.id,
                     identityToken: token,
@@ -963,7 +1016,7 @@ final class SharedShoppingViewModel {
 
     /// The visible editable summary is the confirmation surface for this explicit Add action.
     func addDraftItems() async {
-        guard canPerformShopping, group != nil else { return }
+        guard canAddSharedContent, group != nil else { return }
         draft.reviewDraft()
         guard draft.preparedItems != nil else { return }
         let snapshot = ShoppingDraftSnapshot(text: draft.text, items: draft.items)
@@ -975,7 +1028,7 @@ final class SharedShoppingViewModel {
 
     /// Only the manually entered row joins this operation; unrelated draft rows keep their own intent.
     func addManualItem() async {
-        guard canPerformShopping, group != nil, let item = draft.saveEditor(closeEditor: false) else { return }
+        guard canAddSharedContent, group != nil, let item = draft.saveEditor(closeEditor: false) else { return }
         await prepareInlineSubmission(ShoppingDraftSnapshot(items: [item]))
         if canConfirmReview {
             await confirmReviewedBatch()
@@ -1029,7 +1082,7 @@ final class SharedShoppingViewModel {
     }
 
     private func prepareInlineSubmission(_ snapshot: ShoppingDraftSnapshot) async {
-        guard canPerformShopping, let api, let session, let group else { return }
+        guard canAddSharedContent, let api, let session, let group else { return }
         // Clear stale preparation before a fetch so failure cannot submit a previous summary.
         let previousChoices = storeChoices
         reviewedItems = []
@@ -1088,7 +1141,7 @@ final class SharedShoppingViewModel {
     }
 
     func prepareReview() async {
-        guard canPerformShopping, group != nil, let api, let session, let group else { return }
+        guard canAddSharedContent, group != nil, let api, let session, let group else { return }
         draft.reviewDraft()
         guard let prepared = draft.preparedItems else { return }
         await performAction {
@@ -1629,7 +1682,7 @@ final class SharedShoppingViewModel {
     }
 
     func createInvitation() async {
-        guard canPerformShopping, canManageInvitations, let api, let session, let group else { return }
+        guard canAddSharedContent, canManageInvitations, let api, let session, let group else { return }
         await performAction {
             shareURL = nil
             do {
@@ -1653,6 +1706,127 @@ final class SharedShoppingViewModel {
                 )
                 shareURL = nil
                 invitations = try await api.invitations(groupID: group.id, token: session.accessToken)
+            } catch {
+                await handle(error)
+            }
+        }
+    }
+
+    func discardSignedOutDraft() async {
+        guard session == nil, !isBusy else { return }
+        await performAction {
+            do {
+                try await draft.clearForConfirmedAccountDeletion()
+            } catch {
+                notice = "The local draft could not be deleted. Unlock this device and try again."
+            }
+        }
+    }
+
+    func prepareAccountDeletion() async {
+        if accountDeletion.pending?.submitted == true || accountDeletion.acceptedUserID != nil {
+            await checkAccountDeletion()
+            return
+        }
+        guard let session, !isPerformingAction, !isProcessingShoppingIntent, !premium.isBusy,
+              !draft.isReceivingIntent else { return }
+        refreshTask?.cancel()
+        groupGeneration = UUID()
+        draft.cancelInterpretation()
+        closeStoreQuery()
+        await accountDeletion.prepare(session: session)
+        await applyConfirmedAccountDeletion()
+    }
+
+    func confirmAccountDeletion() async {
+        guard let session else { return }
+        await accountDeletion.confirm(session: session)
+        await applyConfirmedAccountDeletion()
+    }
+
+    func checkAccountDeletion() async {
+        await accountDeletion.checkStatus()
+        await applyConfirmedAccountDeletion()
+    }
+
+    func cancelAccountDeletion() async {
+        await accountDeletion.cancel()
+        await applyConfirmedAccountDeletion()
+    }
+
+    private func applyConfirmedAccountDeletion() async {
+        guard let userID = accountDeletion.acceptedUserID,
+              accountDeletion.pending?.localDataCleared == false else { return }
+        guard session == nil || session?.user.id == userID else { return }
+        if await clearDeletedAccountContext(userID: userID, includesDeviceDraft: true) {
+            do {
+                try await accountDeletion.markLocalDataCleared()
+            } catch {
+                storageFailed = true
+            }
+        }
+    }
+
+    @discardableResult
+    private func clearDeletedAccountContext(userID: UUID, includesDeviceDraft: Bool) async -> Bool {
+        guard !isClearingDeletedAccount, session == nil || session?.user.id == userID else { return false }
+        isClearingDeletedAccount = true
+        defer { isClearingDeletedAccount = false }
+        refreshTask?.cancel()
+        subscriptionUpdatesTask?.cancel()
+        subscriptionUpdatesTask = nil
+        deferredSubscriptionUpdates = [:]
+        activationRefreshPending = false
+        resetAppleAttempt()
+        clearSessionPresentation()
+        pendingOperation = nil
+        pendingInvitation = nil
+        do {
+            try await credentials.saveSession(nil)
+            if let operation = try await credentials.loadOperation(), operation.userID == userID {
+                try await credentials.saveOperation(nil)
+            }
+            try await credentials.saveInvitation(nil)
+            if let incoming = try await credentials.loadIncomingInvitation() {
+                _ = try await credentials.clearIncomingInvitation(matching: incoming)
+            }
+            if let purchaseCredentials = credentials as? any SharedSubscriptionCredentialStoring,
+               let verification = try await purchaseCredentials.loadSubscriptionVerification(), verification.userID == userID {
+                try await purchaseCredentials.saveSubscriptionVerification(nil)
+            }
+            if let recoveryCredentials = credentials as? any SharedSubscriptionRecoveryStoring,
+               let recovery = try await recoveryCredentials.loadSubscriptionRecovery(), recovery.userID == userID {
+                try await recoveryCredentials.saveSubscriptionRecovery(nil)
+            }
+            if includesDeviceDraft {
+                try await draft.clearForConfirmedAccountDeletion()
+            }
+            if let cleanup = credentials as? any SharedDeletedAccountCleanupStoring,
+               try await cleanup.loadDeletedAccountUserID() == userID {
+                try await cleanup.saveDeletedAccountUserID(nil)
+                remotelyDeletedUserID = nil
+            }
+            storageFailed = false
+            return true
+        } catch {
+            storageFailed = true
+            notice = "Local account data could not be cleared. Unlock this device and check deletion again."
+            return false
+        }
+    }
+
+    func claimGroupAdministration() async {
+        guard canMutate, group?.isPendingAdministration == true, let group, let session,
+              let deletionAPI = api as? any SharedAccountDeletionAPI else { return }
+        await performAction {
+            do {
+                _ = try await deletionAPI.claimAdministration(
+                    ResolveGroupTransferRequest(operationId: UUID()),
+                    groupID: group.id,
+                    token: session.accessToken
+                )
+                _ = await refreshSessionAndLists(preferredGroupID: group.id)
+                await refreshGroupManagement()
             } catch {
                 await handle(error)
             }
@@ -1784,7 +1958,7 @@ final class SharedShoppingViewModel {
         loadedStoreID = nil
         storeItemsState = selectedStoreID == nil ? .notLoaded : .loading
         do {
-            if group.administratorUserId != nil {
+            if group.administratorUserId != nil || group.isPendingAdministration {
                 let latest = try await api.groupAdministration(groupID: group.id, token: session.accessToken)
                 guard groupContext == context else { return false }
                 updateMembership(latest.group)
@@ -1910,6 +2084,39 @@ final class SharedShoppingViewModel {
     }
 
     private func handle(_ error: any Error) async {
+        if let apiError = error as? SharedAPIError, apiError.isSessionInvalid, let original = session,
+           let deletionAPI = api as? any SharedAccountDeletionAPI {
+            let deletionAccepted: Bool
+            do {
+                deletionAccepted = try await deletionAPI.deletionSessionStatus(token: original.accessToken)
+            } catch {
+                guard session?.accessToken == original.accessToken else { return }
+                // Keep the existing Keychain session solely for retrying verification. It cannot authorize mutations.
+                sessionIsVerified = false
+                groupsAreVerified = false
+                clearGroupPresentation()
+                premium.clearPresentation()
+                notice = "Account status could not be checked. Your saved access is kept for verification. Connect and refresh before continuing."
+                return
+            }
+            if deletionAccepted,
+               session?.accessToken == original.accessToken, session?.user.id == original.user.id {
+                do {
+                    guard let cleanup = credentials as? any SharedDeletedAccountCleanupStoring else {
+                        throw SharedCredentialError.corruptData
+                    }
+                    try await cleanup.saveDeletedAccountUserID(original.user.id)
+                    remotelyDeletedUserID = original.user.id
+                    if await clearDeletedAccountContext(userID: original.user.id, includesDeviceDraft: false) {
+                        notice = "Account deletion was accepted on another device. Local account access has been removed. The local device draft is kept for you to review."
+                    }
+                } catch {
+                    storageFailed = true
+                    notice = "Local account data could not be cleared. Unlock this device and check deletion again."
+                }
+                return
+            }
+        }
         if let apiError = error as? SharedAPIError, apiError.isSessionInvalid {
             sessionIsVerified = false
             do {
@@ -1970,6 +2177,7 @@ final class SharedShoppingViewModel {
     private func clearSessionPresentation() {
         clearGroupPresentation()
         readFailure = nil
+        groupName = ""
         groups = []
         groupsAreVerified = false
         session = nil
@@ -2366,7 +2574,7 @@ extension SharedShoppingViewModel {
 
 extension SharedShoppingViewModel {
     func canChangeItem(_ item: SharedItem) -> Bool {
-        canPerformShopping && loadedStoreID == selectedStoreID && item.status == "pending"
+        canAddSharedContent && loadedStoreID == selectedStoreID && item.status == "pending"
             && item.groupId == group?.id && items.contains(item)
     }
 

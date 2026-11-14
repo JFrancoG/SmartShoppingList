@@ -12,11 +12,11 @@ struct StoreWritePlan: Sendable {
     let destinations: [UUID]
     let newStores: [NewStore]
 
-    func insertStores(group: UUID, on sql: any SQLDatabase) async throws {
+    func insertStores(group: UUID, author: UUID, on sql: any SQLDatabase) async throws {
         for store in newStores.sorted(by: { $0.key < $1.key }) {
             try await sql.raw("""
-                INSERT INTO stores(id,group_id,name,normalized_key)
-                VALUES (\(bind: store.id),\(bind: group),\(bind: store.name),\(bind: store.key))
+                INSERT INTO stores(id,group_id,name,normalized_key,created_by)
+                VALUES (\(bind: store.id),\(bind: group),\(bind: store.name),\(bind: store.key),\(bind: author))
                 """).run()
         }
     }
@@ -30,6 +30,7 @@ extension ShoppingService {
         on sql: any SQLDatabase
     ) async throws -> StoreWritePlan {
         let capacity = try await storeCapacity(group: group, on: sql)
+        guard capacity.owner != nil else { throw Self.pendingAdministration }
         let rows = try await sql.raw("""
             SELECT stores.*, (SELECT COUNT(*) FROM items
                 WHERE store_id = stores.id AND group_id = stores.group_id AND status = 'pending') AS pending_count

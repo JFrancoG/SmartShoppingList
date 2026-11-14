@@ -55,6 +55,10 @@ private actor AppleTokenOracle: AppleHTTPTransport {
 
     func fetchKeys() async throws -> AppleHTTPResponse { throw AppleGatewayError.unavailable }
 
+    func sendRevocationForm(_ fields: [String: String]) async throws -> AppleHTTPResponse {
+        throw AppleGatewayError.unavailable
+    }
+
     func sendTokenForm(_ fields: [String: String]) async throws -> AppleHTTPResponse {
         guard fields["grant_type"] == "authorization_code", fields["code"] == "single-use-fixture-code",
             fields["nonce"] == nil, fields["client_id"] == "com.plusprojects.SmartShoppingList",
@@ -103,6 +107,10 @@ private struct AppleFailureTransport: AppleHTTPTransport {
     let response: String
 
     func fetchKeys() async throws -> AppleHTTPResponse { throw AppleGatewayError.unavailable }
+
+    func sendRevocationForm(_ fields: [String: String]) async throws -> AppleHTTPResponse {
+        throw AppleGatewayError.unavailable
+    }
 
     func sendTokenForm(_ fields: [String: String]) async throws -> AppleHTTPResponse {
         if response == "malformed_success" {

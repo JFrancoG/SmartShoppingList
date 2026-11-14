@@ -414,7 +414,7 @@ private actor StoreQuotaAPI: SharedShoppingAPI {
                 canWithdrawTransfer: false,
                 canLeave: !administrator,
                 requiresClosureConfirmation: false,
-                capacityOwnerUserId: try #require(group.administratorUserId),
+                capacityOwnerUserId: group.administratorUserId,
                 limits: SharedGroupLimits(
                     groupsPerAccount: SharedResourceLimit(maximum: 1, enforced: true),
                     storesPerGroup: SharedResourceLimit(maximum: 3, enforced: true),
@@ -426,7 +426,7 @@ private actor StoreQuotaAPI: SharedShoppingAPI {
     func groupCapacity(groupID: UUID, token: String) async throws -> SharedGroupCapacity {
         try SharedGroupCapacity(
             groupId: groupID,
-            capacityOwnerUserId: try #require(group.administratorUserId),
+            capacityOwnerUserId: group.administratorUserId,
             activeStoreCount: emptyStoreArchived ? 1 : 2,
             limits: SharedStoreLimits(
                 storesPerGroup: SharedResourceLimit(maximum: 3, enforced: true),

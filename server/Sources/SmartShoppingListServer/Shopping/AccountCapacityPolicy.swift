@@ -41,6 +41,7 @@ extension ShoppingService {
     }
 
     func requireMembership(_ user: UUID, group: UUID, on sql: any SQLDatabase) async throws {
+        try await requireActiveAccount(user, on: sql)
         try await lockUser(user, on: sql)
         guard try await isMember(user, group: group, on: sql) else { throw APIProblem.notFound }
     }

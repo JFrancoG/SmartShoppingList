@@ -6,6 +6,41 @@ import Testing
 @Suite(.tags(.fast))
 @MainActor
 struct MultipleGroupTests {
+    @Test
+    func `The new group name survives a refresh and starts empty for the next account`() async throws {
+        let fixture = try MembershipFixture()
+        let api = MembershipAPI(fixture: fixture)
+        await api.setMemberships([])
+        let model = fixture.model(api: api)
+        await model.load()
+        try #require(model.canCreateGroup)
+        model.groupName = "X1"
+
+        await model.refresh()
+        #expect(model.groupName == "X1")
+        await model.logout()
+        let nextAccount = SharedSession(
+            accessToken: String(repeating: "B", count: 43),
+            tokenType: "Bearer",
+            expiresAt: .distantFuture,
+            user: SharedUser(id: UUID(), displayName: nil, group: nil)
+        )
+        await api.configureLogin(nextAccount)
+        await model.prepareAppleLogin()
+        let request = ASAuthorizationAppleIDProvider().createRequest()
+        model.configureAppleRequest(request)
+        await model.completeAppleLogin(
+            token: "native-fixture",
+            code: "single-use-fixture",
+            returnedState: request.state,
+            displayName: nil
+        )
+
+        try #require(model.session?.user.id == nextAccount.user.id)
+        try #require(model.canCreateGroup)
+        #expect(model.groupName.isEmpty)
+    }
+
     @Test(arguments: [0, 1])
     func `Admission notices only claim a reached limit when the account is actually full`(count: Int) async throws {
         let fixture = try MembershipFixture()

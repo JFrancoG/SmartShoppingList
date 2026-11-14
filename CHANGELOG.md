@@ -4,6 +4,8 @@
 
 ### Added
 
+- 2026-11-09 | ✨ feat(account)!: add persistent account deletion
+
 - 2026-11-07 | ✨ feat(ios): isolate distributed data and stabilize refreshes
 
 - 2026-10-16 | ✨ feat(ui): polish controls and Sandbox tools
@@ -38,6 +40,8 @@
 - 2026-09-19 | ✨ feat(ios): add editable shopping drafts
 
 ### Documentation
+
+- 2026-11-09 | 📝 docs(account): prepare Sandbox deletion rehearsal
 
 - 2026-11-07 | 📝 docs(release): record device acceptance
 
@@ -83,6 +87,16 @@
 - 2026-09-19 | 📝 docs: organize MVP tracking
 
 ### Fixed
+
+- 2026-11-14 | 🐛 fix(ios): improve account deletion confirmation contrast
+
+- 2026-11-14 | 🐛 fix(ios): reconcile pending account deletion from Settings
+
+- 2026-11-11 | 🐛 fix(ios): reset Settings after account deletion
+
+- 2026-11-11 | 🐛 fix(premium): verify Apple's App Attest receipts during recovery
+
+- 2026-11-10 | 🐛 fix(ios): isolate deletion previews from Release
 
 - 2026-10-29 | 🐛 fix(groups): allow the first free group during downgrade transition
 
@@ -134,6 +148,8 @@
 - 2026-09-22 | ✅ test(purchase): cover changes after selection
 
 ### Maintenance
+
+- 2026-11-10 | 📦 build(ios): prepare internal build 6
 
 - 2026-10-12 | 🔧 chore(ios): isolate Sandbox builds and local storage
 

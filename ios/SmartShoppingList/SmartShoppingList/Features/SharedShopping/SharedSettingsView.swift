@@ -105,7 +105,7 @@ struct SharedSettingsView: View {
                         }
                     }
                     .labelStyle(.iconOnly)
-                    .disabled(!viewModel.hasLoaded || viewModel.isBusy || !viewModel.isConfigured)
+                    .disabled(!viewModel.canRefresh)
                 }
             }
             .refreshable {
@@ -124,6 +124,10 @@ struct SharedSettingsView: View {
             }
         }
         .interactiveDismissDisabled(viewModel.isBusy)
+        .onChange(of: viewModel.accountDeletion.accessibilityMessage) { _, message in
+            guard viewModel.accountDeletion.pending != nil else { return }
+            AccessibilityNotification.Announcement(message).post()
+        }
         .modifier(ShoppingNoticeModifier(
             notice: viewModel.presentedNotice,
             isEnabled: canPresentNotice && viewModel.canPresentRootNotice,
@@ -141,6 +145,14 @@ struct SharedSettingsView: View {
     @Previewable @Environment(SharedShoppingViewModel.self) var viewModel
     SharedSettingsView(viewModel: viewModel)
 }
+
+#if DEBUG
+#Preview("Settings - deletion pending", traits: .sharedShopping(.deletionPending)) {
+    @Previewable @Environment(SharedShoppingViewModel.self) var viewModel
+    SharedSettingsView(viewModel: viewModel)
+        .environment(\.locale, Locale(identifier: "es"))
+}
+#endif
 
 #Preview("Settings - invitation and accessibility text", traits: .sharedShopping(.invitation)) {
     @Previewable @Environment(SharedShoppingViewModel.self) var viewModel

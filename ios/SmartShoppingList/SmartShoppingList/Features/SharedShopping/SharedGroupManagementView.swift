@@ -20,6 +20,24 @@ struct SharedGroupManagementView: View {
                 .listRowBackground(Color.surface)
             }
             if viewModel.groupManagementState == .loaded, let administration = viewModel.administration {
+                if administration.group.isPendingAdministration {
+                    Section("Administration needed") {
+                        Text("The previous administrator deleted their account. Assume administration to add products, stores or invitations.")
+                        if viewModel.canUseShopping {
+                            Text("You can still view the group and complete purchases.")
+                        } else {
+                            Text("You can still view the group. Your current plan does not allow purchases in this group.")
+                        }
+                        Button("Assume administration") {
+                            Task {
+                                await viewModel.claimGroupAdministration()
+                            }
+                        }
+                        .buttonStyle(ShoppingActionButtonStyle())
+                        .disabled(!viewModel.canMutate)
+                    }
+                    .listRowBackground(Color.surface)
+                }
                 Section("Members") {
                     ForEach(viewModel.groupMembers) { member in
                         SharedGroupMemberLabel(
@@ -87,7 +105,11 @@ struct SharedGroupManagementView: View {
                 } header: {
                     Text("Group membership")
                 } footer: {
-                    Text("Leaving keeps your local draft. Group purchases and history are preserved on the server.")
+                    if administration.group.isPendingAdministration && administration.memberCount == 1 {
+                        Text("Leaving as the last member will delete this group and its history. Your local draft is kept.")
+                    } else {
+                        Text("Leaving keeps your local draft. Group purchases and history are preserved on the server.")
+                    }
                 }
                 .listRowBackground(Color.surface)
             }
@@ -133,7 +155,11 @@ struct SharedGroupManagementView: View {
                 }
             } cancel: {}
         } message: {
-            Text("You are the last member. The group will close and its invitations will stop working. Its history is preserved, but reopening is not available.")
+            if viewModel.group?.isPendingAdministration == true {
+                Text("You are the last member. This group and its history will be deleted permanently. Your local draft is kept.")
+            } else {
+                Text("You are the last member. The group will close and its invitations will stop working. Its history is preserved, but reopening is not available.")
+            }
         }
     }
 }
@@ -208,4 +234,23 @@ struct SharedGroupManagementView: View {
     }
     .environment(\.locale, Locale(identifier: "en"))
     .environment(\.dynamicTypeSize, .accessibility5)
+}
+
+
+#Preview("Pending administration · ES · AX5", traits: .sharedShopping(.groupPendingAdministration)) {
+    @Previewable @Environment(SharedShoppingViewModel.self) var viewModel
+    NavigationStack {
+        SharedGroupManagementView(viewModel: viewModel, refreshesOnAppear: false)
+    }
+    .environment(\.locale, Locale(identifier: "es"))
+    .environment(\.dynamicTypeSize, .accessibility5)
+}
+
+#Preview("Pending administration · EN · Large", traits: .sharedShopping(.groupPendingAdministration)) {
+    @Previewable @Environment(SharedShoppingViewModel.self) var viewModel
+    NavigationStack {
+        SharedGroupManagementView(viewModel: viewModel, refreshesOnAppear: false)
+    }
+    .environment(\.locale, Locale(identifier: "en"))
+    .environment(\.dynamicTypeSize, .large)
 }

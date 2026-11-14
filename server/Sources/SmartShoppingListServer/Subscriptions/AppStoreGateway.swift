@@ -5,6 +5,13 @@ protocol AppStoreGateway: Sendable {
     func verifyTransaction(_ signed: String) async throws -> AppStoreTransaction
     func subscriptionStates(originalTransactionID: String) async throws -> [VerifiedAppStoreSubscription]
     func verifyNotification(_ signed: String) async throws -> AppStoreNotification
+    func setAppAccountToken(originalTransactionID: String, token: UUID) async throws
+}
+
+extension AppStoreGateway {
+    func setAppAccountToken(originalTransactionID: String, token: UUID) async throws {
+        throw AppStoreGatewayError.unavailable
+    }
 }
 
 struct UnconfiguredAppStoreGateway: AppStoreGateway {
@@ -53,12 +60,36 @@ struct LiveAppStoreGateway: AppStoreGateway {
         )
         try validate(current)
         guard current.transactionId == located.transactionId,
-              current.originalTransactionId == located.originalTransactionId,
-              current.appAccountToken == located.appAccountToken
+              current.originalTransactionId == located.originalTransactionId
         else {
             throw AppStoreGatewayError.rejected
         }
         return current
+    }
+
+    /// Apple changes the current and future renewals; past signed transactions retain their original token.
+    func setAppAccountToken(originalTransactionID: String, token: UUID) async throws {
+        guard AppStoreTransaction.isTransactionID(originalTransactionID), let configuration else {
+            throw AppStoreGatewayError.rejected
+        }
+        do {
+            let authorization = try await configuration.authorization(now: now())
+            let body = try JSONEncoder().encode(AccountTokenUpdate(appAccountToken: token))
+            let response = try await transport.put(
+                path: "/inApps/v1/transactions/" + originalTransactionID + "/appAccountToken",
+                authorization: authorization,
+                environment: configuration.environment,
+                body: body
+            )
+            guard response.status == 200, response.body.isEmpty else { throw AppStoreGatewayError.unavailable }
+        } catch {
+            // A timeout may follow a successful update. The durable reservation retries the same UUID.
+            throw AppStoreGatewayError.unavailable
+        }
+    }
+
+    private struct AccountTokenUpdate: Encodable {
+        let appAccountToken: UUID
     }
 
     func subscriptionStates(originalTransactionID: String) async throws -> [VerifiedAppStoreSubscription] {

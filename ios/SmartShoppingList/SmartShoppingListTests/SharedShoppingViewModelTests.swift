@@ -306,6 +306,191 @@ struct SharedShoppingViewModelTests {
     }
 
     @Test
+    func `Settings can sign in again after leaving a completed deletion without tapping Done`() async throws {
+        let api = SharedFlowAPI()
+        let credentials = MemorySharedCredentialStore()
+        let receipt = SharedDeletionReceipt(operationId: UUID(), statusSecret: "test-completed-secret")
+        let completed = PendingAccountDeletion(
+            userID: UUID(),
+            receipt: receipt,
+            revision: "previous-account",
+            submitted: true,
+            lastStatus: SharedDeletionStatus(operationId: receipt.operationId, status: .completed),
+            localDataCleared: true
+        )
+        await credentials.saveAccountDeletion(completed)
+        let model = try makeModel(api: api, credentials: credentials)
+        await model.load()
+
+        #expect(!model.isBusy)
+        #expect(await credentials.loadAccountDeletion() == completed)
+        await model.prepareAppleLogin()
+        try #require(model.canRequestAppleLogin)
+        let request = ASAuthorizationAppleIDProvider().createRequest()
+        model.configureAppleRequest(request)
+        await model.completeAppleLogin(
+            token: "new-identity-token",
+            code: "authorization-code",
+            returnedState: request.state,
+            displayName: nil
+        )
+
+        #expect(model.session?.user.id == api.session.user.id)
+        #expect(model.accountDeletion.pending == nil)
+        #expect(await credentials.loadAccountDeletion() == nil)
+    }
+
+    @Test(arguments: [false, true])
+    func `Settings refresh finishes a live deletion without another submission or reopening its result`(
+        onActivation: Bool
+    ) async throws {
+        let api = SharedFlowAPI()
+        await api.configureDeletion(state: .prepared)
+        let credentials = MemorySharedCredentialStore(session: api.session)
+        let model = try makeModel(api: api, credentials: credentials, items: [ShoppingDraftItem(name: "Private draft")])
+        await model.load()
+        model.groupName = "X1"
+        try await submitDeletion(model)
+        try #require(model.accountDeletion.pending?.lastStatus?.status == .accepted)
+        let receipt = try #require(model.accountDeletion.pending?.receipt)
+        let readsBeforeRefresh = await api.requestCount
+        #expect(model.session == nil)
+        #expect(model.draft.items.isEmpty)
+        #expect(model.groupName.isEmpty)
+        #expect(!model.canRequestAppleLogin)
+        #expect(model.canRefresh)
+
+        await api.configureDeletion(state: .purging)
+        await refreshDeletion(model, onActivation: onActivation)
+
+        #expect(model.accountDeletion.pending?.lastStatus?.status == .purging)
+        #expect(!model.canRequestAppleLogin)
+        #expect(model.canRefresh)
+        #expect(await api.deletionStatusRequests == 1)
+        await api.configureDeletion(state: .completed)
+        await refreshDeletion(model, onActivation: onActivation)
+
+        #expect(model.accountDeletion.hasCompletedLocalDeletion)
+        #expect(!model.isBusy)
+        #expect(await api.deletionStatusRequests == 2)
+        #expect(await api.deletionRequests == 1)
+        #expect(await api.requestCount == readsBeforeRefresh)
+        #expect(await credentials.loadAccountDeletion()?.receipt == receipt)
+        #expect(await credentials.loadSession() == nil)
+        await model.prepareAppleLogin()
+        #expect(model.canRequestAppleLogin)
+    }
+
+    @Test(arguments: [false, true])
+    func `An unavailable deletion status keeps its receipt and Settings can retry`(onActivation: Bool) async throws {
+        let api = SharedFlowAPI()
+        await api.configureDeletion(state: .prepared)
+        let credentials = MemorySharedCredentialStore(session: api.session)
+        let model = try makeModel(api: api, credentials: credentials)
+        await model.load()
+        try await submitDeletion(model)
+        let receipt = try #require(await credentials.loadAccountDeletion())
+        await api.configureDeletion(state: .completed, error: .transport)
+
+        await refreshDeletion(model, onActivation: onActivation)
+
+        #expect(await api.deletionStatusRequests == 1)
+        #expect(model.accountDeletion.notice != nil)
+        #expect(!model.canRequestAppleLogin)
+        #expect(model.canRefresh)
+        #expect(await credentials.loadAccountDeletion() == receipt)
+        await api.configureDeletion(state: .completed)
+        await refreshDeletion(model, onActivation: onActivation)
+
+        #expect(await api.deletionStatusRequests == 2)
+        #expect(await api.deletionRequests == 1)
+        #expect(model.accountDeletion.notice == nil)
+        #expect(model.accountDeletion.hasCompletedLocalDeletion)
+        await model.prepareAppleLogin()
+        #expect(model.canRequestAppleLogin)
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func `Manual and activation refresh cannot overlap a deletion status request`() async throws {
+        let api = SharedFlowAPI()
+        await api.configureDeletion(state: .prepared)
+        let model = try makeModel(api: api, credentials: MemorySharedCredentialStore(session: api.session))
+        await model.load()
+        try await submitDeletion(model)
+        let gate = SharedFlowGate()
+        await api.configureDeletion(state: .purging, gate: gate)
+
+        let checking = Task { await model.refresh() }
+        await gate.waitUntilReached()
+        #expect(!model.canRefresh)
+        #expect(!model.canRequestAppleLogin)
+        await model.refreshOnActivation()
+        await model.refresh()
+        #expect(await api.deletionStatusRequests == 1)
+        await gate.open()
+        await checking.value
+
+        #expect(model.accountDeletion.pending?.lastStatus?.status == .purging)
+        #expect(model.canRefresh)
+        #expect(!model.canRequestAppleLogin)
+        #expect(await api.deletionRequests == 1)
+    }
+
+    @Test
+    func `Settings retries failed local deletion before allowing another Apple account`() async throws {
+        let api = SharedFlowAPI()
+        await api.configureDeletion(state: .prepared)
+        let credentials = MemorySharedCredentialStore(session: api.session)
+        let privateItem = ShoppingDraftItem(name: "Private draft")
+        let persistence = DeletionDraftPersistence(snapshot: ShoppingDraftSnapshot(items: [privateItem]))
+        let model = try makeModel(api: api, credentials: credentials, persistence: persistence)
+        await model.load()
+        await persistence.failWrites(true)
+        try await submitDeletion(model)
+        try #require(model.accountDeletion.pending?.localDataCleared == false)
+        #expect(await persistence.load()?.items == [privateItem])
+        #expect(!model.canRequestAppleLogin)
+        #expect(model.canRefresh)
+        await api.configureDeletion(state: .completed)
+
+        await model.refresh()
+
+        #expect(model.accountDeletion.pending?.lastStatus?.status == .completed)
+        #expect(model.accountDeletion.pending?.localDataCleared == false)
+        #expect(!model.accountDeletion.canDismissResult)
+        #expect(!model.canRequestAppleLogin)
+        #expect(model.canRefresh)
+        await persistence.failWrites(false)
+        await model.refresh()
+
+        #expect(await persistence.load()?.items.isEmpty == true)
+        #expect(model.accountDeletion.hasCompletedLocalDeletion)
+        #expect(await credentials.loadAccountDeletion()?.localDataCleared == true)
+        #expect(await api.deletionStatusRequests == 1)
+        #expect(await api.deletionRequests == 1)
+        await model.prepareAppleLogin()
+        #expect(model.canRequestAppleLogin)
+    }
+
+    private func submitDeletion(_ model: SharedShoppingViewModel) async throws {
+        await model.prepareAccountDeletion()
+        let request = ASAuthorizationAppleIDProvider().createRequest()
+        model.accountDeletion.configureAppleRequest(request)
+        let state = try #require(request.state)
+        model.accountDeletion.acceptAuthorization(token: "fresh-identity", code: "fresh-code", state: state)
+        try #require(model.accountDeletion.hasAuthorization)
+        await model.confirmAccountDeletion()
+    }
+
+    private func refreshDeletion(_ model: SharedShoppingViewModel, onActivation: Bool) async {
+        if onActivation {
+            await model.refreshOnActivation()
+        } else {
+            await model.refresh()
+        }
+    }
+
+    @Test
     func `An existing session never prepares another Apple login`() async throws {
         let api = SharedFlowAPI()
         let model = try makeModel(api: api, credentials: MemorySharedCredentialStore(session: api.session))
@@ -918,6 +1103,7 @@ struct SharedShoppingViewModelTests {
         items: [ShoppingDraftItem] = [],
         speech: any SpeechCapturing = UnavailableSpeechCapture(),
         interpreter: any DraftInterpreting = UnavailableDraftInterpreter(),
+        persistence: any DraftPersisting = MemoryDraftPersistence(),
         appleLoginDate: @escaping @MainActor () -> Date = { Date() }
     ) throws -> SharedShoppingViewModel {
         SharedShoppingViewModel(
@@ -930,7 +1116,7 @@ struct SharedShoppingViewModelTests {
             draft: ShoppingDraftViewModel(
                 interpreter: interpreter,
                 speech: UnavailableSpeechCapture(),
-                persistence: MemoryDraftPersistence(),
+                persistence: persistence,
                 initialDraft: ShoppingDraftSnapshot(items: items)
             ),
             storeQuery: StoreQueryViewModel(speech: speech),
@@ -1332,7 +1518,65 @@ enum ShortcutConnectionFailure: CaseIterable {
     case signedOut, sessionLookup, storeLookup
 }
 
-private actor SharedFlowAPI: SharedShoppingAPI {
+private actor SharedFlowAPI: SharedShoppingAPI, SharedAccountDeletionAPI {
+    private var remotelyDeleted = false
+    private var remoteDeletionCheckFails = false
+    private var deletionState: SharedDeletionStatus.State?
+    private var deletionStatusError: SharedAPIError?
+    private var deletionStatusGate: SharedFlowGate?
+    private(set) var deletionRequests = 0
+    private(set) var deletionStatusRequests = 0
+
+    func configureDeletion(
+        state: SharedDeletionStatus.State,
+        error: SharedAPIError? = nil,
+        gate: SharedFlowGate? = nil
+    ) {
+        deletionState = state
+        deletionStatusError = error
+        deletionStatusGate = gate
+    }
+    func failRemoteDeletionCheck(_ fails: Bool) { remoteDeletionCheckFails = fails }
+    func confirmRemoteDeletion() { remotelyDeleted = true }
+    func deletionSessionStatus(token: String) throws -> Bool {
+        if remoteDeletionCheckFails {
+            throw SharedAPIError.transport
+        }
+        return remotelyDeleted
+    }
+    func deletionPreview(token: String) throws -> SharedDeletionPreview {
+        guard deletionState != nil else { throw SharedAPIError.configuration }
+        return SharedDeletionPreview(
+            revision: "delete-current-account",
+            groups: [],
+            ownContentCount: 0,
+            legacyContentCount: 0
+        )
+    }
+    func deletionChallenge(_ request: SharedDeletionPreparation, token: String) throws -> SharedChallenge {
+        guard deletionState != nil else { throw SharedAPIError.configuration }
+        return SharedChallenge(id: UUID(), nonce: "delete-current-account", expiresAt: .distantFuture)
+    }
+    func deleteAccount(_ request: SharedDeletionRequest, token: String) throws -> SharedDeletionStatus {
+        guard deletionState != nil else { throw SharedAPIError.configuration }
+        deletionRequests += 1
+        deletionState = .accepted
+        return SharedDeletionStatus(operationId: request.operationId, status: .accepted)
+    }
+    func deletionStatus(_ receipt: SharedDeletionReceipt) async throws -> SharedDeletionStatus {
+        guard let deletionState else { throw SharedAPIError.configuration }
+        deletionStatusRequests += 1
+        await deletionStatusGate?.pause()
+        if let deletionStatusError {
+            throw deletionStatusError
+        }
+        return SharedDeletionStatus(operationId: receipt.operationId, status: deletionState)
+    }
+    func cancelDeletion(_ receipt: SharedDeletionReceipt) throws -> SharedDeletionStatus { throw SharedAPIError.configuration }
+    func claimAdministration(_ request: ResolveGroupTransferRequest, groupID: UUID, token: String) throws -> SharedGroup {
+        throw SharedAPIError.configuration
+    }
+
     func groupMembers(groupID: UUID, token: String) async throws -> [SharedGroupMember] {
         throw SharedAPIError.configuration
     }
@@ -1500,6 +1744,10 @@ private actor SharedFlowAPI: SharedShoppingAPI {
 
     func removeFirstPurchaseItem() {
         purchaseItems.removeFirst()
+    }
+
+    func rejectPurchaseWithRemovedResult() {
+        purchaseError = .server(status: 410, code: "result_removed", requestID: UUID(), retryAfter: nil)
     }
 
     func rejectPurchaseWithConflict(removingStore: Bool = false) {
@@ -1836,6 +2084,19 @@ private actor SharedFlowGate {
             $0.resume()
         }
         resumptions = []
+    }
+}
+
+private actor DeletionDraftPersistence: DraftPersisting {
+    private var snapshot: ShoppingDraftSnapshot?
+    private var writesFail = false
+
+    init(snapshot: ShoppingDraftSnapshot) { self.snapshot = snapshot }
+    func failWrites(_ fails: Bool) { writesFail = fails }
+    func load() -> ShoppingDraftSnapshot? { snapshot }
+    func save(_ draft: ShoppingDraftSnapshot) throws {
+        guard !writesFail else { throw DraftPersistenceError.writeFailed }
+        snapshot = draft
     }
 }
 
@@ -2850,5 +3111,105 @@ private struct ProposalDraftInterpreter: DraftInterpreting {
             SuggestedProduct(name: "Bread", quantity: nil, store: "Aldi"),
             SuggestedProduct(name: "Milk", quantity: "2 litres", store: "Aldi")
         ]
+    }
+}
+
+
+extension SharedShoppingViewModelTests {
+    @Test(arguments: [false, true])
+    func `Only confirmed remote deletion removes the original account's pending operation`(deleted: Bool) async throws {
+        let api = SharedFlowAPI()
+        await api.setReadError(.server(status: 401, code: "invalid_session", requestID: nil, retryAfter: nil))
+        if deleted {
+            await api.confirmRemoteDeletion()
+        }
+        let operation = PendingSharedOperation.createGroup(
+            userID: api.session.user.id, request: CreateGroupRequest(operationId: UUID(), name: "Pending original group")
+        )
+        let credentials = MemorySharedCredentialStore(session: api.session, operation: operation)
+        let draft = ShoppingDraftItem(name: "Local guest product", store: "Aldi")
+        let model = try makeModel(api: api, credentials: credentials, items: [draft])
+
+        await model.load()
+
+        #expect(model.session == nil)
+        #expect(await credentials.loadSession() == nil)
+        #expect(await credentials.loadOperation() == (deleted ? nil : operation))
+        #expect(model.draft.items == [draft])
+        #expect(await credentials.loadDeletedAccountUserID() == nil)
+    }
+
+    @Test
+    func `A confirmed remote cleanup resumes after the original bearer has already been removed`() async throws {
+        let api = SharedFlowAPI()
+        let operation = PendingSharedOperation.createGroup(
+            userID: api.session.user.id, request: CreateGroupRequest(operationId: UUID(), name: "Pending original group")
+        )
+        let credentials = MemorySharedCredentialStore(operation: operation)
+        await credentials.saveDeletedAccountUserID(api.session.user.id)
+        let draft = ShoppingDraftItem(name: "Unattributed local draft")
+        let model = try makeModel(api: api, credentials: credentials, items: [draft])
+
+        await model.load()
+
+        #expect(await credentials.loadOperation() == nil)
+        #expect(await credentials.loadDeletedAccountUserID() == nil)
+        #expect(model.draft.items == [draft])
+        #expect(!model.requiresDeletedAccountCleanup)
+        #expect(!model.isBusy)
+    }
+}
+
+
+extension SharedShoppingViewModelTests {
+    @Test
+    func `A removed purchase receipt clears the retry without repeating the historical purchase`() async throws {
+        let api = SharedFlowAPI()
+        let items = try await api.preparePurchaseItems()
+        let credentials = MemorySharedCredentialStore(session: api.session)
+        let model = try makeModel(api: api, credentials: credentials)
+        await model.load()
+        model.selectedStoreID = items[0].storeId
+        await model.loadSelectedStore()
+        model.togglePurchaseItem(items[0])
+        await api.rejectPurchaseWithRemovedResult()
+
+        await model.finalizePurchase()
+        await model.retryPendingOperation()
+
+        #expect(model.pendingOperation == nil)
+        #expect(await credentials.loadOperation() == nil)
+        #expect(await api.sentPurchases.count == 1)
+        #expect(model.notice != nil)
+    }
+}
+
+
+extension SharedShoppingViewModelTests {
+    @Test
+    func `An unavailable remote deletion check preserves verification access across relaunch`() async throws {
+        let api = SharedFlowAPI()
+        await api.setReadError(.server(status: 401, code: "invalid_session", requestID: nil, retryAfter: nil))
+        await api.confirmRemoteDeletion()
+        await api.failRemoteDeletionCheck(true)
+        let operation = PendingSharedOperation.createGroup(
+            userID: api.session.user.id, request: CreateGroupRequest(operationId: UUID(), name: "Pending old group")
+        )
+        let credentials = MemorySharedCredentialStore(session: api.session, operation: operation)
+        let draft = ShoppingDraftItem(name: "Local guest product")
+        let model = try makeModel(api: api, credentials: credentials, items: [draft])
+
+        await model.load()
+
+        #expect(await credentials.loadSession()?.accessToken == api.session.accessToken)
+        #expect(await credentials.loadOperation() == operation)
+        #expect(!model.sessionIsVerified)
+        #expect(!model.canMutate)
+        await api.failRemoteDeletionCheck(false)
+        let relaunched = try makeModel(api: api, credentials: credentials, items: [draft])
+        await relaunched.load()
+        #expect(await credentials.loadSession() == nil)
+        #expect(await credentials.loadOperation() == nil)
+        #expect(relaunched.draft.items == [draft])
     }
 }
