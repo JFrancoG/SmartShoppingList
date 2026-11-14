@@ -78,7 +78,8 @@ struct SharedAccountDeletionView: View {
                             confirmsDeletion = true
                         }
                         .buttonStyle(.borderedProminent)
-                        .tint(.danger)
+                        .tint(.dangerSoft)
+                        .foregroundStyle(.danger)
                         .controlSize(.large)
                         .disabled(!deletion.canAuthorize)
                     }
@@ -172,5 +173,14 @@ struct SharedAccountDeletionView: View {
     }
     .task { viewModel.accountDeletion.preparePreview(completed: true) }
     .environment(\.locale, Locale(identifier: "en"))
+}
+
+#Preview("Deletion authorized · ES", traits: .sharedShopping) {
+    @Previewable @Environment(SharedShoppingViewModel.self) var viewModel
+    NavigationStack {
+        SharedAccountDeletionView(viewModel: viewModel)
+    }
+    .task { viewModel.accountDeletion.preparePreview(authorized: true) }
+    .environment(\.locale, Locale(identifier: "es"))
 }
 #endif

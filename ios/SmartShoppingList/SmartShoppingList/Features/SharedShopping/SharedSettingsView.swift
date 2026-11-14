@@ -147,10 +147,9 @@ struct SharedSettingsView: View {
 }
 
 #if DEBUG
-#Preview("Settings - deletion pending", traits: .sharedShopping(.signedOut)) {
+#Preview("Settings - deletion pending", traits: .sharedShopping(.deletionPending)) {
     @Previewable @Environment(SharedShoppingViewModel.self) var viewModel
     SharedSettingsView(viewModel: viewModel)
-        .task { viewModel.accountDeletion.preparePreview(awaitingCompletion: true) }
         .environment(\.locale, Locale(identifier: "es"))
 }
 #endif

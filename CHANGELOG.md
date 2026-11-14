@@ -88,6 +88,8 @@
 
 ### Fixed
 
+- 2026-11-14 | 🐛 fix(ios): improve account deletion confirmation contrast
+
 - 2026-11-14 | 🐛 fix(ios): reconcile pending account deletion from Settings
 
 - 2026-11-11 | 🐛 fix(ios): reset Settings after account deletion

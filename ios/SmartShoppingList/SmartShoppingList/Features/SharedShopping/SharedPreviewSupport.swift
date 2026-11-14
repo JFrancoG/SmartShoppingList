@@ -49,6 +49,9 @@ enum SharedPreviewState: CaseIterable, Hashable {
     case premiumGrace
     case premiumVerification
     case signedOut
+    #if DEBUG
+    case deletionPending
+    #endif
     case offline
     case signInUnavailable
     case invitation
@@ -300,7 +303,12 @@ enum SharedPreviewSupport {
         state: SharedPreviewState,
         presentation: SharedPreviewPresentation? = nil
     ) -> SharedShoppingViewModel {
-        let draft = DraftPreviewSupport.viewModel(snapshot: fixture.draft, state: .content)
+        #if DEBUG
+        let deletionPending = state == .deletionPending
+        #else
+        let deletionPending = false
+        #endif
+        let draft = DraftPreviewSupport.viewModel(snapshot: fixture.draft, state: deletionPending ? .empty : .content)
         var session = fixture.session
         if state == .invitation || state == .premiumNoGroups {
             session.user.group = nil
@@ -333,7 +341,8 @@ enum SharedPreviewSupport {
             session.activeGroupID = fixture.group.id
         }
         let credentials = MemorySharedCredentialStore(
-            session: state == .signedOut || state == .signInUnavailable || state == .unconfigured ? nil : session,
+            session: state == .signedOut || state == .signInUnavailable || state == .unconfigured || deletionPending
+                ? nil : session,
             invitation: state == .invitation || state == .signedOut ? fixture.pendingInvitation : nil,
             operation: pending,
             subscriptionVerification: state == .premiumVerification ? PendingSubscriptionVerification(
@@ -371,7 +380,7 @@ enum SharedPreviewSupport {
         let subscriptionStore: (any SharedSubscriptionStore)? = isPremiumPreview ? PreviewPremiumStore() : nil
         #if DEBUG
         if let presentation {
-            return SharedShoppingViewModel(
+            let model = SharedShoppingViewModel(
                 preview: presentation,
                 api: api,
                 configuration: configuration,
@@ -380,6 +389,10 @@ enum SharedPreviewSupport {
                 storeQuery: StoreQueryViewModel(speech: PreviewStoreQuerySpeech()),
                 subscriptionStore: subscriptionStore
             )
+            if deletionPending {
+                model.accountDeletion.preparePreview(awaitingCompletion: true)
+            }
+            return model
         }
         #endif
         return SharedShoppingViewModel(
@@ -402,6 +415,10 @@ enum SharedPreviewSupport {
             await model.loadPremium()
         }
         switch state {
+        #if DEBUG
+        case .deletionPending:
+            model.accountDeletion.preparePreview(awaitingCompletion: true)
+        #endif
         case .group, .multipleGroups, .premiumTransition, .premiumRestricted,
              .premiumFree, .premiumActive, .premiumRenewalOff, .premiumGrace, .premiumVerification:
             model.selectedStoreID = fixture.stores.first?.id

@@ -36,7 +36,22 @@ Actualizar desde Ajustes o volver a primer plano consulta ahora la solicitud env
 
 Se reprodujo la regresión en el mismo ViewModel: sesión válida → solicitud aceptada → limpieza local → refresco manual o activación → finalización. Las cuatro ejecuciones iniciales fallaron porque no se consultaba el estado. Tras corregirlo, Xcode 27.2 (27B52) ejecutó **523 casos Fast y 22 Integration**, en iPhone 18 Pro con iOS 27.0, sin fallos, omisiones, avisos de ejecución ni diagnósticos de compilación. Los seis casos nuevos también cubren error de red, consultas solapadas y fallo/reintento de escritura local, sin repetir la solicitud de borrado. La revisión independiente de Swift, concurrencia y accesibilidad estática no dejó hallazgos.
 
-La preview normal de Ajustes se inspeccionó en iPhone 18 Pro Max con iOS 27.2. Se generó también AX5 en iOS 27.0, pero su encuadre inicial no llega a los controles de eliminación. Otras variantes fallaron antes de ejecutar la app con `Library not loaded: /usr/lib/libSystem.B.dylib` en el runtime de previews. **Pendientes antes del siguiente build:** completar la inspección visual de los controles con texto grande y preparar un nuevo Archive. Esta corrección adicional aún no se ha distribuido ni probado físicamente; no modifica el servidor ni producción.
+La [CI de `2322585`](https://github.com/JFrancoG/SmartShoppingList/actions/runs/43592856404) completó correctamente los tres trabajos: contrato/diseño, servidor Linux arm64 e imagen Release Linux amd64. El fallo anterior de DNS del runner queda como incidencia histórica.
+
+### Revisión visual y preparación de la 1.0 (8)
+
+El runtime de algunas previews falló al arrancar por `libSystem.B.dylib`. Para completar la revisión se ejecutaron las pantallas reales en un simulador iPhone 17 con iOS 27.2, mediante un recorrido DEBUG con servicios y almacenamiento sintéticos en memoria. No usa el arranque del backend y queda excluido de Release. No se pulsaron los controles nativos de acceso con Apple ni de gestión de suscripciones.
+
+- **Ajustes con eliminación pendiente:** tamaños Large, XXXLarge y AX5. El estado, la acción de consulta y la navegación se pueden alcanzar mediante desplazamiento, sin truncamiento del texto. La fixture no contiene sesión, invitaciones ni borrador residual.
+- **Preparación en AX5:** explicaciones completas, paso de identidad separado y botón Continuar con Apple visible. Las acciones del formulario siguen siendo alcanzables.
+- **Resultado en AX5:** «Cuenta eliminada» y Hecho se distinguen y caben en la pantalla del simulador.
+- **Confirmación:** la revisión encontró que el botón destructivo heredaba `textPrimary` sobre `danger`, con contraste insuficiente. Se conserva el botón nativo y su rol; ahora usa explícitamente `danger` sobre `dangerSoft`, par ya validado con ratios **5,50 / 7,87 / 8,77 / 11,34:1** en las cuatro apariencias. El validador de diseño pasa sus 65 pares por cuatro modos. La alerta nativa se abrió y se canceló sin confirmar ningún borrado.
+
+La corrección de contraste se volvió a inspeccionar en AX5 claro y oscuro y se canceló de nuevo la alerta. No aparecieron otros defectos visuales en esta matriz. Las capturas y el checklist se conservan en la evidencia local de `testflight-internal-1.0-8`.
+
+La preparación usa **1.0 (8)**; App Store Connect mostraba **1.0 (7)** como último build al comprobarlo el 14 de noviembre. El código compila en Debug sin errores ni avisos. Se conserva la evidencia funcional de 523 Fast y 22 Integration: los cambios posteriores son color del control, número de build y soporte de inspección DEBUG. El Archive, la firma y el resultado de CI de esta preparación se registrarán en la PR #56 antes de distribuirla.
+
+Esta revisión local no acredita VoiceOver físico ni el recorrido distribuido del nuevo estado pendiente. La siguiente prueba en TestFlight será acotada a ese recorrido y los controles; el ciclo de compras ya aprobado no se repite. No se ha modificado el servidor ni producción.
 
 Base técnica: [validación local](issue-54-account-deletion-local.md), [diseño de eliminación](../architecture/account-deletion.md), [entornos de distribución](../architecture/distribution-environments.md), [servidor](../../server/README.md) y [configuración de compras](../setup/premium-subscriptions.md). La evidencia local y la de builds anteriores no sustituyen este ensayo.
 

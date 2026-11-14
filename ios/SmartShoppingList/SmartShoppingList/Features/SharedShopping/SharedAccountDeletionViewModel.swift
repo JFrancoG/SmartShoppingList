@@ -280,7 +280,8 @@ final class SharedAccountDeletionViewModel {
         hasAuthorization = false
     }
 #if DEBUG
-    func preparePreview(completed: Bool = false, awaitingCompletion: Bool = false) {
+    func preparePreview(completed: Bool = false, awaitingCompletion: Bool = false, authorized: Bool = false) {
+        resetAuthorization()
         let receipt = SharedDeletionReceipt(operationId: UUID(), statusSecret: "preview-only")
         let status: SharedDeletionStatus.State = completed ? .completed : awaitingCompletion ? .accepted : .prepared
         pending = PendingAccountDeletion(
@@ -302,6 +303,10 @@ final class SharedAccountDeletionViewModel {
         if status == .prepared {
             challenge = SharedChallenge(id: UUID(), nonce: "preview-only", expiresAt: now().addingTimeInterval(300))
             appleState = "preview-only"
+            if authorized {
+                authorization = (identityToken: "preview-only", code: "preview-only")
+                hasAuthorization = true
+            }
         }
         hasLoaded = true
     }

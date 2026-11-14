@@ -63,6 +63,9 @@ final class AppIconController {
 
     private static var isLiveApplication: Bool {
         let process = ProcessInfo.processInfo
+        #if DEBUG
+        guard !process.arguments.contains("-shopping-account-deletion-validation") else { return false }
+        #endif
         return process.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1"
             && process.environment["XCTestConfigurationFilePath"] == nil
             && process.environment["XCTestBundlePath"] == nil
