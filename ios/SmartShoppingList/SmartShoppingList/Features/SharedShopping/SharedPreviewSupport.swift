@@ -305,10 +305,11 @@ enum SharedPreviewSupport {
     ) -> SharedShoppingViewModel {
         #if DEBUG
         let deletionPending = state == .deletionPending
+        let draft = DraftPreviewSupport.viewModel(snapshot: fixture.draft, state: deletionPending ? .empty : .content)
         #else
         let deletionPending = false
+        let draft = DraftPreviewSupport.viewModel(snapshot: fixture.draft, state: .content)
         #endif
-        let draft = DraftPreviewSupport.viewModel(snapshot: fixture.draft, state: deletionPending ? .empty : .content)
         var session = fixture.session
         if state == .invitation || state == .premiumNoGroups {
             session.user.group = nil
