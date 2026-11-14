@@ -5,6 +5,7 @@ import SwiftUI
 struct SharedAccountDeletionView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.usesPreparedShoppingPreview) private var usesPreparedPreview
     @ScaledMetric(relativeTo: .body) private var appleButtonHeight = ShoppingControlMetrics.minimumTargetSize
     @State private var confirmsDeletion = false
     @State private var showsSubscriptions = false
@@ -53,12 +54,15 @@ struct SharedAccountDeletionView: View {
                     Button("Manage subscription") {
                         showsSubscriptions = true
                     }
+                    .buttonStyle(ShoppingActionButtonStyle(isProminent: false))
                     Text("A new account will not recover deleted data. You can restore an eligible active Premium subscription using the same Apple purchase account.")
                 }
                 .listRowBackground(Color.surface)
 
                 Section {
                     if deletion.canAuthorize && !deletion.hasAuthorization {
+                        Text("First verify your identity with Apple. Then you can confirm account deletion.")
+                            .fixedSize(horizontal: false, vertical: true)
                         SignInWithAppleButton(.continue) { request in
                             deletion.configureAppleRequest(request)
                         } onCompletion: { result in
@@ -73,13 +77,17 @@ struct SharedAccountDeletionView: View {
                         Button("Delete my account and data", role: .destructive) {
                             confirmsDeletion = true
                         }
-                            .disabled(!deletion.canAuthorize)
+                        .buttonStyle(.borderedProminent)
+                        .tint(.danger)
+                        .controlSize(.large)
+                        .disabled(!deletion.canAuthorize)
                     }
                     Button("Refresh deletion details") {
                         Task {
                             await viewModel.prepareAccountDeletion()
                         }
                     }
+                    .buttonStyle(ShoppingActionButtonStyle(isProminent: false))
                     .disabled(deletion.isBusy || deletion.storageFailed || viewModel.session == nil)
                     if deletion.pending != nil {
                         Button("Cancel deletion request") {
@@ -90,6 +98,7 @@ struct SharedAccountDeletionView: View {
                                 }
                             }
                         }
+                        .buttonStyle(ShoppingActionButtonStyle(isProminent: false))
                         .disabled(deletion.isBusy)
                     }
                 }
@@ -104,6 +113,7 @@ struct SharedAccountDeletionView: View {
                                 await viewModel.checkAccountDeletion()
                             }
                         }
+                        .buttonStyle(ShoppingActionButtonStyle())
                         .disabled(deletion.isBusy)
                     }
                     if deletion.pending?.lastStatus?.appleRevocationOutcome == .manualActionRequired {
@@ -128,10 +138,8 @@ struct SharedAccountDeletionView: View {
         .navigationBarTitleDisplayMode(.inline)
         .manageSubscriptionsSheet(isPresented: $showsSubscriptions)
         .task {
+            guard !usesPreparedPreview else { return }
             await viewModel.prepareAccountDeletion()
-        }
-        .onChange(of: deletion.accessibilityMessage) { _, message in
-            AccessibilityNotification.Announcement(message).post()
         }
         .alert("Delete your account permanently?", isPresented: $confirmsDeletion) {
             Button("Delete my account and data", role: .destructive) {

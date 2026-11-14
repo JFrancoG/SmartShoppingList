@@ -23,6 +23,27 @@ struct SharedAccountSection: View {
         if viewModel.accountDeletion.isAvailable,
            viewModel.session != nil || viewModel.accountDeletion.pending != nil || viewModel.accountDeletion.storageFailed {
             Section("Account deletion") {
+                if viewModel.accountDeletion.pending?.submitted == true {
+                    Text(viewModel.accountDeletion.statusMessage)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if let notice = viewModel.accountDeletion.notice {
+                        Text(notice)
+                            .foregroundStyle(.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    if viewModel.accountDeletion.needsStatusRefresh {
+                        if viewModel.accountDeletion.isBusy {
+                            ProgressView("Updating deletion request…")
+                        }
+                        Button("Check deletion status") {
+                            Task {
+                                await viewModel.checkAccountDeletion()
+                            }
+                        }
+                        .buttonStyle(ShoppingActionButtonStyle())
+                        .disabled(!viewModel.canRefresh)
+                    }
+                }
                 NavigationLink("Delete account") {
                     SharedAccountDeletionView(viewModel: viewModel)
                 }

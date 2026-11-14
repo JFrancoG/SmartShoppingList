@@ -430,7 +430,7 @@ enum SharedPreviewSupport {
 }
 
 @MainActor
-private final class PreviewSharedShoppingAPI: SharedShoppingAPI {
+private final class PreviewSharedShoppingAPI: SharedShoppingAPI, SharedAccountDeletionAPI {
     nonisolated static let successorID = UUID(uuid: (0, 0, 0, 0, 0, 0, 64, 0, 128, 0, 0, 0, 0, 0, 0, 2))
     let fixture: SharedPreviewFixture
     let user: SharedUser
@@ -467,6 +467,30 @@ private final class PreviewSharedShoppingAPI: SharedShoppingAPI {
     }
 
     // Preview data never requires a remote request.
+    func deletionPreview(token: String) async throws -> SharedDeletionPreview {
+        throw SharedAPIError.configuration
+    }
+    func deletionChallenge(_ request: SharedDeletionPreparation, token: String) async throws -> SharedChallenge {
+        throw SharedAPIError.configuration
+    }
+    func deleteAccount(_ request: SharedDeletionRequest, token: String) async throws -> SharedDeletionStatus {
+        throw SharedAPIError.configuration
+    }
+    func deletionStatus(_ receipt: SharedDeletionReceipt) async throws -> SharedDeletionStatus {
+        SharedDeletionStatus(operationId: receipt.operationId, status: .accepted)
+    }
+    func cancelDeletion(_ receipt: SharedDeletionReceipt) async throws -> SharedDeletionStatus {
+        SharedDeletionStatus(operationId: receipt.operationId, status: .cancelled)
+    }
+    func deletionSessionStatus(token: String) async throws -> Bool { false }
+    func claimAdministration(
+        _ request: ResolveGroupTransferRequest,
+        groupID: UUID,
+        token: String
+    ) async throws -> SharedGroup {
+        throw SharedAPIError.configuration
+    }
+
     func createChallenge() async throws -> SharedChallenge {
         guard !signInUnavailable else { throw SharedAPIError.transport }
         return SharedChallenge(id: UUID(), nonce: String(repeating: "A", count: 43), expiresAt: Date().addingTimeInterval(300))

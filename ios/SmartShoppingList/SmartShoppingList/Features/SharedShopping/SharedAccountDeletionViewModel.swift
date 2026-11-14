@@ -35,6 +35,8 @@ final class SharedAccountDeletionViewModel {
         pending?.lastStatus?.status == .completed && pending?.localDataCleared == true
     }
     var blocksAccountUse: Bool { storageFailed || (pending != nil && !hasCompletedLocalDeletion) }
+    var needsStatusRefresh: Bool { pending?.submitted == true && !hasCompletedLocalDeletion }
+    var canRefreshStatus: Bool { needsStatusRefresh && !isBusy && !storageFailed }
     var canAuthorize: Bool {
         !isBusy && !storageFailed && pending != nil && pending?.submitted == false
             && (challenge?.expiresAt.timeIntervalSince(now()) ?? 0) > 30
@@ -53,7 +55,9 @@ final class SharedAccountDeletionViewModel {
     var statusMessage: LocalizedStringResource {
         switch pending?.lastStatus?.status {
         case .completed:
-            return "Account deleted. Your deleted lists and groups cannot be restored."
+            return hasCompletedLocalDeletion
+                ? "Account deleted. Your deleted lists and groups cannot be restored."
+                : "Account deletion is confirmed. Local cleanup still needs to finish."
         case .accepted, .purging, .dataDeleted:
             return "Deletion in progress. Your account can no longer be used."
         case .cancelled:
@@ -276,12 +280,16 @@ final class SharedAccountDeletionViewModel {
         hasAuthorization = false
     }
 #if DEBUG
-    func preparePreview(completed: Bool = false) {
+    func preparePreview(completed: Bool = false, awaitingCompletion: Bool = false) {
         let receipt = SharedDeletionReceipt(operationId: UUID(), statusSecret: "preview-only")
+        let status: SharedDeletionStatus.State = completed ? .completed : awaitingCompletion ? .accepted : .prepared
         pending = PendingAccountDeletion(
-            userID: UUID(), receipt: receipt, revision: "preview", submitted: completed,
-            lastStatus: SharedDeletionStatus(operationId: receipt.operationId, status: completed ? .completed : .prepared),
-            localDataCleared: completed
+            userID: UUID(),
+            receipt: receipt,
+            revision: "preview",
+            submitted: completed || awaitingCompletion,
+            lastStatus: SharedDeletionStatus(operationId: receipt.operationId, status: status),
+            localDataCleared: completed || awaitingCompletion
         )
         preview = SharedDeletionPreview(
             revision: "preview",
@@ -291,6 +299,10 @@ final class SharedAccountDeletionViewModel {
             ],
             ownContentCount: 8, legacyContentCount: 2
         )
+        if status == .prepared {
+            challenge = SharedChallenge(id: UUID(), nonce: "preview-only", expiresAt: now().addingTimeInterval(300))
+            appleState = "preview-only"
+        }
         hasLoaded = true
     }
 #endif

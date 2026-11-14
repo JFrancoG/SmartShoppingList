@@ -177,6 +177,18 @@
       }
     }
   },
+  "First verify your identity with Apple. Then you can confirm account deletion.": {
+    "comment": "Explains the two steps before confirming account deletion: Apple identity check, then the destructive confirmation.",
+    "extractionState": "manual",
+    "localizations": {
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Primero verifica tu identidad con Apple. Después podrás confirmar la eliminación de la cuenta."
+        }
+      }
+    }
+  },
   "Delete this device’s draft": {
     "comment": "The label of a button that deletes the draft of a user on their device.",
     "extractionState": "manual",

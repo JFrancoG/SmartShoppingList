@@ -143,7 +143,7 @@ final class SharedShoppingViewModel {
     @ObservationIgnored private var appleState: String?
     @ObservationIgnored private let appleLoginDate: @MainActor () -> Date
     @ObservationIgnored private var storageFailed = false
-    @ObservationIgnored private var isClearingDeletedAccount = false
+    private var isClearingDeletedAccount = false
     private var remotelyDeletedUserID: UUID?
     @ObservationIgnored private var hasRestoredLocalState = false
     @ObservationIgnored private var localStateLoadTask: Task<Void, Never>?
@@ -206,6 +206,10 @@ final class SharedShoppingViewModel {
     }
     var canRequestAppleLogin: Bool {
         shouldMaintainAppleLogin && !isBusy && !isPreparingAppleLogin && hasReadyAppleChallenge
+    }
+    var canRefresh: Bool {
+        hasLoaded && isConfigured && !isClearingDeletedAccount
+            && (accountDeletion.canRefreshStatus || (!isBusy && !storageFailed))
     }
     private var hasReadyAppleChallenge: Bool {
         appleState != nil && (challenge?.expiresAt.timeIntervalSince(appleLoginDate()) ?? 0) > 30
@@ -335,7 +339,16 @@ final class SharedShoppingViewModel {
         refreshLogger.debug("Refresh requested trigger=activation")
         let wasLoaded = hasLoaded
         await load()
-        guard hasLoaded, !storageFailed, !Task.isCancelled else { return }
+        guard hasLoaded, !Task.isCancelled else { return }
+        if accountDeletion.needsStatusRefresh {
+            activationRefreshPending = false
+            // Initial loading already reconciles a saved deletion; a later activation performs one fresh check.
+            if wasLoaded, canRefresh {
+                await checkAccountDeletion()
+            }
+            return
+        }
+        guard !storageFailed else { return }
         // A failed initial read waits for recovery instead of immediately repeating the same offline request.
         guard wasLoaded || sessionIsVerified else { return }
         guard refreshTask != nil || !isBusy else {
@@ -784,8 +797,14 @@ final class SharedShoppingViewModel {
     }
 
     func refresh() async {
-        guard hasLoaded, !storageFailed else { return }
+        guard hasLoaded, !Task.isCancelled else { return }
         refreshLogger.debug("Refresh requested trigger=manual")
+        if accountDeletion.needsStatusRefresh {
+            guard canRefresh else { return }
+            await checkAccountDeletion()
+            return
+        }
+        guard !storageFailed else { return }
         await refreshSharedAccess(includingPremium: false)
     }
 
