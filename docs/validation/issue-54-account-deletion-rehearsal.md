@@ -74,10 +74,16 @@ Compilación Debug y Release para simulador correctas, sin diagnósticos de comp
 Tras distribuir el siguiente build interno, confirmar la versión realmente instalada en TestFlight y **Datos de prueba**. Conservar la cuenta de ensayo y el comprobante existente; no reinstalar, cambiar de identidad ni repetir Premium. Si aparece una eliminación ya aceptada o completada, consultar ese estado y detener este recorrido de preparación.
 
 1. En la preparación existente, usar **Actualizar resumen** si la verificación ha caducado. Abrir Apple y cancelar su ventana una vez: la pantalla debe seguir respondiendo y ofrecer reintentar, sin enviar un borrado.
-2. Completar **Continuar con Apple** una vez. Debe aparecer la identidad verificada y **Eliminar mi cuenta y mis datos**. No pulsar esa acción. Volver con Atrás, abrir **Ver detalles** y comprobar que conserva la verificación mientras siga vigente. Volver mediante el gesto y cerrar/reabrir Ajustes: navegación disponible y preparación visible.
+2. Completar **Continuar con Apple** una vez. Debe aparecer la identidad verificada y **Eliminar cuenta**. No pulsar esa acción. Volver con Atrás, abrir **Ver detalles** y comprobar que conserva la verificación mientras siga vigente. Volver mediante el gesto y cerrar/reabrir Ajustes: navegación disponible y preparación visible.
 3. Pulsar **Cancelar preparación** una vez desde Ajustes. Esperar su confirmación; la cuenta conserva sus datos y desaparece el bloqueo de preparación. Con texto máximo, comprobar que los controles anteriores se leen y se alcanzan desplazando la pantalla.
 
 Si Apple vuelve sin resultado visible, anotar el mensaje junto al control y detenerse; no solicitar otro borrado. Esta prueba termina tras cancelar la preparación: no incluye eliminación, nuevas compras, restauración ni renovación.
+
+### Preparación de la 1.0 (9)
+
+El arreglo se publicó en `6ec4e96`; el número de compilación quedó guardado en `712c07f`. App Store Connect confirmó la 1.0 (8) como última carga antes de asignar la 1.0 (9). Xcode 27.2 creó el Archive Release comercial desde `712c07f` el 16 de noviembre a las 18:44 CET: **0 errores y 0 warnings** en el log real del Archive. Conserva el nombre **Smart List**, bundle ID, Sign in with Apple, dominios asociados y App Attest `production`, que también corresponde a TestFlight.
+
+La autorización de este paso cubre commit, push, CI y preparación de un paquete local para **TestFlight Internal Only**. La validación de distribución, firma final del IPA y resultado de CI se registran en la PR #56 y en la evidencia privada `testflight-build-9-20261116`. El Archive por sí solo no acredita disponibilidad para testers; la subida y la comprobación física siguen siendo pasos posteriores.
 
 ## Alcance y condiciones de entrada
 

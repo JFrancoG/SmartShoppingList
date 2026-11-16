@@ -47,6 +47,8 @@
 
 ### Documentation
 
+- 2026-11-16 | 📝 docs(ios): record internal build 9 preparation
+
 - 2026-11-09 | 📝 docs(account): prepare Sandbox deletion rehearsal
 
 - 2026-11-07 | 📝 docs(release): record device acceptance
