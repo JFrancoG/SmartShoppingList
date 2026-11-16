@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Maintenance
+
+- 2026-11-16 | 📦 build(ios): prepare internal TestFlight build 9
+
 ### Added
 
 - 2026-11-09 | ✨ feat(account)!: add persistent account deletion
