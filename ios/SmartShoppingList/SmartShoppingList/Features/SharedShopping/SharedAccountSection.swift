@@ -8,6 +8,8 @@ struct SharedAccountSection: View {
     @State private var confirmsDraftRemoval = false
     let viewModel: SharedShoppingViewModel
 
+    private var deletion: SharedAccountDeletionViewModel { viewModel.accountDeletion }
+
     var body: some View {
         if viewModel.requiresDeletedAccountCleanup {
             Section("Account deletion") {
@@ -20,37 +22,11 @@ struct SharedAccountSection: View {
             }
             .listRowBackground(Color.surface)
         }
-        if viewModel.accountDeletion.isAvailable,
-           viewModel.session != nil || viewModel.accountDeletion.pending != nil || viewModel.accountDeletion.storageFailed {
-            Section("Account deletion") {
-                if viewModel.accountDeletion.pending?.submitted == true {
-                    Text(viewModel.accountDeletion.statusMessage)
-                        .fixedSize(horizontal: false, vertical: true)
-                    if let notice = viewModel.accountDeletion.notice {
-                        Text(notice)
-                            .foregroundStyle(.textSecondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    if viewModel.accountDeletion.needsStatusRefresh {
-                        if viewModel.accountDeletion.isBusy {
-                            ProgressView("Updating deletion request…")
-                        }
-                        Button("Check deletion status") {
-                            Task {
-                                await viewModel.checkAccountDeletion()
-                            }
-                        }
-                        .buttonStyle(ShoppingActionButtonStyle())
-                        .disabled(!viewModel.canRefresh)
-                    }
-                }
-                NavigationLink("Delete account") {
-                    SharedAccountDeletionView(viewModel: viewModel)
-                }
-            }
-            .listRowBackground(Color.surface)
+        if deletion.pending == nil && !deletion.storageFailed {
+            SharedAccountDeletionSection(viewModel: viewModel)
         }
-        if viewModel.session == nil, !viewModel.draft.items.isEmpty || !viewModel.draft.text.isEmpty {
+        if !deletion.blocksAccountUse, !viewModel.requiresDeletedAccountCleanup,
+           viewModel.session == nil, !viewModel.draft.items.isEmpty || !viewModel.draft.text.isEmpty {
             Section("Local draft") {
                 Text("This draft is stored on this device. Review it before adding its products to another account.")
                 Button("Delete this device’s draft", role: .destructive) {
@@ -70,13 +46,13 @@ struct SharedAccountSection: View {
             }
             .listRowBackground(Color.surface)
         }
-        if !viewModel.isConfigured {
+        if !viewModel.isConfigured && !deletion.blocksAccountUse && !viewModel.requiresDeletedAccountCleanup {
             Section("Group access") {
                 Text("The group connection is not configured yet. You can prepare products in Add.")
                     .foregroundStyle(.textSecondary)
             }
             .listRowBackground(Color.surface)
-        } else if let session = viewModel.session {
+        } else if let session = viewModel.session, !deletion.blocksAccountUse, !viewModel.requiresDeletedAccountCleanup {
             Section("Account") {
                 if let name = session.user.displayName, !name.isEmpty {
                     Text(name)
@@ -94,7 +70,7 @@ struct SharedAccountSection: View {
                 .disabled(viewModel.isBusy)
             }
             .listRowBackground(Color.surface)
-        } else {
+        } else if !deletion.blocksAccountUse && !viewModel.requiresDeletedAccountCleanup {
             Section {
                 Text("Sign in with Apple to create a group or accept an invitation.")
                     .foregroundStyle(.textPrimary)

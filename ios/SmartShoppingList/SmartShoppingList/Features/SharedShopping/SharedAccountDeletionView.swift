@@ -17,16 +17,15 @@ struct SharedAccountDeletionView: View {
         Form {
             Section {
                 Text(deletion.statusMessage)
+                    .fixedSize(horizontal: false, vertical: true)
                 if deletion.isBusy {
                     ProgressView("Updating deletion request…")
-                }
-                if let notice = deletion.notice {
-                    Text(notice).foregroundStyle(.textSecondary)
                 }
             }
             .listRowBackground(Color.surface)
 
-            if deletion.acceptedUserID == nil {
+            switch deletion.phase {
+            case .review, .verifyingIdentity, .authorized:
                 if let preview = deletion.preview {
                     Section("What will be deleted") {
                         Text("Your profile, sessions and local draft on this device will be deleted. You will leave every group.")
@@ -49,20 +48,36 @@ struct SharedAccountDeletionView: View {
                     }
                     .listRowBackground(Color.surface)
                 }
-                Section {
+                Section("Subscription") {
                     Text("Deleting your Smart List account does not cancel your Apple subscription. Manage it with Apple to stop renewals.")
-                    Button("Manage subscription") {
+                    Button("Manage subscription", systemImage: "creditcard") {
                         showsSubscriptions = true
                     }
-                    .buttonStyle(ShoppingActionButtonStyle(isProminent: false))
+                    .foregroundStyle(.appPrimary)
+                    .frame(minHeight: ShoppingControlMetrics.minimumTargetSize)
                     Text("A new account will not recover deleted data. You can restore an eligible active Premium subscription using the same Apple purchase account.")
                 }
                 .listRowBackground(Color.surface)
 
-                Section {
-                    if deletion.canAuthorize && !deletion.hasAuthorization {
-                        Text("First verify your identity with Apple. Then you can confirm account deletion.")
+                Section("Verify your identity") {
+                    if let notice = deletion.notice {
+                        Text(notice)
+                            .foregroundStyle(.textSecondary)
                             .fixedSize(horizontal: false, vertical: true)
+                    } else {
+                        Text(deletion.identityMessage)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .listRowBackground(Color.surface)
+
+                Section {
+                    if deletion.hasAuthorization {
+                        SharedAccountDeletionAction(title: "Delete account", isDestructive: true) {
+                            confirmsDeletion = true
+                        }
+                        .disabled(!deletion.canAuthorize)
+                    } else {
                         SignInWithAppleButton(.continue) { request in
                             deletion.configureAppleRequest(request)
                         } onCompletion: { result in
@@ -72,26 +87,23 @@ struct SharedAccountDeletionView: View {
                         .frame(maxWidth: 375)
                         .frame(height: appleButtonHeight)
                         .frame(maxWidth: .infinity)
-                    }
-                    if deletion.hasAuthorization {
-                        Button("Delete my account and data", role: .destructive) {
-                            confirmsDeletion = true
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .tint(.dangerSoft)
-                        .foregroundStyle(.danger)
-                        .controlSize(.large)
                         .disabled(!deletion.canAuthorize)
                     }
-                    Button("Refresh deletion details") {
+                }
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+
+                Section {
+                    Button("Refresh summary", systemImage: "arrow.clockwise") {
                         Task {
-                            await viewModel.prepareAccountDeletion()
+                            await viewModel.prepareAccountDeletion(forceRefresh: true)
                         }
                     }
-                    .buttonStyle(ShoppingActionButtonStyle(isProminent: false))
-                    .disabled(deletion.isBusy || deletion.storageFailed || viewModel.session == nil)
+                    .foregroundStyle(.appPrimary)
+                    .frame(minHeight: ShoppingControlMetrics.minimumTargetSize)
+                    .disabled(!deletion.canRefreshPreparation || viewModel.session == nil)
                     if deletion.pending != nil {
-                        Button("Cancel deletion request") {
+                        Button("Cancel preparation", systemImage: "xmark") {
                             Task {
                                 await viewModel.cancelAccountDeletion()
                                 if !deletion.blocksAccountUse {
@@ -99,39 +111,70 @@ struct SharedAccountDeletionView: View {
                                 }
                             }
                         }
-                        .buttonStyle(ShoppingActionButtonStyle(isProminent: false))
-                        .disabled(deletion.isBusy)
+                        .foregroundStyle(.appPrimary)
+                        .frame(minHeight: ShoppingControlMetrics.minimumTargetSize)
+                        .disabled(!deletion.canCancelPreparation)
                     }
                 }
                 .listRowBackground(Color.surface)
-            }
 
-            if deletion.pending != nil {
-                Section {
-                    if !deletion.hasCompletedLocalDeletion {
-                        Button("Check deletion status") {
+            case .submitted, .completed, .storageFailed:
+                if let notice = deletion.notice {
+                    Section {
+                        Text(notice)
+                            .foregroundStyle(.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .listRowBackground(Color.surface)
+                }
+                if deletion.pending?.lastStatus?.appleRevocationOutcome == .manualActionRequired {
+                    Section {
+                        Text("Your account data has been deleted. Apple access could not be revoked automatically. Remove Smart List from Sign in with Apple in your Apple account settings.")
+                    }
+                    .listRowBackground(Color.surface)
+                }
+                if deletion.needsStatusRefresh {
+                    Section {
+                        SharedAccountDeletionAction(title: "Check status") {
                             Task {
                                 await viewModel.checkAccountDeletion()
                             }
                         }
-                        .buttonStyle(ShoppingActionButtonStyle())
-                        .disabled(deletion.isBusy)
+                        .disabled(!deletion.canRefreshStatus)
                     }
-                    if deletion.pending?.lastStatus?.appleRevocationOutcome == .manualActionRequired {
-                        Text("Your account data has been deleted. Apple access could not be revoked automatically. Remove Smart List from Sign in with Apple in your Apple account settings.")
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                }
+                if deletion.canCancelRequest {
+                    Section {
+                        Button("Cancel pending request", systemImage: "xmark") {
+                            Task {
+                                await viewModel.cancelAccountDeletion()
+                                if !deletion.blocksAccountUse {
+                                    dismiss()
+                                }
+                            }
+                        }
+                        .foregroundStyle(.appPrimary)
+                        .frame(minHeight: ShoppingControlMetrics.minimumTargetSize)
+                    } footer: {
+                        Text("This only cancels a request that has not been accepted. An accepted deletion will continue.")
                     }
-                    if deletion.canDismissResult {
-                        Button("Done") {
+                    .listRowBackground(Color.surface)
+                }
+                if deletion.canDismissResult {
+                    Section {
+                        SharedAccountDeletionAction(title: "Done") {
                             Task {
                                 if await deletion.dismissResult() {
                                     dismiss()
                                 }
                             }
                         }
-                        .buttonStyle(ShoppingActionButtonStyle())
                     }
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
                 }
-                .listRowBackground(Color.surface)
             }
         }
         .modifier(ShoppingFormStyle())
@@ -143,7 +186,7 @@ struct SharedAccountDeletionView: View {
             await viewModel.prepareAccountDeletion()
         }
         .alert("Delete your account permanently?", isPresented: $confirmsDeletion) {
-            Button("Delete my account and data", role: .destructive) {
+            Button("Delete account", role: .destructive) {
                 Task {
                     await viewModel.confirmAccountDeletion()
                 }

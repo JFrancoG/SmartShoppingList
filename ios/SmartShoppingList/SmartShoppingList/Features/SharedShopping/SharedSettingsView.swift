@@ -8,6 +8,9 @@ struct SharedSettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                if viewModel.accountDeletion.pending != nil || viewModel.accountDeletion.storageFailed {
+                    SharedAccountDeletionSection(viewModel: viewModel)
+                }
                 SharedOperationSection(viewModel: viewModel)
                 SharedGroupSelector(viewModel: viewModel)
                 SharedPendingInvitationSection(viewModel: viewModel)
@@ -89,6 +92,9 @@ struct SharedSettingsView: View {
                 SharedAccountSection(viewModel: viewModel)
             }
             .modifier(ShoppingFormStyle())
+            .navigationDestination(for: SharedAccountDeletionDestination.self) { _ in
+                SharedAccountDeletionView(viewModel: viewModel)
+            }
             .navigationTitle("Settings")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -96,7 +102,7 @@ struct SharedSettingsView: View {
                         dismiss()
                     }
                     .labelStyle(.iconOnly)
-                    .disabled(viewModel.isBusy)
+                    .disabled(!viewModel.canDismissSettings)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Refresh", systemImage: "arrow.clockwise") {
@@ -123,7 +129,7 @@ struct SharedSettingsView: View {
                 viewModel.isInvitationsPresented = false
             }
         }
-        .interactiveDismissDisabled(viewModel.isBusy)
+        .interactiveDismissDisabled(!viewModel.canDismissSettings)
         .onChange(of: viewModel.accountDeletion.accessibilityMessage) { _, message in
             guard viewModel.accountDeletion.pending != nil else { return }
             AccessibilityNotification.Announcement(message).post()

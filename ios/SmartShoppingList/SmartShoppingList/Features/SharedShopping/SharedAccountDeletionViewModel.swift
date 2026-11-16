@@ -5,11 +5,16 @@ import Security
 
 @Observable @MainActor
 final class SharedAccountDeletionViewModel {
+    enum Phase {
+        case review, verifyingIdentity, authorized, submitted, completed, storageFailed
+    }
+
     private(set) var preview: SharedDeletionPreview?
     private(set) var pending: PendingAccountDeletion?
     private(set) var isBusy = false
     private(set) var notice: LocalizedStringResource?
     private(set) var hasAuthorization = false
+    private(set) var isVerifyingIdentity = false
     private(set) var hasLoaded = false
     private(set) var storageFailed = false
     @ObservationIgnored private let api: (any SharedAccountDeletionAPI)?
@@ -31,6 +36,21 @@ final class SharedAccountDeletionViewModel {
     }
 
     var isAvailable: Bool { api != nil && credentials != nil }
+    var phase: Phase {
+        if storageFailed {
+            return .storageFailed
+        }
+        if hasCompletedLocalDeletion {
+            return .completed
+        }
+        if pending?.submitted == true || acceptedUserID != nil {
+            return .submitted
+        }
+        if isVerifyingIdentity {
+            return .verifyingIdentity
+        }
+        return hasAuthorization ? .authorized : .review
+    }
     var hasCompletedLocalDeletion: Bool {
         pending?.lastStatus?.status == .completed && pending?.localDataCleared == true
     }
@@ -38,8 +58,37 @@ final class SharedAccountDeletionViewModel {
     var needsStatusRefresh: Bool { pending?.submitted == true && !hasCompletedLocalDeletion }
     var canRefreshStatus: Bool { needsStatusRefresh && !isBusy && !storageFailed }
     var canAuthorize: Bool {
+        !isVerifyingIdentity && hasUsableChallenge
+    }
+    private var hasUsableChallenge: Bool {
         !isBusy && !storageFailed && pending != nil && pending?.submitted == false
+            && pending?.lastStatus?.status != .cancelled
             && (challenge?.expiresAt.timeIntervalSince(now()) ?? 0) > 30
+    }
+    var canRefreshPreparation: Bool {
+        isAvailable && !isBusy && !isVerifyingIdentity && !storageFailed
+            && pending?.submitted != true && acceptedUserID == nil && pending?.lastStatus?.status != .cancelled
+    }
+    var canCancelRequest: Bool {
+        pending != nil && acceptedUserID == nil && !isBusy && !isVerifyingIdentity && !storageFailed
+    }
+    var canCancelPreparation: Bool { canCancelRequest && pending?.submitted == false }
+    var requiresIdentityRefresh: Bool {
+        pending != nil && pending?.submitted == false && !isBusy && !isVerifyingIdentity && !storageFailed
+            && (challenge?.expiresAt.timeIntervalSince(now()) ?? 0) <= 30
+    }
+    var identityMessage: LocalizedStringResource {
+        if isVerifyingIdentity {
+            return "Complete identity verification with Apple to continue."
+        }
+        if requiresIdentityRefresh {
+            return challenge == nil
+                ? "Identity verification is not ready. Refresh the deletion details to continue."
+                : "This identity check has expired. Refresh the deletion details and try again."
+        }
+        return hasAuthorization
+            ? "Identity verified. You can now confirm account deletion."
+            : "First verify your identity with Apple. Then you can confirm account deletion."
     }
     var acceptedUserID: UUID? {
         guard pending?.lastStatus?.status.wasAccepted == true else { return nil }
@@ -49,7 +98,18 @@ final class SharedAccountDeletionViewModel {
         !isBusy && !storageFailed && hasCompletedLocalDeletion
     }
     var accessibilityMessage: String {
-        String(localized: isBusy ? "Updating deletion request…" : notice ?? statusMessage)
+        if isBusy {
+            return String(localized: "Updating deletion request…")
+        }
+        if let notice {
+            return String(localized: notice)
+        }
+        switch phase {
+        case .review, .verifyingIdentity, .authorized:
+            return String(localized: identityMessage)
+        case .submitted, .completed, .storageFailed:
+            return String(localized: statusMessage)
+        }
     }
 
     var statusMessage: LocalizedStringResource {
@@ -93,10 +153,10 @@ final class SharedAccountDeletionViewModel {
         }
     }
 
-    func prepare(session: SharedSession) async {
-        guard !isBusy, let api, let credentials else { return }
+    func prepare(session: SharedSession, forceRefresh: Bool = false) async {
+        guard !isBusy, !isVerifyingIdentity, let api, let credentials else { return }
         await restore()
-        guard !isBusy, !storageFailed else { return }
+        guard !isBusy, !isVerifyingIdentity, !storageFailed else { return }
         if pending?.submitted == true || pending?.lastStatus?.status.wasAccepted == true {
             await checkStatus()
             return
@@ -105,6 +165,7 @@ final class SharedAccountDeletionViewModel {
             notice = "Resolve the saved deletion request before using another account."
             return
         }
+        guard forceRefresh || !hasUsableChallenge else { return }
         isBusy = true
         defer { isBusy = false }
         resetAuthorization()
@@ -135,6 +196,10 @@ final class SharedAccountDeletionViewModel {
     }
 
     func configureAppleRequest(_ request: ASAuthorizationAppleIDRequest) {
+        guard !isVerifyingIdentity else {
+            request.state = UUID().uuidString
+            return
+        }
         guard canAuthorize, let challenge, let appleState else {
             request.state = UUID().uuidString
             notice = "This identity check has expired. Refresh the deletion details and try again."
@@ -143,6 +208,8 @@ final class SharedAccountDeletionViewModel {
         request.requestedScopes = []
         request.nonce = challenge.nonce
         request.state = appleState
+        isVerifyingIdentity = true
+        notice = nil
     }
 
     func receiveAppleAuthorization(_ result: Result<ASAuthorization, any Error>) {
@@ -158,9 +225,13 @@ final class SharedAccountDeletionViewModel {
     }
 
     func acceptAuthorization(token: String, code: String, state: String?) {
-        guard canAuthorize, state == appleState, !token.isEmpty, !code.isEmpty else {
+        let verificationWasInFlight = isVerifyingIdentity
+        isVerifyingIdentity = false
+        guard verificationWasInFlight, hasUsableChallenge, state == appleState, !token.isEmpty, !code.isEmpty else {
             resetAuthorization()
-            notice = "This identity check could not be verified. Refresh the deletion details and try again."
+            notice = requiresIdentityRefresh
+                ? identityMessage
+                : "This identity check could not be verified. Refresh the deletion details and try again."
             return
         }
         authorization = (token, code)
@@ -169,6 +240,7 @@ final class SharedAccountDeletionViewModel {
     }
 
     func confirm(session: SharedSession) async {
+        refreshIdentityValidity()
         guard canAuthorize, hasAuthorization, var pending, pending.userID == session.user.id,
               let challenge, let authorization, let api, let credentials else { return }
         isBusy = true
@@ -198,7 +270,7 @@ final class SharedAccountDeletionViewModel {
     }
 
     func checkStatus() async {
-        guard !isBusy, let pending, pending.lastStatus?.status != .completed, let api else { return }
+        guard !isBusy, !isVerifyingIdentity, let pending, pending.lastStatus?.status != .completed, let api else { return }
         isBusy = true
         defer { isBusy = false }
         do {
@@ -209,7 +281,7 @@ final class SharedAccountDeletionViewModel {
     }
 
     func cancel() async {
-        guard !isBusy, let pending, let api else { return }
+        guard !isBusy, !isVerifyingIdentity, let pending, let api else { return }
         isBusy = true
         defer { isBusy = false }
         do {
@@ -258,7 +330,8 @@ final class SharedAccountDeletionViewModel {
             throw SharedAPIError.invalidResponse
         }
         pending.lastStatus = result
-        pending.submitted = result.status.wasAccepted
+        // A prepared observation cannot disprove acceptance still in flight after a lost response.
+        pending.submitted = result.status == .cancelled ? false : pending.submitted || result.status.wasAccepted
         self.pending = pending
         try await credentials.saveAccountDeletion(pending)
         notice = nil
@@ -278,9 +351,21 @@ final class SharedAccountDeletionViewModel {
     private func resetAuthorization() {
         authorization = nil
         hasAuthorization = false
+        isVerifyingIdentity = false
+    }
+
+    func refreshIdentityValidity() {
+        guard requiresIdentityRefresh, challenge != nil else { return }
+        resetAuthorization()
+        notice = identityMessage
     }
 #if DEBUG
-    func preparePreview(completed: Bool = false, awaitingCompletion: Bool = false, authorized: Bool = false) {
+    func preparePreview(
+        completed: Bool = false,
+        awaitingCompletion: Bool = false,
+        authorized: Bool = false,
+        identityExpired: Bool = false
+    ) {
         resetAuthorization()
         let receipt = SharedDeletionReceipt(operationId: UUID(), statusSecret: "preview-only")
         let status: SharedDeletionStatus.State = completed ? .completed : awaitingCompletion ? .accepted : .prepared
@@ -301,7 +386,11 @@ final class SharedAccountDeletionViewModel {
             ownContentCount: 8, legacyContentCount: 2
         )
         if status == .prepared {
-            challenge = SharedChallenge(id: UUID(), nonce: "preview-only", expiresAt: now().addingTimeInterval(300))
+            challenge = SharedChallenge(
+                id: UUID(),
+                nonce: "preview-only",
+                expiresAt: now().addingTimeInterval(identityExpired ? -1 : 300)
+            )
             appleState = "preview-only"
             if authorized {
                 authorization = (identityToken: "preview-only", code: "preview-only")

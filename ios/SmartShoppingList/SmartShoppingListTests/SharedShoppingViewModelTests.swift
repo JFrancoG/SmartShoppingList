@@ -472,6 +472,64 @@ struct SharedShoppingViewModelTests {
         #expect(model.canRequestAppleLogin)
     }
 
+    @Test
+    func `A prepared deletion can refresh and cancel without changing the signed in account or draft`() async throws {
+        let api = SharedFlowAPI()
+        await api.configureDeletion(state: .prepared)
+        let credentials = MemorySharedCredentialStore(session: api.session)
+        let item = ShoppingDraftItem(name: "Keep this draft")
+        let model = try makeModel(api: api, credentials: credentials, items: [item])
+        await model.load()
+        await model.prepareAccountDeletion()
+        let receipt = try #require(await credentials.loadAccountDeletion())
+
+        #expect(model.canDismissSettings)
+        #expect(model.canRefresh)
+        await model.refresh()
+
+        #expect(await api.deletionChallengeRequests == 2)
+        #expect(model.session?.user.id == api.session.user.id)
+        #expect(model.draft.items == [item])
+        #expect(model.accountDeletion.pending?.receipt == receipt.receipt)
+        #expect(!model.canMutate)
+        await model.cancelAccountDeletion()
+        #expect(model.accountDeletion.pending == nil)
+        #expect(await credentials.loadAccountDeletion() == nil)
+        #expect(model.session?.user.id == api.session.user.id)
+        #expect(model.draft.items == [item])
+        #expect(model.canMutate)
+        #expect(model.canDismissSettings)
+        #expect(await api.deletionRequests == 0)
+    }
+
+    @Test
+    func `Activation and deletion view reentry preserve the Apple verification being completed`() async throws {
+        let api = SharedFlowAPI()
+        await api.configureDeletion(state: .prepared)
+        let model = try makeModel(api: api, credentials: MemorySharedCredentialStore(session: api.session))
+        await model.load()
+        await model.prepareAccountDeletion()
+        let request = ASAuthorizationAppleIDProvider().createRequest()
+        model.accountDeletion.configureAppleRequest(request)
+        let state = try #require(request.state)
+        #expect(!model.canDismissSettings)
+        #expect(!model.canRefresh)
+
+        await model.refreshOnActivation()
+        await model.prepareAccountDeletion()
+        await model.prepareAccountDeletion(forceRefresh: true)
+        await model.refresh()
+        model.accountDeletion.acceptAuthorization(token: "fresh-identity", code: "fresh-code", state: state)
+
+        #expect(model.accountDeletion.hasAuthorization)
+        #expect(model.canDismissSettings)
+        #expect(await api.challengeRequests == 0)
+        #expect(await api.deletionChallengeRequests == 1)
+        await model.confirmAccountDeletion()
+        #expect(await api.deletionRequests == 1)
+        #expect(model.accountDeletion.pending?.lastStatus?.status == .accepted)
+    }
+
     private func submitDeletion(_ model: SharedShoppingViewModel) async throws {
         await model.prepareAccountDeletion()
         let request = ASAuthorizationAppleIDProvider().createRequest()
@@ -1526,6 +1584,7 @@ private actor SharedFlowAPI: SharedShoppingAPI, SharedAccountDeletionAPI {
     private var deletionStatusGate: SharedFlowGate?
     private(set) var deletionRequests = 0
     private(set) var deletionStatusRequests = 0
+    private(set) var deletionChallengeRequests = 0
 
     func configureDeletion(
         state: SharedDeletionStatus.State,
@@ -1555,6 +1614,7 @@ private actor SharedFlowAPI: SharedShoppingAPI, SharedAccountDeletionAPI {
     }
     func deletionChallenge(_ request: SharedDeletionPreparation, token: String) throws -> SharedChallenge {
         guard deletionState != nil else { throw SharedAPIError.configuration }
+        deletionChallengeRequests += 1
         return SharedChallenge(id: UUID(), nonce: "delete-current-account", expiresAt: .distantFuture)
     }
     func deleteAccount(_ request: SharedDeletionRequest, token: String) throws -> SharedDeletionStatus {
@@ -1572,7 +1632,13 @@ private actor SharedFlowAPI: SharedShoppingAPI, SharedAccountDeletionAPI {
         }
         return SharedDeletionStatus(operationId: receipt.operationId, status: deletionState)
     }
-    func cancelDeletion(_ receipt: SharedDeletionReceipt) throws -> SharedDeletionStatus { throw SharedAPIError.configuration }
+    func cancelDeletion(_ receipt: SharedDeletionReceipt) throws -> SharedDeletionStatus {
+        guard let deletionState else { throw SharedAPIError.configuration }
+        if deletionState == .prepared {
+            self.deletionState = .cancelled
+        }
+        return SharedDeletionStatus(operationId: receipt.operationId, status: self.deletionState ?? deletionState)
+    }
     func claimAdministration(_ request: ResolveGroupTransferRequest, groupID: UUID, token: String) throws -> SharedGroup {
         throw SharedAPIError.configuration
     }

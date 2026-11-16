@@ -198,6 +198,11 @@ final class SharedShoppingViewModel {
         isPerformingAction || isProcessingShoppingIntent || groupLoadID != nil || premium.isBusy || isClearingInvitation
             || accountDeletion.blocksAccountUse || accountDeletion.isBusy || remotelyDeletedUserID != nil
     }
+    var canDismissSettings: Bool {
+        !isPerformingAction && !isProcessingShoppingIntent && groupLoadID == nil && !premium.isBusy
+            && !isClearingInvitation && !accountDeletion.isBusy && !accountDeletion.isVerifyingIdentity
+            && !isClearingDeletedAccount
+    }
     var isPreparingAppleLogin: Bool { applePreparationID != nil }
     var shouldMaintainAppleLogin: Bool {
         hasLoaded && isConfigured && session == nil && !isAuthorizingWithApple && !storageFailed
@@ -209,7 +214,11 @@ final class SharedShoppingViewModel {
     }
     var canRefresh: Bool {
         hasLoaded && isConfigured && !isClearingDeletedAccount
-            && (accountDeletion.canRefreshStatus || (!isBusy && !storageFailed))
+            && (accountDeletion.canRefreshStatus || canRefreshDeletionPreparation || (!isBusy && !storageFailed))
+    }
+    private var canRefreshDeletionPreparation: Bool {
+        session != nil && accountDeletion.pending != nil && accountDeletion.canRefreshPreparation
+            && !isPerformingAction && !isProcessingShoppingIntent && !premium.isBusy && !storageFailed
     }
     private var hasReadyAppleChallenge: Bool {
         appleState != nil && (challenge?.expiresAt.timeIntervalSince(appleLoginDate()) ?? 0) > 30
@@ -348,6 +357,7 @@ final class SharedShoppingViewModel {
             }
             return
         }
+        accountDeletion.refreshIdentityValidity()
         guard !storageFailed else { return }
         // A failed initial read waits for recovery instead of immediately repeating the same offline request.
         guard wasLoaded || sessionIsVerified else { return }
@@ -802,6 +812,10 @@ final class SharedShoppingViewModel {
         if accountDeletion.needsStatusRefresh {
             guard canRefresh else { return }
             await checkAccountDeletion()
+            return
+        }
+        if canRefreshDeletionPreparation {
+            await prepareAccountDeletion(forceRefresh: true)
             return
         }
         guard !storageFailed else { return }
@@ -1723,7 +1737,7 @@ final class SharedShoppingViewModel {
         }
     }
 
-    func prepareAccountDeletion() async {
+    func prepareAccountDeletion(forceRefresh: Bool = false) async {
         if accountDeletion.pending?.submitted == true || accountDeletion.acceptedUserID != nil {
             await checkAccountDeletion()
             return
@@ -1734,7 +1748,7 @@ final class SharedShoppingViewModel {
         groupGeneration = UUID()
         draft.cancelInterpretation()
         closeStoreQuery()
-        await accountDeletion.prepare(session: session)
+        await accountDeletion.prepare(session: session, forceRefresh: forceRefresh)
         await applyConfirmedAccountDeletion()
     }
 

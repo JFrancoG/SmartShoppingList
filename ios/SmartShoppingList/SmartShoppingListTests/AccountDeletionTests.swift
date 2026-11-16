@@ -168,17 +168,169 @@ struct AccountDeletionTests {
     }
 
     @Test
-    func `Apple cancellation keeps the account and never sends deletion`() async throws {
+    func `Reentering a prepared deletion preserves a verified Apple identity`() async throws {
         let fixture = DeletionFixture()
         let credentials = MemorySharedCredentialStore()
         let api = DeletionAPI(credentials: credentials)
         let model = fixture.model(api: api, credentials: credentials)
         await model.prepare(session: fixture.session)
+        try fixture.authorize(model)
+        let receipt = try #require(await credentials.loadAccountDeletion())
+
+        await model.prepare(session: fixture.session)
+
+        #expect(model.hasAuthorization)
+        #expect(await api.challengeRequests == 1)
+        #expect(await credentials.loadAccountDeletion() == receipt)
+        await model.confirm(session: fixture.session)
+        #expect(await api.deletionRequests == 1)
+        #expect(model.acceptedUserID == fixture.session.user.id)
+    }
+
+    @Test
+    func `Reentering while Apple is open preserves the identity request being completed`() async throws {
+        let fixture = DeletionFixture()
+        let credentials = MemorySharedCredentialStore()
+        let api = DeletionAPI(credentials: credentials)
+        let model = fixture.model(api: api, credentials: credentials)
+        await model.prepare(session: fixture.session)
+        let request = ASAuthorizationAppleIDProvider().createRequest()
+        model.configureAppleRequest(request)
+        let state = try #require(request.state)
+
+        await model.prepare(session: fixture.session)
+        await model.prepare(session: fixture.session, forceRefresh: true)
+        await model.cancel()
+        #expect(model.phase == .verifyingIdentity)
+        #expect(!model.canCancelRequest)
+        model.acceptAuthorization(token: "fresh-apple-token", code: "fresh-code", state: state)
+        await model.confirm(session: fixture.session)
+
+        #expect(await api.challengeRequests == 1)
+        #expect(await api.deletionRequests == 1)
+        #expect(model.acceptedUserID == fixture.session.user.id)
+    }
+
+    @Test
+    func `An expired Apple response cannot delete and refreshing preserves the original operation`() async throws {
+        let fixture = DeletionFixture()
+        let clock = DeletionClock()
+        let credentials = MemorySharedCredentialStore()
+        let api = DeletionAPI(credentials: credentials)
+        await api.setChallengeExpiry(clock.date.addingTimeInterval(300))
+        let model = fixture.model(api: api, credentials: credentials, now: { clock.date })
+        await model.prepare(session: fixture.session)
+        let receipt = try #require(await credentials.loadAccountDeletion())
+        let request = ASAuthorizationAppleIDProvider().createRequest()
+        model.configureAppleRequest(request)
+        let state = try #require(request.state)
+        clock.date = clock.date.addingTimeInterval(271)
+
+        model.acceptAuthorization(token: "expired-apple-token", code: "expired-code", state: state)
+        await model.confirm(session: fixture.session)
+
+        #expect(!model.hasAuthorization)
+        #expect(model.requiresIdentityRefresh)
+        #expect(model.phase == .review)
+        var expiryNotice = try #require(model.notice)
+        expiryNotice.locale = Locale(identifier: "en")
+        #expect(String(localized: expiryNotice) == "This identity check has expired. Refresh the deletion details and try again.")
+        #expect(await api.deletionRequests == 0)
+        #expect(await credentials.loadAccountDeletion() == receipt)
+        await api.setChallengeExpiry(clock.date.addingTimeInterval(300))
+        await model.prepare(session: fixture.session)
+        try fixture.authorize(model)
+        await model.confirm(session: fixture.session)
+        #expect(await api.deletionRequests == 1)
+        #expect(model.pending?.receipt == receipt.receipt)
+    }
+
+    @Test
+    func `Identity expiring before confirmation reports recovery instead of silently ignoring deletion`() async throws {
+        let fixture = DeletionFixture()
+        let clock = DeletionClock()
+        let credentials = MemorySharedCredentialStore()
+        let api = DeletionAPI(credentials: credentials)
+        await api.setChallengeExpiry(clock.date.addingTimeInterval(300))
+        let model = fixture.model(api: api, credentials: credentials, now: { clock.date })
+        await model.prepare(session: fixture.session)
+        try fixture.authorize(model)
+        clock.date = clock.date.addingTimeInterval(271)
+
+        await model.confirm(session: fixture.session)
+
+        #expect(!model.hasAuthorization)
+        #expect(model.requiresIdentityRefresh)
+        #expect(model.canRefreshPreparation)
+        #expect(model.canCancelPreparation)
+        #expect(await api.deletionRequests == 0)
+        #expect(await credentials.loadAccountDeletion()?.submitted == false)
+        var expiryNotice = try #require(model.notice)
+        expiryNotice.locale = Locale(identifier: "en")
+        #expect(String(localized: expiryNotice) == "This identity check has expired. Refresh the deletion details and try again.")
+
+        await api.setChallengeExpiry(clock.date.addingTimeInterval(300))
+        await model.prepare(session: fixture.session, forceRefresh: true)
+        try fixture.authorize(model)
+        await model.confirm(session: fixture.session)
+        #expect(await api.deletionRequests == 1)
+    }
+
+    @Test
+    func `Prepared status after an uncertain submission cannot enable another deletion attempt`() async throws {
+        let fixture = DeletionFixture()
+        let credentials = MemorySharedCredentialStore()
+        let api = DeletionAPI(credentials: credentials)
+        await api.loseRequestBeforeAcceptance()
+        let model = fixture.model(api: api, credentials: credentials)
+        await model.prepare(session: fixture.session)
+        try fixture.authorize(model)
+        await model.confirm(session: fixture.session)
+        let sent = try #require(await credentials.loadAccountDeletion())
+        try #require(sent.submitted)
+
+        await model.checkStatus()
+
+        #expect(model.pending?.submitted == true)
+        #expect(await credentials.loadAccountDeletion()?.submitted == true)
+        #expect(model.blocksAccountUse)
+        #expect(!model.canAuthorize)
+        #expect(model.phase == .submitted)
+        #expect(!model.canCancelPreparation)
+        #expect(model.canCancelRequest)
+        let request = ASAuthorizationAppleIDProvider().createRequest()
+        model.configureAppleRequest(request)
+        model.acceptAuthorization(token: "second-token", code: "second-code", state: request.state)
+        await model.confirm(session: fixture.session)
+        #expect(await api.deletionRequests == 1)
+        #expect(model.pending?.receipt == sent.receipt)
+
+        await model.cancel()
+        #expect(!model.blocksAccountUse)
+        #expect(await credentials.loadAccountDeletion() == nil)
+        #expect(await api.deletionRequests == 1)
+    }
+
+    @Test
+    func `Apple cancellation keeps the account until a fresh verification is explicitly confirmed`() async throws {
+        let fixture = DeletionFixture()
+        let credentials = MemorySharedCredentialStore()
+        let api = DeletionAPI(credentials: credentials)
+        let model = fixture.model(api: api, credentials: credentials)
+        await model.prepare(session: fixture.session)
+        let request = ASAuthorizationAppleIDProvider().createRequest()
+        model.configureAppleRequest(request)
         model.receiveAppleAuthorization(.failure(CancellationError()))
         await model.confirm(session: fixture.session)
         #expect(!model.hasAuthorization)
         #expect(model.acceptedUserID == nil)
         #expect(await api.deletionRequests == 0)
+        #expect(model.canCancelPreparation)
+        #expect(model.canAuthorize)
+        #expect(model.phase == .review)
+        try fixture.authorize(model)
+        await model.confirm(session: fixture.session)
+        #expect(await api.deletionRequests == 1)
     }
 }
 
@@ -189,8 +341,12 @@ private struct DeletionFixture {
     )
 
     @MainActor
-    func model(api: DeletionAPI, credentials: any SharedDeletionCredentialStoring) -> SharedAccountDeletionViewModel {
-        SharedAccountDeletionViewModel(api: api, credentials: credentials)
+    func model(
+        api: DeletionAPI,
+        credentials: any SharedDeletionCredentialStoring,
+        now: @escaping @MainActor () -> Date = { Date() }
+    ) -> SharedAccountDeletionViewModel {
+        SharedAccountDeletionViewModel(api: api, credentials: credentials, now: now)
     }
 
     @MainActor
@@ -203,12 +359,19 @@ private struct DeletionFixture {
     }
 }
 
+@MainActor
+private final class DeletionClock {
+    var date = Date(timeIntervalSince1970: 2_000_000_000)
+}
+
 private actor DeletionAPI: SharedAccountDeletionAPI {
     let credentials: MemorySharedCredentialStore
     private var operationID: UUID?
     private var state = SharedDeletionStatus.State.prepared
     private var losesPreparation = false
     private var losesResponse = false
+    private var losesRequest = false
+    private var challengeExpiry: Date?
     private var cancellationFails = false
     private var wrongOperationID = false
     private(set) var deletionRequests = 0
@@ -218,6 +381,8 @@ private actor DeletionAPI: SharedAccountDeletionAPI {
     init(credentials: MemorySharedCredentialStore) { self.credentials = credentials }
     func losePreparation() { losesPreparation = true }
     func loseAcceptanceResponse() { losesResponse = true }
+    func loseRequestBeforeAcceptance() { losesRequest = true }
+    func setChallengeExpiry(_ expiry: Date) { challengeExpiry = expiry }
     func setStatus(_ state: SharedDeletionStatus.State) { self.state = state }
     func failCancellation() { cancellationFails = true }
     func allowCancellation() { cancellationFails = false }
@@ -233,13 +398,16 @@ private actor DeletionAPI: SharedAccountDeletionAPI {
             throw URLError(.networkConnectionLost)
         }
         operationID = request.operationId
-        return SharedChallenge(id: UUID(), nonce: "nonce", expiresAt: Date().addingTimeInterval(300))
+        return SharedChallenge(id: UUID(), nonce: "nonce", expiresAt: challengeExpiry ?? Date().addingTimeInterval(300))
     }
 
     func deleteAccount(_ request: SharedDeletionRequest, token: String) async throws -> SharedDeletionStatus {
         deletionRequests += 1
         let saved = await credentials.loadAccountDeletion()
         hadDurableReceiptBeforeAcceptance = saved?.receipt.operationId == request.operationId && saved?.submitted == true
+        if losesRequest {
+            throw URLError(.networkConnectionLost)
+        }
         state = .accepted
         if losesResponse {
             throw URLError(.networkConnectionLost)

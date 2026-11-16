@@ -23,7 +23,7 @@ struct ShoppingAccountDeletionValidationView: View {
             }
         }
         .environment(\.usesPreparedShoppingPreview, true)
-        .environment(\.locale, Locale(identifier: "es"))
+        .environment(\.locale, model.locale)
         .environment(\.dynamicTypeSize, model.textSize)
         .task { await model.prepare() }
     }
@@ -32,14 +32,16 @@ struct ShoppingAccountDeletionValidationView: View {
 @Observable @MainActor
 private final class ShoppingAccountDeletionValidationModel {
     private enum Scenario: String {
-        case prepared, authorized, pending, completed
+        case prepared, authorized, expired, pending, completed
+        case settingsPrepared = "settings-prepared"
     }
 
     private(set) var shopping: SharedShoppingViewModel?
     private(set) var failure: String?
     let textSize: DynamicTypeSize
+    let locale: Locale
     private let scenario: Scenario
-    var showsSettings: Bool { scenario == .pending }
+    var showsSettings: Bool { scenario == .pending || scenario == .settingsPrepared }
 
     init() {
         let arguments = ProcessInfo.processInfo.arguments
@@ -50,6 +52,8 @@ private final class ShoppingAccountDeletionValidationModel {
         case "AX5": .accessibility5
         default: .large
         }
+        let language = Self.value(after: "-shopping-deletion-language", in: arguments) == "en" ? "en" : "es"
+        locale = Locale(identifier: language)
     }
 
     func prepare() async {
@@ -62,7 +66,8 @@ private final class ShoppingAccountDeletionValidationModel {
             model.accountDeletion.preparePreview(
                 completed: scenario == .completed,
                 awaitingCompletion: scenario == .pending,
-                authorized: scenario == .authorized
+                authorized: scenario == .authorized || scenario == .expired,
+                identityExpired: scenario == .expired
             )
             shopping = model
         } catch {

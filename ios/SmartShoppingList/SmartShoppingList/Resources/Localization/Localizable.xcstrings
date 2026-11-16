@@ -1,6 +1,150 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+  "Check status": {
+    "extractionState": "manual",
+    "comment": "Account deletion flow: concise action or recovery explanation.",
+    "localizations": {
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Comprobar estado"
+        }
+      }
+    }
+  },
+  "Refresh summary": {
+    "extractionState": "manual",
+    "comment": "Account deletion flow: concise action or recovery explanation.",
+    "localizations": {
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Actualizar resumen"
+        }
+      }
+    }
+  },
+  "Cancel preparation": {
+    "extractionState": "manual",
+    "comment": "Account deletion flow: concise action or recovery explanation.",
+    "localizations": {
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Cancelar preparación"
+        }
+      }
+    }
+  },
+  "View details": {
+    "extractionState": "manual",
+    "comment": "Account deletion flow: concise action or recovery explanation.",
+    "localizations": {
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Ver detalles"
+        }
+      }
+    }
+  },
+  "Verify your identity": {
+    "extractionState": "manual",
+    "comment": "Account deletion flow: concise action or recovery explanation.",
+    "localizations": {
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Verifica tu identidad"
+        }
+      }
+    }
+  },
+  "Cancel pending request": {
+    "extractionState": "manual",
+    "comment": "Account deletion flow: concise action or recovery explanation.",
+    "localizations": {
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Cancelar solicitud pendiente"
+        }
+      }
+    }
+  },
+  "Subscription": {
+    "extractionState": "manual",
+    "comment": "Account deletion flow: concise action or recovery explanation.",
+    "localizations": {
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Suscripción"
+        }
+      }
+    }
+  },
+  "You have not confirmed deletion. Cancel preparation to use your account, or continue reviewing it.": {
+    "extractionState": "manual",
+    "comment": "Account deletion flow: concise action or recovery explanation.",
+    "localizations": {
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "No has confirmado la eliminación. Cancela la preparación para usar tu cuenta o sigue revisándola."
+        }
+      }
+    }
+  },
+  "This only cancels a request that has not been accepted. An accepted deletion will continue.": {
+    "extractionState": "manual",
+    "comment": "Account deletion flow: concise action or recovery explanation.",
+    "localizations": {
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Solo se cancela una solicitud que no haya sido aceptada. Si la eliminación ya se aceptó, continuará."
+        }
+      }
+    }
+  },
+  "Complete identity verification with Apple to continue.": {
+    "extractionState": "manual",
+    "comment": "Account deletion flow: concise action or recovery explanation.",
+    "localizations": {
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Completa la verificación de identidad con Apple para continuar."
+        }
+      }
+    }
+  },
+  "Identity verified. You can now confirm account deletion.": {
+    "extractionState": "manual",
+    "comment": "Account deletion flow: concise action or recovery explanation.",
+    "localizations": {
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Identidad verificada. Ya puedes confirmar la eliminación de la cuenta."
+        }
+      }
+    }
+  },
+  "Identity verification is not ready. Refresh the deletion details to continue.": {
+    "extractionState": "manual",
+    "comment": "Account deletion flow: concise action or recovery explanation.",
+    "localizations": {
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "La verificación de identidad no está lista. Pulsa Actualizar resumen para continuar."
+        }
+      }
+    }
+  },
   "A member must assume administration before adding or editing shared content.": {
     "localizations": {
       "en": {
@@ -603,7 +747,7 @@
       "es": {
         "stringUnit": {
           "state": "translated",
-          "value": "No se ha podido validar esta verificación de identidad. Actualiza los detalles de eliminación y vuelve a intentarlo."
+          "value": "No se ha podido validar esta verificación de identidad. Pulsa Actualizar resumen y vuelve a intentarlo."
         }
       }
     }
@@ -614,7 +758,7 @@
       "es": {
         "stringUnit": {
           "state": "translated",
-          "value": "Esta verificación de identidad ha caducado. Actualiza los detalles de eliminación y vuelve a intentarlo."
+          "value": "Esta verificación de identidad ha caducado. Pulsa Actualizar resumen y vuelve a intentarlo."
         }
       }
     }
