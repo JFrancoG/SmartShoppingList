@@ -4,6 +4,8 @@
 
 ### Maintenance
 
+- 2026-11-16 | 📦 build(ios): persist build 9 in project settings
+
 - 2026-11-16 | 📦 build(ios): prepare internal TestFlight build 9
 
 ### Added
