@@ -1,6 +1,30 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+  "The previous deletion preparation has ended. Your account and data are kept. Review the details and verify your identity again to continue.": {
+    "extractionState": "manual",
+    "comment": "Account deletion flow: a server-confirmed cancelled preparation is safely replaced.",
+    "localizations": {
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "La preparación anterior de eliminación ha terminado. Tu cuenta y tus datos se conservan. Revisa los detalles y vuelve a verificar tu identidad para continuar."
+        }
+      }
+    }
+  },
+  "Your previous identity check expired. The details have been refreshed. Verify your identity with Apple again to continue.": {
+    "extractionState": "manual",
+    "comment": "Account deletion flow: a fresh challenge requires Apple verification again after the previous challenge expires.",
+    "localizations": {
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Tu verificación de identidad anterior ha caducado. Hemos actualizado los detalles. Vuelve a verificar tu identidad con Apple para continuar."
+        }
+      }
+    }
+  },
   "Check status": {
     "extractionState": "manual",
     "comment": "Account deletion flow: concise action or recovery explanation.",

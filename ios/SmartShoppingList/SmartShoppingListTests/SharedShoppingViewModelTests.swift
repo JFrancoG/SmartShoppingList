@@ -341,6 +341,48 @@ struct SharedShoppingViewModelTests {
     }
 
     @Test(arguments: [false, true])
+    func `A cold launch resumes shared data only after the saved preparation is confirmed cancelled`(
+        statusUnavailable: Bool
+    ) async throws {
+        let api = SharedFlowAPI()
+        await api.configureDeletion(state: .cancelled, error: statusUnavailable ? .transport : nil)
+        let credentials = MemorySharedCredentialStore(session: api.session)
+        let receipt = SharedDeletionReceipt(operationId: UUID(), statusSecret: "expired-preparation-secret")
+        let saved = PendingAccountDeletion(
+            userID: api.session.user.id,
+            receipt: receipt,
+            revision: "previous-preparation",
+            lastStatus: SharedDeletionStatus(operationId: receipt.operationId, status: .prepared)
+        )
+        await credentials.saveAccountDeletion(saved)
+        let item = ShoppingDraftItem(name: "Keep this draft")
+        let model = try makeModel(api: api, credentials: credentials, items: [item])
+
+        await model.load()
+
+        #expect(await api.deletionStatusRequests == 1)
+        #expect(await api.deletionChallengeRequests == 0)
+        #expect(await api.deletionRequests == 0)
+        #expect(model.session?.user.id == api.session.user.id)
+        #expect(await credentials.loadSession()?.user.id == api.session.user.id)
+        #expect(model.draft.items == [item])
+        if statusUnavailable {
+            #expect(await credentials.loadAccountDeletion() == saved)
+            #expect(model.accountDeletion.blocksAccountUse)
+            #expect(!model.groupsAreVerified)
+            #expect(await api.requestCount == 0)
+        } else {
+            #expect(await credentials.loadAccountDeletion() == nil)
+            #expect(!model.accountDeletion.blocksAccountUse)
+            #expect(model.sessionIsVerified)
+            #expect(model.group?.id == api.session.user.group?.id)
+            #expect(model.groupsAreVerified)
+            #expect(!model.needsGroupSetup)
+            #expect(model.canMutate)
+        }
+    }
+
+    @Test(arguments: [false, true])
     func `Settings refresh finishes a live deletion without another submission or reopening its result`(
         onActivation: Bool
     ) async throws {

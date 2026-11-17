@@ -96,6 +96,8 @@
 
 ### Fixed
 
+- 2026-11-17 | 🐛 fix(ios): recover expired deletion preparation
+
 - 2026-11-16 | 🐛 fix(ios): preserve deletion identity and navigation
 
 - 2026-11-14 | 🐛 fix(ios): improve account deletion confirmation contrast

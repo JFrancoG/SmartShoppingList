@@ -9,6 +9,19 @@ final class SharedAccountDeletionViewModel {
         case review, verifyingIdentity, authorized, submitted, completed, storageFailed
     }
 
+    private enum PreparationRecovery {
+        case cancelled, identityExpired
+
+        var message: LocalizedStringResource {
+            switch self {
+            case .cancelled:
+                "The previous deletion preparation has ended. Your account and data are kept. Review the details and verify your identity again to continue."
+            case .identityExpired:
+                "Your previous identity check expired. The details have been refreshed. Verify your identity with Apple again to continue."
+            }
+        }
+    }
+
     private(set) var preview: SharedDeletionPreview?
     private(set) var pending: PendingAccountDeletion?
     private(set) var isBusy = false
@@ -24,6 +37,7 @@ final class SharedAccountDeletionViewModel {
     @ObservationIgnored private var challenge: SharedChallenge?
     @ObservationIgnored private var appleState: String?
     @ObservationIgnored private var authorization: (identityToken: String, code: String)?
+    @ObservationIgnored private var preparationRecovery: PreparationRecovery?
 
     init(
         api: (any SharedAccountDeletionAPI)?,
@@ -154,7 +168,7 @@ final class SharedAccountDeletionViewModel {
     }
 
     func prepare(session: SharedSession, forceRefresh: Bool = false) async {
-        guard !isBusy, !isVerifyingIdentity, let api, let credentials else { return }
+        guard !isBusy, !isVerifyingIdentity, isAvailable else { return }
         await restore()
         guard !isBusy, !isVerifyingIdentity, !storageFailed else { return }
         if pending?.submitted == true || pending?.lastStatus?.status.wasAccepted == true {
@@ -166,32 +180,23 @@ final class SharedAccountDeletionViewModel {
             return
         }
         guard forceRefresh || !hasUsableChallenge else { return }
+        if pending != nil, let challenge, challenge.expiresAt.timeIntervalSince(now()) <= 30 {
+            preparationRecovery = .identityExpired
+        }
         isBusy = true
         defer { isBusy = false }
         resetAuthorization()
+        challenge = nil
+        appleState = nil
         do {
-            let current = try await api.deletionPreview(token: session.accessToken)
-            preview = current
-            var receipt = try pending ?? PendingAccountDeletion(
-                userID: session.user.id,
-                receipt: makeReceipt(),
-                revision: current.revision
-            )
-            receipt.revision = current.revision
-            try await credentials.saveAccountDeletion(receipt)
-            pending = receipt
-            challenge = try await api.deletionChallenge(
-                SharedDeletionPreparation(
-                    operationId: receipt.receipt.operationId,
-                    statusSecret: receipt.receipt.statusSecret,
-                    revision: receipt.revision
-                ),
-                token: session.accessToken
-            )
-            appleState = UUID().uuidString
-            notice = nil
+            try await clearCancelledPreparation()
+            try await prepareChallengeRecoveringCancellation(session: session)
+            guard acceptedUserID == nil else { return }
+            notice = preparationRecovery?.message
         } catch {
-            notice = "Deletion could not be prepared. Check your connection and retry. Nothing has been confirmed."
+            notice = acceptedUserID != nil
+                ? statusMessage
+                : "Deletion could not be prepared. Check your connection and retry. Nothing has been confirmed."
         }
     }
 
@@ -209,6 +214,7 @@ final class SharedAccountDeletionViewModel {
         request.nonce = challenge.nonce
         request.state = appleState
         isVerifyingIdentity = true
+        preparationRecovery = nil
         notice = nil
     }
 
@@ -275,6 +281,7 @@ final class SharedAccountDeletionViewModel {
         defer { isBusy = false }
         do {
             try await record(api.deletionStatus(pending.receipt))
+            try await clearCancelledPreparation()
         } catch {
             notice = "The deletion result is not confirmed. Check this request before using your account again."
         }
@@ -287,10 +294,9 @@ final class SharedAccountDeletionViewModel {
         do {
             try await record(api.cancelDeletion(pending.receipt))
             if self.pending?.lastStatus?.status == .cancelled {
-                try await credentials?.saveAccountDeletion(nil)
-                self.pending = nil
-                preview = nil
-                resetAuthorization()
+                try await clearCancelledPreparation()
+                preparationRecovery = nil
+                notice = nil
             }
         } catch {
             notice = "Cancellation could not be confirmed. Check the saved deletion request before continuing."
@@ -334,7 +340,67 @@ final class SharedAccountDeletionViewModel {
         pending.submitted = result.status == .cancelled ? false : pending.submitted || result.status.wasAccepted
         self.pending = pending
         try await credentials.saveAccountDeletion(pending)
+        if result.status.wasAccepted {
+            preparationRecovery = nil
+        }
         notice = nil
+    }
+
+    private func prepareChallengeRecoveringCancellation(session: SharedSession) async throws {
+        do {
+            try await prepareChallenge(session: session)
+        } catch let error as SharedAPIError {
+            guard case .server(409, "deletion_in_progress", _, _) = error,
+                  let receipt = pending?.receipt, let api else { throw error }
+            try await record(api.deletionStatus(receipt))
+            guard pending?.lastStatus?.status == .cancelled else {
+                if acceptedUserID != nil {
+                    return
+                }
+                throw error
+            }
+            try await clearCancelledPreparation()
+            // A confirmed cancellation permits one new operation, never reuse of the old identifier.
+            try await prepareChallenge(session: session)
+        }
+    }
+
+    private func prepareChallenge(session: SharedSession) async throws {
+        guard let api, let credentials else { throw SharedAPIError.configuration }
+        let current = try await api.deletionPreview(token: session.accessToken)
+        preview = current
+        var receipt = try pending ?? PendingAccountDeletion(
+            userID: session.user.id,
+            receipt: makeReceipt(),
+            revision: current.revision
+        )
+        receipt.revision = current.revision
+        try await credentials.saveAccountDeletion(receipt)
+        pending = receipt
+        challenge = try await api.deletionChallenge(
+            SharedDeletionPreparation(
+                operationId: receipt.receipt.operationId,
+                statusSecret: receipt.receipt.statusSecret,
+                revision: receipt.revision
+            ),
+            token: session.accessToken
+        )
+        appleState = UUID().uuidString
+    }
+
+    private func clearCancelledPreparation() async throws {
+        guard let pending, pending.lastStatus?.status == .cancelled else { return }
+        guard pending.lastStatus?.operationId == pending.receipt.operationId, let credentials else {
+            throw SharedAPIError.invalidResponse
+        }
+        try await credentials.saveAccountDeletion(nil)
+        self.pending = nil
+        preview = nil
+        challenge = nil
+        appleState = nil
+        resetAuthorization()
+        preparationRecovery = .cancelled
+        notice = preparationRecovery?.message
     }
 
     private func makeReceipt() throws -> SharedDeletionReceipt {

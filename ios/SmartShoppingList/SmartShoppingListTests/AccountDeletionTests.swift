@@ -168,6 +168,193 @@ struct AccountDeletionTests {
     }
 
     @Test
+    func `A saved server cancellation can prepare a new operation without reusing its tombstone`() async throws {
+        let fixture = DeletionFixture()
+        let saved = fixture.savedRequest(status: .cancelled)
+        let credentials = MemorySharedCredentialStore()
+        await credentials.saveAccountDeletion(saved)
+        let api = DeletionAPI(credentials: credentials)
+        await api.seedOperation(saved.receipt.operationId, status: .cancelled)
+        let model = fixture.model(api: api, credentials: credentials)
+
+        await model.prepare(session: fixture.session)
+
+        let replacement = try #require(await credentials.loadAccountDeletion())
+        #expect(replacement.receipt.operationId != saved.receipt.operationId)
+        #expect(replacement.receipt.statusSecret != saved.receipt.statusSecret)
+        #expect(model.pending == replacement)
+        #expect(model.canAuthorize)
+        #expect(model.canCancelPreparation)
+        #expect(!model.hasAuthorization)
+        #expect(await api.deletionRequests == 0)
+        #expect(try await api.deletionStatus(saved.receipt).status == .cancelled)
+    }
+
+    @Test
+    func `A stale preparation recovers after conflict only when its cancellation is confirmed`() async throws {
+        let fixture = DeletionFixture()
+        let saved = fixture.savedRequest(status: .prepared)
+        let credentials = MemorySharedCredentialStore()
+        await credentials.saveAccountDeletion(saved)
+        let api = DeletionAPI(credentials: credentials)
+        await api.seedOperation(saved.receipt.operationId, status: .cancelled)
+        let model = fixture.model(api: api, credentials: credentials)
+
+        await model.prepare(session: fixture.session)
+
+        let replacement = try #require(await credentials.loadAccountDeletion())
+        #expect(replacement.receipt.operationId != saved.receipt.operationId)
+        #expect(model.pending == replacement)
+        #expect(model.canAuthorize)
+        #expect(await api.statusRequests == 1)
+        #expect(await api.challengeRequests == 2)
+        #expect(await api.deletionRequests == 0)
+        try fixture.authorize(model)
+        #expect(model.hasAuthorization)
+    }
+
+    @Test
+    func `A second preparation conflict stops after the single confirmed replacement`() async throws {
+        let fixture = DeletionFixture()
+        let saved = fixture.savedRequest(status: .prepared)
+        let credentials = MemorySharedCredentialStore()
+        await credentials.saveAccountDeletion(saved)
+        let api = DeletionAPI(credentials: credentials)
+        await api.seedOperation(saved.receipt.operationId, status: .cancelled)
+        await api.rejectChallenges()
+        let model = fixture.model(api: api, credentials: credentials)
+
+        await model.prepare(session: fixture.session)
+
+        let replacement = try #require(await credentials.loadAccountDeletion())
+        #expect(replacement.receipt.operationId != saved.receipt.operationId)
+        #expect(model.pending == replacement)
+        #expect(model.blocksAccountUse)
+        #expect(!model.canAuthorize)
+        #expect(model.canRefreshPreparation)
+        #expect(model.notice != nil)
+        #expect(await api.statusRequests == 1)
+        #expect(await api.challengeRequests == 2)
+        #expect(await api.deletionRequests == 0)
+    }
+
+    @Test(arguments: [false, true])
+    func `An unconfirmed cancellation cannot replace the original operation`(unrelatedStatus: Bool) async throws {
+        let fixture = DeletionFixture()
+        let saved = fixture.savedRequest(status: .prepared)
+        let credentials = MemorySharedCredentialStore()
+        await credentials.saveAccountDeletion(saved)
+        let api = DeletionAPI(credentials: credentials)
+        await api.seedOperation(saved.receipt.operationId, status: .cancelled)
+        if unrelatedStatus {
+            await api.useWrongOperationID()
+        } else {
+            await api.failStatus()
+        }
+        let model = fixture.model(api: api, credentials: credentials)
+
+        await model.prepare(session: fixture.session)
+
+        #expect(await credentials.loadAccountDeletion() == saved)
+        #expect(model.pending?.receipt == saved.receipt)
+        #expect(model.blocksAccountUse)
+        #expect(!model.canAuthorize)
+        #expect(model.notice != nil)
+        #expect(await api.challengeRequests == 1)
+        #expect(await api.deletionRequests == 0)
+    }
+
+    @Test
+    func `Acceptance discovered after a preparation conflict keeps the accepted operation`() async throws {
+        let fixture = DeletionFixture()
+        let saved = fixture.savedRequest(status: .prepared)
+        let credentials = MemorySharedCredentialStore()
+        await credentials.saveAccountDeletion(saved)
+        let api = DeletionAPI(credentials: credentials)
+        await api.seedOperation(saved.receipt.operationId, status: .accepted)
+        let model = fixture.model(api: api, credentials: credentials)
+
+        await model.prepare(session: fixture.session)
+
+        #expect(model.pending?.receipt == saved.receipt)
+        #expect(model.acceptedUserID == fixture.session.user.id)
+        #expect(await credentials.loadAccountDeletion()?.lastStatus?.status == .accepted)
+        #expect(model.blocksAccountUse)
+        #expect(!model.canAuthorize)
+        #expect(await api.challengeRequests == 1)
+        #expect(await api.deletionRequests == 0)
+    }
+
+    @Test
+    func `A preparation conflict is not cancellation when the status remains prepared`() async throws {
+        let fixture = DeletionFixture()
+        let saved = fixture.savedRequest(status: .prepared)
+        let credentials = MemorySharedCredentialStore()
+        await credentials.saveAccountDeletion(saved)
+        let api = DeletionAPI(credentials: credentials)
+        await api.seedOperation(saved.receipt.operationId, status: .prepared)
+        await api.rejectChallenges()
+        let model = fixture.model(api: api, credentials: credentials)
+
+        await model.prepare(session: fixture.session)
+
+        #expect(await credentials.loadAccountDeletion() == saved)
+        #expect(model.pending?.receipt == saved.receipt)
+        #expect(model.blocksAccountUse)
+        #expect(!model.canAuthorize)
+        #expect(model.notice != nil)
+        #expect(await api.statusRequests == 1)
+        #expect(await api.challengeRequests == 1)
+        #expect(await api.deletionRequests == 0)
+    }
+
+    @Test(arguments: [
+        SharedDeletionStatus.State.prepared,
+        .accepted,
+        .purging,
+        .dataDeleted,
+        .completed
+    ])
+    func `Reopening a submitted operation never starts a replacement`(status: SharedDeletionStatus.State) async {
+        let fixture = DeletionFixture()
+        let saved = fixture.savedRequest(status: status, submitted: true)
+        let credentials = MemorySharedCredentialStore()
+        await credentials.saveAccountDeletion(saved)
+        let api = DeletionAPI(credentials: credentials)
+        await api.seedOperation(saved.receipt.operationId, status: status)
+        let model = fixture.model(api: api, credentials: credentials)
+
+        await model.prepare(session: fixture.session, forceRefresh: true)
+
+        #expect(model.pending?.receipt == saved.receipt)
+        #expect(await credentials.loadAccountDeletion()?.submitted == true)
+        #expect(model.blocksAccountUse)
+        #expect(!model.canAuthorize)
+        #expect(await api.challengeRequests == 0)
+        #expect(await api.deletionRequests == 0)
+    }
+
+    @Test
+    func `Failed persistence keeps a cancelled receipt instead of issuing an unrecorded replacement`() async {
+        let fixture = DeletionFixture()
+        let saved = fixture.savedRequest(status: .cancelled)
+        let credentials = FailingDeletionWrites(saved: saved)
+        let api = DeletionAPI(credentials: MemorySharedCredentialStore())
+        await api.seedOperation(saved.receipt.operationId, status: .cancelled)
+        let model = fixture.model(api: api, credentials: credentials)
+
+        await model.prepare(session: fixture.session)
+
+        #expect(await credentials.loadAccountDeletion() == saved)
+        #expect(model.pending?.receipt == saved.receipt)
+        #expect(model.blocksAccountUse)
+        #expect(!model.canAuthorize)
+        #expect(model.notice != nil)
+        #expect(await api.challengeRequests == 0)
+        #expect(await api.deletionRequests == 0)
+    }
+
+    @Test
     func `Reentering a prepared deletion preserves a verified Apple identity`() async throws {
         let fixture = DeletionFixture()
         let credentials = MemorySharedCredentialStore()
@@ -185,6 +372,73 @@ struct AccountDeletionTests {
         await model.confirm(session: fixture.session)
         #expect(await api.deletionRequests == 1)
         #expect(model.acceptedUserID == fixture.session.user.id)
+    }
+
+    @Test
+    func `Reentering after identity expiry explains renewal and requires a fresh Apple verification`() async throws {
+        let fixture = DeletionFixture()
+        let clock = DeletionClock()
+        let credentials = MemorySharedCredentialStore()
+        let api = DeletionAPI(credentials: credentials)
+        await api.setChallengeExpiry(clock.date.addingTimeInterval(300))
+        let model = fixture.model(api: api, credentials: credentials, now: { clock.date })
+        await model.prepare(session: fixture.session)
+        try fixture.authorize(model)
+        let receipt = try #require(await credentials.loadAccountDeletion())
+        clock.date = clock.date.addingTimeInterval(271)
+        await api.setChallengeExpiry(clock.date.addingTimeInterval(300))
+
+        await model.prepare(session: fixture.session)
+
+        #expect(!model.hasAuthorization)
+        #expect(model.canAuthorize)
+        #expect(!model.requiresIdentityRefresh)
+        #expect(await credentials.loadAccountDeletion() == receipt)
+        #expect(await api.challengeRequests == 2)
+        var notice = try #require(model.notice)
+        notice.locale = Locale(identifier: "en")
+        #expect(String(localized: notice) == "Your previous identity check expired. The details have been refreshed. Verify your identity with Apple again to continue.")
+        await model.prepare(session: fixture.session)
+        #expect(model.notice != nil)
+        await model.confirm(session: fixture.session)
+        #expect(await api.deletionRequests == 0)
+
+        try fixture.authorize(model)
+
+        #expect(model.notice == nil)
+        #expect(model.hasAuthorization)
+        #expect(await api.deletionRequests == 0)
+    }
+
+    @Test
+    func `A failed forced refresh cannot authorize with the previous identity challenge`() async throws {
+        let fixture = DeletionFixture()
+        let credentials = MemorySharedCredentialStore()
+        let api = DeletionAPI(credentials: credentials)
+        let model = fixture.model(api: api, credentials: credentials)
+        await model.prepare(session: fixture.session)
+        try fixture.authorize(model)
+        let receipt = try #require(await credentials.loadAccountDeletion())
+        await api.losePreparation()
+
+        await model.prepare(session: fixture.session, forceRefresh: true)
+
+        #expect(!model.canAuthorize)
+        #expect(!model.hasAuthorization)
+        #expect(model.canRefreshPreparation)
+        #expect(model.notice != nil)
+        #expect(await credentials.loadAccountDeletion() == receipt)
+        await model.confirm(session: fixture.session)
+        #expect(await api.deletionRequests == 0)
+        await api.allowPreparation()
+
+        await model.prepare(session: fixture.session)
+
+        #expect(model.canAuthorize)
+        #expect(!model.hasAuthorization)
+        #expect(await credentials.loadAccountDeletion() == receipt)
+        #expect(await api.challengeRequests == 3)
+        #expect(await api.deletionRequests == 0)
     }
 
     @Test
@@ -340,6 +594,17 @@ private struct DeletionFixture {
         user: SharedUser(id: UUID(), displayName: "Test member", group: nil)
     )
 
+    func savedRequest(status: SharedDeletionStatus.State, submitted: Bool = false) -> PendingAccountDeletion {
+        let receipt = SharedDeletionReceipt(operationId: UUID(), statusSecret: "saved-deletion-receipt")
+        return PendingAccountDeletion(
+            userID: session.user.id,
+            receipt: receipt,
+            revision: "revision-1",
+            submitted: submitted,
+            lastStatus: SharedDeletionStatus(operationId: receipt.operationId, status: status)
+        )
+    }
+
     @MainActor
     func model(
         api: DeletionAPI,
@@ -367,6 +632,7 @@ private final class DeletionClock {
 private actor DeletionAPI: SharedAccountDeletionAPI {
     let credentials: MemorySharedCredentialStore
     private var operationID: UUID?
+    private var operationStates: [UUID: SharedDeletionStatus.State] = [:]
     private var state = SharedDeletionStatus.State.prepared
     private var losesPreparation = false
     private var losesResponse = false
@@ -374,19 +640,31 @@ private actor DeletionAPI: SharedAccountDeletionAPI {
     private var challengeExpiry: Date?
     private var cancellationFails = false
     private var wrongOperationID = false
+    private var statusFails = false
+    private var rejectsChallenges = false
     private(set) var deletionRequests = 0
     private(set) var challengeRequests = 0
+    private(set) var statusRequests = 0
     private(set) var hadDurableReceiptBeforeAcceptance = false
 
     init(credentials: MemorySharedCredentialStore) { self.credentials = credentials }
     func losePreparation() { losesPreparation = true }
+    func allowPreparation() { losesPreparation = false }
     func loseAcceptanceResponse() { losesResponse = true }
     func loseRequestBeforeAcceptance() { losesRequest = true }
     func setChallengeExpiry(_ expiry: Date) { challengeExpiry = expiry }
-    func setStatus(_ state: SharedDeletionStatus.State) { self.state = state }
+    func setStatus(_ state: SharedDeletionStatus.State) {
+        self.state = state
+        if let operationID {
+            operationStates[operationID] = state
+        }
+    }
+    func seedOperation(_ id: UUID, status: SharedDeletionStatus.State) { operationStates[id] = status }
     func failCancellation() { cancellationFails = true }
     func allowCancellation() { cancellationFails = false }
     func useWrongOperationID() { wrongOperationID = true }
+    func failStatus() { statusFails = true }
+    func rejectChallenges() { rejectsChallenges = true }
 
     func deletionPreview(token: String) -> SharedDeletionPreview {
         SharedDeletionPreview(revision: "revision-1", groups: [], ownContentCount: 2, legacyContentCount: 1)
@@ -397,7 +675,12 @@ private actor DeletionAPI: SharedAccountDeletionAPI {
         if losesPreparation {
             throw URLError(.networkConnectionLost)
         }
+        if rejectsChallenges || operationStates[request.operationId].map({ $0 != .prepared }) == true {
+            throw SharedAPIError.server(status: 409, code: "deletion_in_progress", requestID: nil, retryAfter: nil)
+        }
         operationID = request.operationId
+        state = .prepared
+        operationStates[request.operationId] = .prepared
         return SharedChallenge(id: UUID(), nonce: "nonce", expiresAt: challengeExpiry ?? Date().addingTimeInterval(300))
     }
 
@@ -409,24 +692,35 @@ private actor DeletionAPI: SharedAccountDeletionAPI {
             throw URLError(.networkConnectionLost)
         }
         state = .accepted
+        operationStates[request.operationId] = .accepted
         if losesResponse {
             throw URLError(.networkConnectionLost)
         }
         return SharedDeletionStatus(operationId: request.operationId, status: state)
     }
 
-    func deletionStatus(_ receipt: SharedDeletionReceipt) -> SharedDeletionStatus {
-        SharedDeletionStatus(operationId: wrongOperationID ? UUID() : receipt.operationId, status: state)
+    func deletionStatus(_ receipt: SharedDeletionReceipt) throws -> SharedDeletionStatus {
+        statusRequests += 1
+        if statusFails {
+            throw URLError(.notConnectedToInternet)
+        }
+        return SharedDeletionStatus(
+            operationId: wrongOperationID ? UUID() : receipt.operationId,
+            status: operationStates[receipt.operationId] ?? state
+        )
     }
 
     func cancelDeletion(_ receipt: SharedDeletionReceipt) throws -> SharedDeletionStatus {
         if cancellationFails {
             throw URLError(.notConnectedToInternet)
         }
-        if state == .prepared {
-            state = .cancelled
+        let current = operationStates[receipt.operationId] ?? state
+        let result: SharedDeletionStatus.State = current == .prepared ? .cancelled : current
+        operationStates[receipt.operationId] = result
+        if operationID == receipt.operationId {
+            state = result
         }
-        return SharedDeletionStatus(operationId: receipt.operationId, status: state)
+        return SharedDeletionStatus(operationId: receipt.operationId, status: result)
     }
 
     func deletionSessionStatus(token: String) -> Bool { false }

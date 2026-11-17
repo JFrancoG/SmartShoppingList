@@ -85,6 +85,26 @@ El arreglo se publicó en `6ec4e96`; el número de compilación quedó guardado 
 
 La autorización de este paso cubre commit, push, CI y preparación de un paquete local para **TestFlight Internal Only**. La validación de distribución, firma final del IPA y resultado de CI se registran en la PR #56 y en la evidencia privada `testflight-build-9-20261116`. El Archive por sí solo no acredita disponibilidad para testers; la subida y la comprobación física siguen siendo pasos posteriores.
 
+### Ensayo de la 1.0 (9): preparación e identificación
+
+**17 de noviembre de 2026, iPhone 11.** El usuario confirma la 1.0 (9) instalada. La preparación guardada mostraba un error genérico de conexión, Apple no respondía y **Actualizar resumen** estaba deshabilitado; Atrás sí funcionaba. La lectura del código y de las solicitudes HTTP de Sandbox identifica una preparación antigua: el servidor cancela las preparaciones sin confirmar a los treinta minutos, mientras el cliente conservaba el comprobante `cancelled` y volvía a usar su identificador, rechazado con `409`. El fallo no se atribuye a la ventana nativa de Apple ni a Premium.
+
+El usuario canceló esa preparación. Ajustes recuperó su uso, una nueva identificación mostró **Identidad verificada** y **Eliminar cuenta**, y **Atrás → Ver detalles** conservó la autorización. No confirmó ninguna eliminación. Al cerrar y volver a abrir Ajustes más tarde se pidió Apple otra vez. El usuario corrigió el intervalo estimado a unos cinco–siete minutos; los registros muestran dos desafíos creados con éxito separados por **4 min 47 s**, coherentes con el plazo de cinco minutos desde la preparación y el margen de treinta segundos del cliente. La reentrada renovaba el desafío sin explicar esa caducidad; no se ha demostrado pérdida de una autorización todavía vigente al cerrar Ajustes.
+
+La pulsación accidental sobre la acción situada encima de **Ver detalles** fue **Cancelar preparación**: el servidor respondió correctamente a la cancelación y el usuario confirmó que seguían **Sesión iniciada con Apple** y **Eliminar cuenta**. No se ejecutó otro borrado ni se repitieron compras/restauraciones. No se da por completada en este ensayo la comprobación pendiente de texto máximo o VoiceOver.
+
+**Corrección siguiente autorizada:** recuperar comprobantes cancelados solamente tras confirmación del servidor y persistencia segura, y conservar una explicación al renovar una identificación caducada. La preparación del próximo build incluye pruebas locales, revisión, commit/push y CI. La subida a TestFlight y la aceptación física del nuevo build siguen siendo pasos posteriores.
+
+### Corrección y preparación de la 1.0 (10)
+
+El cliente retira el comprobante cancelado después de persistir su retirada y carga de nuevo la sesión y los grupos al arrancar. Una preparación nueva usa otro identificador y secreto. El rechazo `409 deletion_in_progress` solo permite un reintento tras consultar y confirmar la cancelación de la misma operación; las respuestas inciertas o aceptadas conservan su protección. Renovar invalida el desafío anterior, incluso si falla la red, y mantiene la explicación de caducidad hasta comenzar una identificación nueva.
+
+**Validación local del 17 de noviembre:** seis regresiones fallaron antes de corregir el modelo. Con la corrección pasan **547 ejecuciones Fast y 22 Integration**, Xcode 27.2, iPhone 18 Pro Simulator / iOS 27.0; los `.xcresult` reales confirman destino, plan y ausencia de fallos/avisos de ejecución. Se añaden diecisiete casos respecto al build 9. La compilación de pruebas no presenta errores ni warnings. Revisión independiente funcional y de estilo sin hallazgos pendientes; contrato y diseño conservan sus resultados correctos. El agregado MCP de pruebas incluía casos ajenos al plan o devolvía cero: los recuentos se obtuvieron del resultado real.
+
+**Incidencia durante la validación:** al abrir la ventana de Xcode se recuperó el iPhone 11 como destino y la primera ejecución Fast se realizó allí con dobles de prueba. Xcode instaló una compilación de desarrollo 1.0 (9), sustituyendo la beta. Se informó al usuario y se verificó el destino Simulator en los resultados finales. Antes del próximo ensayo hay que volver a instalar la beta desde TestFlight sin borrar la app ni sus datos. Esa ejecución no acredita el flujo distribuido ni repite el ensayo comercial de Premium.
+
+App Store Connect se consultó con sesión nueva: **1.0 (9)** seguía siendo el último build; se asigna **1.0 (10)** al target comercial. El Archive y la exportación Internal Only se preparan después de publicar este commit. La subida no está incluida en este paso. El próximo ensayo queda limitado a recuperación de una preparación caducada, aviso al renovar Apple y navegación/cancelación; no incluye otra eliminación ni compras/restauraciones.
+
 ## Alcance y condiciones de entrada
 
 El ensayo no modifica la API, PostgreSQL, variables, despliegue, DNS, URL de notificaciones ni datos de producción. Tampoco utiliza cuentas reales para demostrar un efecto de revocación sobre producción. La preparación de este documento no ejecuta ninguna acción externa. Antes de la ventana se identificarán el commit y los recursos concretos incluidos en el ensayo autorizado.

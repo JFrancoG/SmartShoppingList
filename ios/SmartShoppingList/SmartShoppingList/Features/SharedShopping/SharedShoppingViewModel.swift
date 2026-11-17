@@ -649,7 +649,7 @@ final class SharedShoppingViewModel {
                 if accountDeletion.pending != nil {
                     await accountDeletion.checkStatus()
                     await applyConfirmedAccountDeletion()
-                    return
+                    guard accountDeletion.pending == nil else { return }
                 }
                 guard !accountDeletion.blocksAccountUse else { return }
                 guard isConfigured else {
