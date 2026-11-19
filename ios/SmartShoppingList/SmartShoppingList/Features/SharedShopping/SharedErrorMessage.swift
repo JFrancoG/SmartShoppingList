@@ -8,7 +8,7 @@ enum SharedErrorMessage {
                 return message(for: error)
             case .server(_, let code, _, _) where [
                 "invalid_session", "not_found", "invitation_expired", "invitation_revoked", "invitation_consumed",
-                "group_access_restricted", "rate_limited"
+                "group_access_restricted", "rate_limited", "client_update_required"
             ].contains(code):
                 return message(for: error)
             default:
@@ -33,6 +33,14 @@ enum SharedErrorMessage {
             return "The result could not be confirmed. The original submission is kept so you can retry without duplicating products."
         case .server(_, let code, _, _):
             switch code {
+            case "result_removed":
+                return "This result was removed after account deletion. Refresh the list; the original operation will not be repeated."
+            case "client_update_required":
+                return "Update Smart List to continue using your account."
+            case "administration_pending":
+                return "A member must assume administration before adding or editing shared content."
+            case "administration_already_assigned":
+                return "This group already has an administrator. Refresh to see its current state."
             case "invalid_session": return "Your session has expired or been revoked. Sign in again with the same Apple Account."
             case "invalid_apple_credentials", "challenge_expired", "challenge_consumed":
                 return "This sign-in attempt is no longer valid. Start signing in with Apple again."

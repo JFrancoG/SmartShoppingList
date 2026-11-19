@@ -16,7 +16,7 @@ struct ShoppingService: Sendable {
             group: nil,
             value: .object(["name": .string(normalized)])
         )
-        return try await database.transaction { transaction in
+        return try await database.accountTransaction { transaction in
             let sql = try shoppingSQL(transaction)
             try await lockUser(user, on: sql)
             if let replay = try await reserve(
@@ -67,7 +67,7 @@ struct ShoppingService: Sendable {
     ) async throws -> APIReply {
         guard (1...50).contains(items.count) else { throw APIProblem.invalidRequest }
         let fingerprint = try fingerprint(type: "addItems", group: group, value: .array(items.map(\.json)))
-        return try await database.transaction { transaction in
+        return try await database.accountTransaction { transaction in
             let sql = try shoppingSQL(transaction)
             try await lockGroup(group, on: sql)
             try await requireMembership(user, group: group, on: sql)
@@ -102,15 +102,17 @@ struct ShoppingService: Sendable {
                     on: sql
                 )
             }
-            try await plan.insertStores(group: group, on: sql)
+            try await plan.insertStores(group: group, author: user, on: sql)
             var result: [APIJSON] = []
             for (item, store) in zip(items, plan.destinations) {
                 let id = UUID()
                 let now = try await databaseClock(sql)
                 try await sql.raw("""
-                    INSERT INTO items(id,group_id,store_id,name,quantity,status,version,created_by,created_at)
+                    INSERT INTO items(id,group_id,store_id,name,quantity,status,version,created_by,created_at,
+                        name_author_user_id,quantity_author_user_id)
                     VALUES (\(bind: id),\(bind: group),\(bind: store),\(bind: item.name),\(bind: item.quantity),
-                        'pending',1,\(bind: user),\(bind: now))
+                        'pending',1,\(bind: user),\(bind: now),\(bind: user),
+                        \(bind: item.quantity == nil ? nil : user))
                     """).run()
                 guard let row = try await sql.raw("SELECT * FROM items WHERE id = \(bind: id)").first() else {
                     throw APIProblem.unavailable
@@ -134,7 +136,7 @@ struct ShoppingService: Sendable {
         else {
             throw APIProblem.unavailable
         }
-        return try await database.transaction { transaction in
+        return try await database.accountTransaction { transaction in
             let sql = try shoppingSQL(transaction)
             try await requireAdministrator(user, group: group, on: sql)
             guard try await canUseShopping(user: user, group: group, on: sql) else { throw Self.groupAccessRestricted }
@@ -168,7 +170,7 @@ struct ShoppingService: Sendable {
         accepting: Bool
     ) async throws -> APIReply {
         try ShoppingSecret.validate(secret)
-        return try await database.transaction { transaction in
+        return try await database.accountTransaction { transaction in
             let sql = try shoppingSQL(transaction)
             let hash = ShoppingSecret.hash(secret)
             guard let preview = try await sql.raw("""
@@ -229,7 +231,7 @@ struct ShoppingService: Sendable {
     }
 
     func revokeInvitation(user: UUID, group: UUID, id: UUID) async throws {
-        try await database.transaction { transaction in
+        try await database.accountTransaction { transaction in
             let sql = try shoppingSQL(transaction)
             try await requireAdministrator(user, group: group, on: sql)
             guard let row = try await sql.raw("""
@@ -267,7 +269,7 @@ extension ShoppingService {
 
     func lockUser(_ id: UUID, on sql: any SQLDatabase) async throws {
         // Compatible with foreign-key KEY SHARE locks on recipients in other groups.
-        guard try await sql.raw("SELECT id FROM users WHERE id = \(bind: id) FOR NO KEY UPDATE").first() != nil else {
+        guard try await sql.raw("SELECT id FROM users WHERE id = \(bind: id) AND deleting_at IS NULL FOR NO KEY UPDATE").first() != nil else {
             throw APIProblem.notFound
         }
     }
@@ -319,6 +321,9 @@ extension ShoppingService {
             """).first()
         else {
             throw APIProblem.unavailable
+        }
+        if try row.decode(column: "result_removed", as: Bool.self) {
+            throw APIProblem.removedResult
         }
         guard try row.decode(column: "fingerprint", as: String.self) == fingerprint else {
             throw APIProblem(
@@ -373,7 +378,7 @@ extension ShoppingService {
         let fingerprint = try fingerprint(type: "finalizePurchase", group: group, value: .object([
             "storeId": .string(store.uuidString.lowercased()), "items": .array(ordered.map(\.json))
         ]))
-        return try await database.transaction { transaction in
+        return try await database.accountTransaction { transaction in
             let sql = try shoppingSQL(transaction)
             try await lockGroup(group, on: sql)
             try await requireMembership(user, group: group, on: sql)
@@ -469,7 +474,7 @@ extension ShoppingService {
         let fingerprint = try fingerprint(type: type, group: group, value: .object([
             "item": item.json, "replacement": replacement?.json ?? .null
         ]))
-        return try await database.transaction { transaction in
+        return try await database.accountTransaction { transaction in
             let sql = try shoppingSQL(transaction)
             try await lockGroup(group, on: sql)
             try await requireMembership(user, group: group, on: sql)
@@ -524,10 +529,19 @@ extension ShoppingService {
                             on: sql
                         )
                     }
-                    try await plan.insertStores(group: group, on: sql)
+                    try await plan.insertStores(group: group, author: user, on: sql)
                     guard let store = plan.destinations.first else { throw APIProblem.unavailable }
                     updated = try await sql.raw("""
-                        UPDATE items SET name = \(bind: replacement.name), quantity = \(bind: replacement.quantity),
+                        UPDATE items SET
+                            name_redacted = CASE WHEN name IS DISTINCT FROM \(bind: replacement.name)
+                                THEN FALSE ELSE name_redacted END,
+                            name_author_user_id = CASE WHEN name IS DISTINCT FROM \(bind: replacement.name)
+                                THEN \(bind: user) ELSE name_author_user_id END,
+                            quantity_author_user_id = CASE
+                                WHEN \(bind: replacement.quantity)::text IS NULL THEN NULL
+                                WHEN quantity IS DISTINCT FROM \(bind: replacement.quantity)
+                                    THEN \(bind: user) ELSE quantity_author_user_id END,
+                            name = \(bind: replacement.name), quantity = \(bind: replacement.quantity),
                             store_id = \(bind: store), version = version + 1
                         WHERE id = \(bind: item.id) AND group_id = \(bind: group) RETURNING *
                         """).first()

@@ -66,12 +66,19 @@ func configure(
         AddGroupMemberships(),
         AddStoreArchiving(),
         AddAccountPremiumAccess(),
-        AddAppStoreSubscriptions()
+        AddAppStoreSubscriptions(),
+        AddContentProvenance(),
+        AddAccountDeletion(),
+        AddAccountDeletionJobs(),
+        AddSubscriptionRecovery()
     ))
 
     app.routes.defaultMaxBodySize = "128kb"
     // Handle contract errors before Vapor's outer default middleware turns them into generic responses.
     app.middleware.use(APIErrorMiddleware(), at: .end)
+    if app.environment != .testing {
+        app.middleware.use(ClientContractMiddleware(), at: .end)
+    }
 
     // register routes
     try routes(

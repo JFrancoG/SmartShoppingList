@@ -25,7 +25,7 @@ struct SharedGroupCapabilities: Codable, Equatable {
     let canWithdrawTransfer: Bool
     let canLeave: Bool
     let requiresClosureConfirmation: Bool
-    let capacityOwnerUserId: UUID
+    let capacityOwnerUserId: UUID?
     let limits: SharedGroupLimits
 }
 

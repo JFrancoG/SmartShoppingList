@@ -778,3 +778,84 @@ extension SharedAPIClientTests {
         """
     }
 }
+
+extension SharedAPIClientTests {
+    @Test
+    func `A pending administration group accepts null owners without granting administration rights`() async throws {
+        let transport = FixtureSharedTransport { request in
+            try Self.response(request, status: 200, body: """
+            {"group":{"id":"\(Self.groupID.uuidString)","name":"Shared group","creatorUserId":null,
+            "administratorUserId":null,"state":"pending_administration","createdAt":"2026-09-19T10:10:00Z",
+            "capabilities":{"canUseShopping":true,"isFreeGroup":true}},"memberCount":2,"pendingTransfer":null,
+            "capabilities":{"canManageInvitations":false,"canProposeTransfer":false,"canAcceptTransfer":false,
+            "canRejectTransfer":false,"canWithdrawTransfer":false,"canLeave":true,"requiresClosureConfirmation":false,
+            "capacityOwnerUserId":null,"limits":{"groupsPerAccount":{"maximum":1,"enforced":true},
+            "storesPerGroup":{"maximum":3,"enforced":true},"pendingItemsPerStore":{"maximum":20,"enforced":true}}}}
+            """)
+        }
+        let administration = try await client(transport).groupAdministration(groupID: Self.groupID, token: Self.token)
+        #expect(administration.group.isPendingAdministration)
+        #expect(administration.group.creatorUserId == nil)
+        #expect(administration.capabilities.capacityOwnerUserId == nil)
+        #expect(!administration.capabilities.canManageInvitations)
+    }
+
+    @Test
+    func `Deletion status uses its receipt without a session bearer and declares contract version`() async throws {
+        let receipt = SharedDeletionReceipt(operationId: UUID(), statusSecret: "private-status-secret")
+        let transport = FixtureSharedTransport { request in
+            #expect(request.value(forHTTPHeaderField: "Authorization") == nil)
+            #expect(request.value(forHTTPHeaderField: "X-SmartList-Contract") == "0.6")
+            #expect(request.url?.path == "/v1/account/deletions/status")
+            let body = try JSONDecoder().decode(SharedDeletionReceipt.self, from: try #require(request.httpBody))
+            #expect(body == receipt)
+            return try Self.response(request, status: 200, body: """
+            {"operationId":"\(receipt.operationId.uuidString)","status":"data_deleted"}
+            """)
+        }
+        let result = try await client(transport).deletionStatus(receipt)
+        #expect(result.status == .dataDeleted)
+    }
+}
+
+
+extension SharedAPIClientTests {
+    @Test
+    func `Deletion preview includes a former group with no remaining members`() async throws {
+        let transport = FixtureSharedTransport { request in
+            try Self.response(request, status: 200, body: """
+            {"groups":[{"id":"\(Self.groupID.uuidString)","name":"Former group","memberCount":0,
+            "administers":false,"willDelete":true}],"ownContentCount":1,"legacyContentCount":0,"revision":"review"}
+            """)
+        }
+        let preview = try await client(transport).deletionPreview(token: Self.token)
+        #expect(preview.groups.count == 1)
+        #expect(preview.groups.first?.willDelete == true)
+    }
+
+    @Test(arguments: [
+        (410, "result_removed"), (409, "deletion_impact_changed"), (409, "administration_pending"),
+        (409, "administration_already_assigned"), (409, "subscription_recovery_pending_review"),
+        (426, "client_update_required")
+    ])
+    func `Contract 06 errors establish a terminal outcome instead of retaining an uncertain mutation`(
+        status: Int,
+        code: String
+    ) async throws {
+        let transport = FixtureSharedTransport { request in
+            try Self.response(request, status: status, body: """
+            {"code":"\(code)","message":"Confirmed terminal outcome",
+            "requestId":"00000000-0000-4000-8000-000000000900"}
+            """)
+        }
+        do {
+            _ = try await client(transport).createGroup(
+                CreateGroupRequest(operationId: UUID(), name: "Casa"), token: Self.token
+            )
+            Issue.record("A terminal rejection cannot become a successful mutation")
+        } catch let error as SharedAPIError {
+            #expect(!error.isUncertain)
+        }
+        #expect(await transport.requestCount == 1)
+    }
+}

@@ -5,7 +5,7 @@ import Vapor
 
 struct GroupStoreCapacity: Sendable {
     let group: UUID
-    let owner: UUID
+    let owner: UUID?
     let activeStoreCount: Int64
     let limits: AccountResourceLimits
     var canUseShopping = true
@@ -15,7 +15,7 @@ struct GroupStoreCapacity: Sendable {
     var json: APIJSON {
         .object([
             "groupId": .string(group.uuidString.lowercased()),
-            "capacityOwnerUserId": .string(owner.uuidString.lowercased()),
+            "capacityOwnerUserId": .optional(owner?.uuidString.lowercased()),
             "activeStoreCount": .integer(activeStoreCount), "limits": limits.groupResourceJSON,
             "canCreateStore": .bool(canCreateStore)
         ])
@@ -67,7 +67,7 @@ extension ShoppingService {
     }
 
     func capacity(user: UUID, group: UUID) async throws -> APIReply {
-        try await database.transaction { transaction in
+        try await database.accountTransaction { transaction in
             let sql = try shoppingSQL(transaction)
             try await lockGroup(group, on: sql)
             try await requireMembership(user, group: group, on: sql)
@@ -86,19 +86,25 @@ extension ShoppingService {
         else {
             throw APIProblem.notFound
         }
-        let owner = try row.decode(column: "administrator_user_id", as: UUID.self)
+        let owner = try row.decode(column: "administrator_user_id", as: UUID?.self)
         let canUse: Bool
         if let user {
             canUse = try await canUseShopping(user: user, group: group, on: sql)
         } else {
             canUse = true
         }
+        let limits: AccountResourceLimits
+        if let owner {
+            limits = try await accountCapacity.limits(for: owner, on: sql)
+        } else {
+            limits = .free
+        }
         return GroupStoreCapacity(
             group: group,
             owner: owner,
             activeStoreCount: try row.decode(column: "active_count", as: Int64.self),
-            limits: try await accountCapacity.limits(for: owner, on: sql),
-            canUseShopping: canUse
+            limits: limits,
+            canUseShopping: canUse && owner != nil
         )
     }
 
@@ -123,7 +129,7 @@ extension ShoppingService {
     ) async throws -> APIReply {
         let type = state == .archived ? "archiveStore" : "restoreStore"
         let fingerprint = try fingerprint(type: type, group: group, value: .string(store.uuidString.lowercased()))
-        return try await database.transaction { transaction in
+        return try await database.accountTransaction { transaction in
             let sql = try shoppingSQL(transaction)
             try await lockGroup(group, on: sql)
             try await requireMembership(user, group: group, on: sql)

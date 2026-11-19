@@ -178,4 +178,8 @@ struct UnconfiguredAppleGateway: AppleGateway {
     func validate(refreshToken: String) async throws -> AppleTokenResponse {
         throw AppleGatewayError.unavailable
     }
+
+    func revoke(refreshToken: String) async throws {
+        throw AppleGatewayError.unavailable
+    }
 }

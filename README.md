@@ -231,6 +231,7 @@ La documentación técnica enlazada conserva su idioma original, principalmente 
 | [Pertenencias y selección / Memberships and selection](docs/contracts/group-memberships.md) | Contrato 0.3.0 y unidad #35 / Contract 0.3.0 and unit #35 |
 | [Cupos y archivo / Quotas and archiving](docs/contracts/store-quotas.md) | Contrato 0.4.0 y unidad #37 / Contract 0.4.0 and unit #37 |
 | [Suscripción y vuelta a gratuito / Subscription and downgrade](docs/contracts/premium-subscriptions.md) | Contrato 0.5 y unidad #39 / Contract 0.5 and unit #39 |
+| [Privacidad, Términos y eliminación / Privacy, Terms and deletion](docs/legal/README.md) | Borradores sin publicar e implementación local de #54 / Unpublished drafts and local implementation for #54 |
 | [Configurar suscripciones / Subscription setup](docs/setup/premium-subscriptions.md) | Credenciales, productos, gracia y validación externa / Credentials, products, grace and external validation |
 | [Acceso y límites / Access and limits](docs/architecture/group-access-and-limits.md) | Plan aprobado: grupos adicionales premium y capacidad compartida / Approved plan: premium additional groups and shared capacity |
 | [Varios grupos / Multiple groups](docs/architecture/multiple-groups.md) | Decisión inicial y seguimiento posterior / Initial decision and subsequent tracking |

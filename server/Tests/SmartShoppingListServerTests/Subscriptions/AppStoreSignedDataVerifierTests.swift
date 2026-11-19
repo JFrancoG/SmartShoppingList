@@ -95,6 +95,41 @@ struct AppStoreSignedDataVerifierTests {
         }
     }
 
+    @Test("Apple's current token replaces the historical JWS token without changing the purchase")
+    func authoritativeLookupAcceptsReassignedAccountToken() async throws {
+        let certificates = try AppStoreCertificateFixture()
+        let requested = try await certificates.sign()
+        let replacement = UUID()
+        let current = try await certificates.sign(overrides: ["appAccountToken": .string(replacement.uuidString)])
+        let transport = FixtureAppStoreTransport(transaction: current)
+        let gateway = try LiveAppStoreGateway(
+            configuration: certificates.configuration,
+            transport: transport,
+            verifier: certificates.verifier(transport: transport)
+        )
+        let verified = try await gateway.verifyTransaction(requested)
+        #expect(verified.appAccountToken == replacement)
+        #expect(verified.transactionId == "2000001")
+    }
+
+    @Test("Set App Account Token authenticates the update and rejects ambiguous success or unsafe transaction IDs")
+    func setAppAccountTokenAcknowledgesOnlyAppleSuccess() async throws {
+        let certificates = try AppStoreCertificateFixture()
+        let transport = AccountTokenUpdateTransport(configuration: certificates.configuration)
+        let gateway = try LiveAppStoreGateway(configuration: certificates.configuration, transport: transport)
+        let token = UUID()
+        try await gateway.setAppAccountToken(originalTransactionID: "1000001", token: token)
+        #expect(await transport.assigned == token)
+        await transport.uncertainResponse()
+        await #expect(throws: AppStoreGatewayError.unavailable) {
+            try await gateway.setAppAccountToken(originalTransactionID: "1000001", token: token)
+        }
+        await #expect(throws: AppStoreGatewayError.rejected) {
+            try await gateway.setAppAccountToken(originalTransactionID: "../other", token: UUID())
+        }
+        #expect(await transport.calls == 2)
+    }
+
     @Test("A restored historical purchase is located through Apple's API and cannot trust a different bundle or environment")
     func authoritativeLookupValidatesApplication() async throws {
         let certificates = try AppStoreCertificateFixture()
@@ -108,6 +143,55 @@ struct AppStoreSignedDataVerifierTests {
         )
         await #expect(throws: AppStoreGatewayError.rejected) {
             try await gateway.verifyTransaction(requested)
+        }
+    }
+}
+
+/// Models Apple's boundary: signed API credentials and a UUID update are required before assignment.
+private actor AccountTokenUpdateTransport: AppStoreHTTPTransport {
+    let configuration: AppStoreConfiguration
+    private(set) var assigned: UUID?
+    private(set) var calls = 0
+    private var response = AppleHTTPResponse(status: 200, body: Data())
+
+    init(configuration: AppStoreConfiguration) { self.configuration = configuration }
+
+    func put(
+        path: String,
+        authorization: String,
+        environment: AppStoreEnvironment,
+        body: Data
+    ) async throws -> AppleHTTPResponse {
+        calls += 1
+        let privateKey = try ES256PrivateKey(pem: configuration.privateKeyPEM)
+        let keys = await JWTKeyCollection().add(ecdsa: privateKey.publicKey, kid: .init(string: configuration.keyID))
+        let token = try await keys.verify(authorization, as: Authorization.self)
+        guard token.iss == configuration.issuerID, token.bid == configuration.bundleID,
+              token.aud == "appstoreconnect-v1", token.exp > Int64(Date().timeIntervalSince1970),
+              path == "/inApps/v1/transactions/1000001/appAccountToken", environment == .sandbox,
+              let update = try JSONSerialization.jsonObject(with: body) as? [String: String],
+              update.count == 1, let value = update["appAccountToken"], let account = UUID(uuidString: value)
+        else {
+            return AppleHTTPResponse(status: 401, body: Data())
+        }
+        assigned = account
+        return response
+    }
+
+    func uncertainResponse() { response = AppleHTTPResponse(status: 200, body: Data("unexpected".utf8)) }
+    func get(path: String, authorization: String, environment: AppStoreEnvironment) throws -> AppleHTTPResponse {
+        throw AppStoreGatewayError.unavailable
+    }
+    func ocsp(request: Data, uri: String) throws -> AppleHTTPResponse { throw AppStoreGatewayError.unavailable }
+
+    private struct Authorization: JWTPayload {
+        let iss: String
+        let aud: String
+        let bid: String
+        let exp: Int64
+
+        func verify(using algorithm: some JWTAlgorithm) throws {
+            guard algorithm.name == "ES256" else { throw AppStoreGatewayError.rejected }
         }
     }
 }

@@ -8,7 +8,7 @@ Checks local JSON Pointer references, basic OpenAPI 3.2.1 structure, explicit
 operation security, schema validity, operation coverage, and positive/negative
 examples using JSON Schema 2020-12 and FormatChecker. This is not complete
 OpenAPI meta-validation, HTTP serialization validation, or an API runtime test.
-Only path/query parameters and application/json bodies are supported.
+Only path/query/header parameters and application/json bodies are supported.
 Example parameter values are already decoded and typed; bearer credentials are
 described by security requirements rather than supplied in these examples.
 """
@@ -172,7 +172,7 @@ class Contract:
                 value, parameter_location = self.object_at(pointer(pointer(location, "parameters"), index))
                 name, destination = value.get("name"), value.get("in")
                 require(isinstance(name, str) and name, f"Unnamed parameter at #{parameter_location}")
-                require(destination in {"path", "query"},
+                require(destination in {"path", "query", "header"},
                         f"Unsupported parameter location at #{parameter_location}: {destination!r}")
                 require("schema" in value and "content" not in value,
                         f"Parameter must use schema at #{parameter_location}")
@@ -273,10 +273,10 @@ class Contract:
 
     def request_errors(self, request, operation):
         require(isinstance(request, dict), "Example request must be an object")
-        require(set(request) <= {"path", "query", "body"}, "Unknown example request fields")
+        require(set(request) <= {"path", "query", "headers", "body"}, "Unknown example request fields")
         parameters, body_schema, body_required, _ = operation
         errors = []
-        for destination, field in (("path", "path"), ("query", "query")):
+        for destination, field in (("path", "path"), ("query", "query"), ("header", "headers")):
             values = request.get(field, {})
             require(isinstance(values, dict), f"Example request.{field} must be an object")
             declared = {name for place, name in parameters if place == destination}

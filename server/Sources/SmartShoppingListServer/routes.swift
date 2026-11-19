@@ -26,10 +26,11 @@ func routes(
     } else {
         gateway = UnconfiguredAppleGateway()
     }
+    let vault = try RefreshTokenVault.load(logger: app.logger)
     let authentication = AppleAuthenticationService(
         databases: databases,
         gateway: gateway,
-        vault: try RefreshTokenVault.load(logger: app.logger),
+        vault: vault,
         accountCapacity: accountCapacity
     )
     try app.register(collection: AppleAuthenticationRoutes(service: authentication))
@@ -39,9 +40,25 @@ func routes(
         invitationOrigin: app.environment == .testing ? "https://links.test" : Environment.get("INVITATION_ORIGIN"),
         accountCapacity: accountCapacity
     ))
+    let deletion = AccountDeletionService(databases: databases, gateway: gateway, vault: vault)
+    try app.register(collection: AccountDeletionRoutes(service: deletion, authentication: authentication))
+    if app.environment != .testing {
+        app.lifecycle.use(AccountDeletionLifecycle(worker: AccountDeletionWorker(service: deletion)))
+    }
+    let recovery: SubscriptionRecoveryService?
+    if app.environment != .testing, let configuration = try AppAttestConfiguration.load() {
+        recovery = SubscriptionRecoveryService(
+            databases: databases,
+            gateway: appStoreGateway,
+            attestation: try LiveAppAttestVerifier.live(configuration: configuration)
+        )
+    } else {
+        recovery = nil
+    }
     try app.register(collection: AppStoreRoutes(
         service: SubscriptionService(databases: databases, gateway: appStoreGateway, accountCapacity: accountCapacity),
-        authentication: authentication
+        authentication: authentication,
+        recovery: recovery
     ))
     try app.register(collection: InvitationWebsite(
         teamID: app.environment == .testing ? "NWN8JUE438" : Environment.get("APPLE_TEAM_ID"),

@@ -85,13 +85,13 @@ struct SharedStoreLimits: Decodable, Equatable {
 
 struct SharedGroupCapacity: Decodable, Equatable {
     private let groupIdentifier: UUID
-    private let ownerIdentifier: UUID
+    private let ownerIdentifier: UUID?
     private let storeCount: Int
     private let resourceLimits: SharedStoreLimits
     private let permitsCreation: Bool
 
     var groupId: UUID { groupIdentifier }
-    var capacityOwnerUserId: UUID { ownerIdentifier }
+    var capacityOwnerUserId: UUID? { ownerIdentifier }
     var activeStoreCount: Int { storeCount }
     var limits: SharedStoreLimits { resourceLimits }
     var canCreateStore: Bool { permitsCreation }
@@ -100,7 +100,7 @@ struct SharedGroupCapacity: Decodable, Equatable {
 extension SharedGroupCapacity {
     init(
         groupId: UUID,
-        capacityOwnerUserId: UUID,
+        capacityOwnerUserId: UUID?,
         activeStoreCount: Int,
         limits: SharedStoreLimits,
         canCreateStore: Bool
@@ -122,7 +122,7 @@ extension SharedGroupCapacity {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         try self.init(
             groupId: values.decode(UUID.self, forKey: .groupId),
-            capacityOwnerUserId: values.decode(UUID.self, forKey: .capacityOwnerUserId),
+            capacityOwnerUserId: values.decode(UUID?.self, forKey: .capacityOwnerUserId),
             activeStoreCount: values.decode(Int.self, forKey: .activeStoreCount),
             limits: values.decode(SharedStoreLimits.self, forKey: .limits),
             canCreateStore: values.decode(Bool.self, forKey: .canCreateStore)

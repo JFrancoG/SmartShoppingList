@@ -6,10 +6,46 @@ import FoundationNetworking
 protocol AppStoreHTTPTransport: Sendable {
     func get(path: String, authorization: String, environment: AppStoreEnvironment) async throws -> AppleHTTPResponse
     func ocsp(request: Data, uri: String) async throws -> AppleHTTPResponse
+    func put(
+        path: String,
+        authorization: String,
+        environment: AppStoreEnvironment,
+        body: Data
+    ) async throws -> AppleHTTPResponse
+}
+
+extension AppStoreHTTPTransport {
+    func put(
+        path: String,
+        authorization: String,
+        environment: AppStoreEnvironment,
+        body: Data
+    ) async throws -> AppleHTTPResponse {
+        throw AppStoreGatewayError.unavailable
+    }
 }
 
 /// API credentials stay on the fixed StoreKit origin; OCSP requests never receive them.
 final class AppStoreURLSessionTransport: NSObject, AppStoreHTTPTransport, URLSessionTaskDelegate, Sendable {
+    func put(
+        path: String,
+        authorization: String,
+        environment: AppStoreEnvironment,
+        body: Data
+    ) async throws -> AppleHTTPResponse {
+        guard path.hasPrefix("/inApps/v1/transactions/"), path.hasSuffix("/appAccountToken"),
+              !path.contains("?"), !path.contains("#"), let url = URL(string: environment.origin + path)
+        else {
+            throw AppStoreGatewayError.unavailable
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "PUT"
+        request.setValue("Bearer " + authorization, forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = body
+        return try await send(request)
+    }
+
     func get(path: String, authorization: String, environment: AppStoreEnvironment) async throws -> AppleHTTPResponse {
         guard path.hasPrefix("/inApps/v1/"), !path.contains("?"), !path.contains("#"),
               let url = URL(string: environment.origin + path)

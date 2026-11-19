@@ -58,7 +58,7 @@ struct AppTrait: TestTrait, SuiteTrait, TestScoping {
                 // Only the database accepted by TestDatabaseConfiguration is used here.
                 // Empty test data permits safe schema reversion even after a multigroup scenario.
                 let sql = try shoppingSQL(databases.database())
-                try await sql.raw("TRUNCATE TABLE users, app_store_notifications CASCADE").run()
+                try await sql.raw("TRUNCATE TABLE users, app_store_notifications, account_deletion_jobs, deleted_session_receipts, subscription_recovery_jobs CASCADE").run()
                 try await databases.revert(
                     migrations: CreateTodo(),
                     CreateSharedShopping(),
@@ -68,6 +68,10 @@ struct AppTrait: TestTrait, SuiteTrait, TestScoping {
                     AddStoreArchiving(),
                     AddAccountPremiumAccess(),
                     AddAppStoreSubscriptions(),
+                    AddContentProvenance(),
+                    AddAccountDeletion(),
+                    AddAccountDeletionJobs(),
+                    AddSubscriptionRecovery(),
                     on: app
                 )
             } catch {

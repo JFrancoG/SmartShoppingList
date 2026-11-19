@@ -37,6 +37,7 @@ let package = Package(
                 .product(name: "FluentSQL", package: "fluent-kit"),
                 .product(name: "JWTKit", package: "jwt-kit"),
             ],
+            resources: [.process("Subscriptions/Fixtures")],
             swiftSettings: swiftSettings
         )
     ]

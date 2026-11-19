@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Exercise the final Linux image with disposable Apple credentials and PostgreSQL.
-# A successful /hello requires the IAP root, identity signing key and token vault to load.
+# A successful /hello requires IAP/App Attest roots, identity signing key and token vault to load.
 set -euo pipefail
 
 image="${1:?Usage: bash scripts/check_server_image.sh IMAGE}"
@@ -55,6 +55,8 @@ docker run --detach --name "$server" --network "$network" \
     --env APP_STORE_PREMIUM_MONTHLY_PRODUCT_ID=com.plusprojects.SmartShoppingList.premium.monthly \
     --env APP_STORE_PREMIUM_ANNUAL_PRODUCT_ID=com.plusprojects.SmartShoppingList.premium.annual \
     --env APP_STORE_SUBSCRIPTION_GROUP_ID=1 --env APP_STORE_ENVIRONMENT=Sandbox \
+    --env APP_ATTEST_APP_ID=SMOKETEST1.com.plusprojects.SmartShoppingList \
+    --env APP_ATTEST_MIN_BUILD=1 \
     "$image" serve --env sandbox --hostname 0.0.0.0 --port 8080 >/dev/null
 unset private_key refresh_key refresh_keys_json
 
@@ -81,7 +83,14 @@ if [[ "$hello" != 'Hello, world!' ]]; then
     exit 1
 fi
 for route in /v1/me /v1/account/subscription; do
+    legacy_status="$(docker exec "$server" curl --silent --show-error --output /dev/null \
+        --connect-timeout 2 --max-time 5 --write-out '%{http_code}' "http://127.0.0.1:8080$route")"
+    if [[ "$legacy_status" != 426 ]]; then
+        echo "Expected 426 without the client contract for $route; got $legacy_status." >&2
+        exit 1
+    fi
     status="$(docker exec "$server" curl --silent --show-error --output /dev/null \
+        --header 'X-SmartList-Contract: 0.6' \
         --connect-timeout 2 --max-time 5 --write-out '%{http_code}' "http://127.0.0.1:8080$route")"
     if [[ "$status" != 401 ]]; then
         echo "Expected 401 for $route; got $status." >&2
@@ -97,4 +106,4 @@ for method in GET POST; do
         exit 1
     fi
 done
-echo 'PASS: Linux runtime image loads Apple resources, identity and vault, migrates PostgreSQL and serves health/auth boundaries.'
+echo 'PASS: Linux runtime image loads Apple/App Attest resources, identity and vault, migrates PostgreSQL and serves health/contract/auth boundaries.'

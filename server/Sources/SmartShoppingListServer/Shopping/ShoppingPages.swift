@@ -31,7 +31,7 @@ extension ShoppingService {
                 store: store
             )
         }
-        return try await database.transaction { transaction in
+        return try await database.accountTransaction { transaction in
             let sql = try shoppingSQL(transaction)
             if resource == .invitations {
                 try await requireAdministrator(user, group: group, on: sql)
@@ -120,7 +120,7 @@ extension ShoppingService {
             "quantity": .optional(try row.decode(column: "quantity", as: String?.self)),
             "status": .string(try row.decode(column: "status", as: String.self)),
             "version": .integer(try row.decode(column: "version", as: Int64.self)),
-            "createdBy": .string(try row.decode(column: "created_by", as: UUID.self).uuidString.lowercased()),
+            "createdBy": .optional(try row.decode(column: "created_by", as: UUID?.self)?.uuidString.lowercased()),
             "createdAt": .string(APIEncoding.timestamp(try row.decode(column: "created_at", as: Date.self))),
             "purchasedBy": .optional(try row.decode(column: "purchased_by", as: UUID?.self)?.uuidString.lowercased()),
             "purchasedAt": .optional(try row.decode(column: "purchased_at", as: Date?.self).map(APIEncoding.timestamp))
@@ -154,7 +154,7 @@ extension ShoppingService {
                 store: nil
             )
         }
-        return try await database.transaction { transaction in
+        return try await database.accountTransaction { transaction in
             let sql = try shoppingSQL(transaction)
             try await lockUser(user, on: sql)
             let access = try await accountCapacity.access(for: user, on: sql)
@@ -172,13 +172,14 @@ extension ShoppingService {
                 ShoppingGroupDTO(
                     id: try row.decode(column: "id", as: UUID.self).uuidString.lowercased(),
                     name: try row.decode(column: "name", as: String.self),
-                    creatorUserId: try row.decode(column: "creator_user_id", as: UUID.self).uuidString.lowercased(),
+                    creatorUserId: try row.decode(column: "creator_user_id", as: UUID?.self)?.uuidString.lowercased(),
                     administratorUserId: try row.decode(
                         column: "administrator_user_id",
-                        as: UUID.self
-                    ).uuidString.lowercased(),
+                        as: UUID?.self
+                    )?.uuidString.lowercased(),
                     createdAt: APIEncoding.timestamp(try row.decode(column: "created_at", as: Date.self)),
-                    capabilities: access.groupCapabilities(try row.decode(column: "id", as: UUID.self))
+                    capabilities: access.groupCapabilities(try row.decode(column: "id", as: UUID.self)),
+                    state: try row.decode(column: "pending_administration", as: Bool.self) ? "pending_administration" : "active"
                 ).json
             }
             let next: String?

@@ -4,7 +4,9 @@ struct SharedOperationSection: View {
     let viewModel: SharedShoppingViewModel
 
     var body: some View {
-        if viewModel.pendingOperation != nil || viewModel.isBusy || viewModel.readFailure != nil {
+        if !viewModel.accountDeletion.blocksAccountUse, !viewModel.accountDeletion.isBusy,
+           !viewModel.requiresDeletedAccountCleanup,
+           viewModel.pendingOperation != nil || viewModel.isBusy || viewModel.readFailure != nil {
             Section("Group status") {
                 if viewModel.isBusy {
                     ProgressView("Loading group…")

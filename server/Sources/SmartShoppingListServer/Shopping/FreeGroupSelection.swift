@@ -11,7 +11,7 @@ extension ShoppingService {
             group: nil,
             value: .string(group.uuidString.lowercased())
         )
-        return try await database.transaction { transaction in
+        return try await database.accountTransaction { transaction in
             let sql = try shoppingSQL(transaction)
             // Lock even a closed target before the account, permitting historical receipt replay.
             guard try await sql.raw("SELECT id FROM groups WHERE id = \(bind: group) FOR UPDATE").first() != nil else {

@@ -47,7 +47,9 @@ struct SmartShoppingListApp: App {
         WindowGroup {
             Group {
                 #if DEBUG
-                if ProcessInfo.processInfo.arguments.contains("-shopping-notice-validation") {
+                if ProcessInfo.processInfo.arguments.contains("-shopping-account-deletion-validation") {
+                    ShoppingAccountDeletionValidationView()
+                } else if ProcessInfo.processInfo.arguments.contains("-shopping-notice-validation") {
                     ShoppingNoticeValidationView()
                 } else {
                     AppBootstrapView(bootstrap: bootstrap)

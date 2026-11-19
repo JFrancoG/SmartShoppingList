@@ -533,6 +533,31 @@ final class ShoppingDraftViewModel {
         return isNewRequest
     }
 
+    /// The initiating deletion confirmation explicitly includes the entire local draft in this environment.
+    func clearForConfirmedAccountDeletion() async throws {
+        await load()
+        cancelInterpretation()
+        await stopDictation(discardTranscript: true).value
+        await flushPersistence()
+        guard !storageBlocked else { throw DraftIntentError.storageUnavailable }
+        interpretationProposal = nil
+        preparedItems = nil
+        interpretedText = nil
+        revisableInterpretedItems = []
+        intentRequestIDs = []
+        editorItem = ShoppingDraftItem()
+        editorError = nil
+        isEditorPresented = false
+        isEditorPresentationActive = false
+        items = []
+        text = ""
+        showsRecoveryControls = false
+        notice = nil
+        queuePersistence()
+        await flushPersistence()
+        guard persistenceNotice == nil else { throw DraftIntentError.saveFailed }
+    }
+
     /// Remove only unchanged rows acknowledged by the server before clearing its retry envelope.
     func consumeConfirmedItems(_ confirmed: [ShoppingDraftItem]) async -> Bool {
         await load()

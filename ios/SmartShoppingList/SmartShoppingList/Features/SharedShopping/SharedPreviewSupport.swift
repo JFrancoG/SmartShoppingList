@@ -49,6 +49,9 @@ enum SharedPreviewState: CaseIterable, Hashable {
     case premiumGrace
     case premiumVerification
     case signedOut
+    #if DEBUG
+    case deletionPending
+    #endif
     case offline
     case signInUnavailable
     case invitation
@@ -59,6 +62,7 @@ enum SharedPreviewState: CaseIterable, Hashable {
     case storeManagement
     case emptyStore
     case groupManagementOwner
+    case groupPendingAdministration
     case groupTransferRecipient
 }
 
@@ -299,7 +303,13 @@ enum SharedPreviewSupport {
         state: SharedPreviewState,
         presentation: SharedPreviewPresentation? = nil
     ) -> SharedShoppingViewModel {
+        #if DEBUG
+        let deletionPending = state == .deletionPending
+        let draft = DraftPreviewSupport.viewModel(snapshot: fixture.draft, state: deletionPending ? .empty : .content)
+        #else
+        let deletionPending = false
         let draft = DraftPreviewSupport.viewModel(snapshot: fixture.draft, state: .content)
+        #endif
         var session = fixture.session
         if state == .invitation || state == .premiumNoGroups {
             session.user.group = nil
@@ -332,7 +342,8 @@ enum SharedPreviewSupport {
             session.activeGroupID = fixture.group.id
         }
         let credentials = MemorySharedCredentialStore(
-            session: state == .signedOut || state == .signInUnavailable || state == .unconfigured ? nil : session,
+            session: state == .signedOut || state == .signInUnavailable || state == .unconfigured || deletionPending
+                ? nil : session,
             invitation: state == .invitation || state == .signedOut ? fixture.pendingInvitation : nil,
             operation: pending,
             subscriptionVerification: state == .premiumVerification ? PendingSubscriptionVerification(
@@ -343,6 +354,7 @@ enum SharedPreviewSupport {
         )
         let managementScenario: GroupManagementPreviewScenario = switch state {
         case .groupManagementOwner: .owner
+        case .groupPendingAdministration: .pending
         case .groupTransferRecipient: .recipient
         default: .solo
         }
@@ -369,7 +381,7 @@ enum SharedPreviewSupport {
         let subscriptionStore: (any SharedSubscriptionStore)? = isPremiumPreview ? PreviewPremiumStore() : nil
         #if DEBUG
         if let presentation {
-            return SharedShoppingViewModel(
+            let model = SharedShoppingViewModel(
                 preview: presentation,
                 api: api,
                 configuration: configuration,
@@ -378,6 +390,10 @@ enum SharedPreviewSupport {
                 storeQuery: StoreQueryViewModel(speech: PreviewStoreQuerySpeech()),
                 subscriptionStore: subscriptionStore
             )
+            if deletionPending {
+                model.accountDeletion.preparePreview(awaitingCompletion: true)
+            }
+            return model
         }
         #endif
         return SharedShoppingViewModel(
@@ -400,6 +416,10 @@ enum SharedPreviewSupport {
             await model.loadPremium()
         }
         switch state {
+        #if DEBUG
+        case .deletionPending:
+            model.accountDeletion.preparePreview(awaitingCompletion: true)
+        #endif
         case .group, .multipleGroups, .premiumTransition, .premiumRestricted,
              .premiumFree, .premiumActive, .premiumRenewalOff, .premiumGrace, .premiumVerification:
             model.selectedStoreID = fixture.stores.first?.id
@@ -417,7 +437,7 @@ enum SharedPreviewSupport {
             await model.loadSelectedStore()
         case .storeManagement:
             await model.loadStoreManagement()
-        case .groupManagementOwner, .groupTransferRecipient:
+        case .groupManagementOwner, .groupTransferRecipient, .groupPendingAdministration:
             await model.loadGroupManagement()
             model.selectedSuccessorID = PreviewSharedShoppingAPI.successorID
         case .signedOut, .offline, .signInUnavailable, .invitation, .pending, .unconfigured,
@@ -428,7 +448,7 @@ enum SharedPreviewSupport {
 }
 
 @MainActor
-private final class PreviewSharedShoppingAPI: SharedShoppingAPI {
+private final class PreviewSharedShoppingAPI: SharedShoppingAPI, SharedAccountDeletionAPI {
     nonisolated static let successorID = UUID(uuid: (0, 0, 0, 0, 0, 0, 64, 0, 128, 0, 0, 0, 0, 0, 0, 2))
     let fixture: SharedPreviewFixture
     let user: SharedUser
@@ -465,6 +485,30 @@ private final class PreviewSharedShoppingAPI: SharedShoppingAPI {
     }
 
     // Preview data never requires a remote request.
+    func deletionPreview(token: String) async throws -> SharedDeletionPreview {
+        throw SharedAPIError.configuration
+    }
+    func deletionChallenge(_ request: SharedDeletionPreparation, token: String) async throws -> SharedChallenge {
+        throw SharedAPIError.configuration
+    }
+    func deleteAccount(_ request: SharedDeletionRequest, token: String) async throws -> SharedDeletionStatus {
+        throw SharedAPIError.configuration
+    }
+    func deletionStatus(_ receipt: SharedDeletionReceipt) async throws -> SharedDeletionStatus {
+        SharedDeletionStatus(operationId: receipt.operationId, status: .accepted)
+    }
+    func cancelDeletion(_ receipt: SharedDeletionReceipt) async throws -> SharedDeletionStatus {
+        SharedDeletionStatus(operationId: receipt.operationId, status: .cancelled)
+    }
+    func deletionSessionStatus(token: String) async throws -> Bool { false }
+    func claimAdministration(
+        _ request: ResolveGroupTransferRequest,
+        groupID: UUID,
+        token: String
+    ) async throws -> SharedGroup {
+        throw SharedAPIError.configuration
+    }
+
     func createChallenge() async throws -> SharedChallenge {
         guard !signInUnavailable else { throw SharedAPIError.transport }
         return SharedChallenge(id: UUID(), nonce: String(repeating: "A", count: 43), expiresAt: Date().addingTimeInterval(300))
@@ -514,8 +558,19 @@ private final class PreviewSharedShoppingAPI: SharedShoppingAPI {
         ((user.group.map { [$0] } ?? []) + additionalGroups).map(projectedGroup)
     }
     private func projectedGroup(_ original: SharedGroup) -> SharedGroup {
-        guard let premiumScenario else { return original }
         var group = original
+        if managementScenario == .pending {
+            group = SharedGroup(
+                id: original.id,
+                name: original.name,
+                creatorUserId: nil,
+                createdAt: original.createdAt,
+                administratorUserId: nil,
+                capabilities: original.capabilities,
+                state: "pending_administration"
+            )
+        }
+        guard let premiumScenario else { return group }
         group.capabilities = SharedGroupAccess(
             canUseShopping: premiumIsActive || premiumScenario == .premiumTransition
                 || group.id == additionalGroups.first?.id,
@@ -582,14 +637,14 @@ private final class PreviewSharedShoppingAPI: SharedShoppingAPI {
             memberCount: managementScenario == .solo ? 1 : 3,
             pendingTransfer: transfer,
             capabilities: SharedGroupCapabilities(
-                canManageInvitations: !isRecipient,
+                canManageInvitations: !isRecipient && managementScenario != .pending,
                 canProposeTransfer: managementScenario == .owner,
                 canAcceptTransfer: isRecipient,
                 canRejectTransfer: isRecipient,
                 canWithdrawTransfer: false,
                 canLeave: managementScenario != .owner,
                 requiresClosureConfirmation: managementScenario == .solo,
-                capacityOwnerUserId: fixture.session.user.id,
+                capacityOwnerUserId: managementScenario == .pending ? nil : fixture.session.user.id,
                 limits: SharedGroupLimits(
                     groupsPerAccount: SharedResourceLimit(maximum: 1, enforced: true),
                     storesPerGroup: SharedResourceLimit(maximum: 3, enforced: true),
@@ -631,12 +686,12 @@ private final class PreviewSharedShoppingAPI: SharedShoppingAPI {
     private func currentStore(_ original: SharedStore, archivedAt: Date?) throws -> SharedStore {
         var store = original
         let count = storedItems.filter { $0.storeId == store.id && $0.status == "pending" }.count
-        let isAdministrator = user.id == fixture.group.administratorUserId
+        let isAdministrator = managementScenario != .pending && user.id == fixture.group.administratorUserId
         store.state = try SharedStoreState(
             archivedAt: archivedAt,
             pendingItemCount: count,
             capabilities: SharedStoreCapabilities(
-                canAddItems: archivedAt == nil && count < 20,
+                canAddItems: managementScenario != .pending && archivedAt == nil && count < 20,
                 canArchive: archivedAt == nil && count == 0 && isAdministrator,
                 canRestore: archivedAt != nil && storedStores.count < 3 && isAdministrator
             )
@@ -648,13 +703,13 @@ private final class PreviewSharedShoppingAPI: SharedShoppingAPI {
         let count = storedStores.filter { $0.groupId == groupID }.count
         return try SharedGroupCapacity(
             groupId: groupID,
-            capacityOwnerUserId: fixture.session.user.id,
+            capacityOwnerUserId: managementScenario == .pending ? nil : fixture.session.user.id,
             activeStoreCount: count,
             limits: SharedStoreLimits(
                 storesPerGroup: SharedResourceLimit(maximum: 3, enforced: true),
                 pendingItemsPerStore: SharedResourceLimit(maximum: 20, enforced: true)
             ),
-            canCreateStore: count < 3
+            canCreateStore: managementScenario != .pending && count < 3
         )
     }
     @MainActor
@@ -770,7 +825,7 @@ private struct PreviewStoreReceipt {
 }
 
 private enum GroupManagementPreviewScenario {
-    case solo, owner, recipient
+    case solo, owner, recipient, pending
 }
 
 private struct PreviewStoreQuerySpeech: SpeechCapturing {
