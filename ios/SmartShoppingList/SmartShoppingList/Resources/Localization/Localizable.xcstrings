@@ -266,6 +266,18 @@
       }
     }
   },
+  "Assume": {
+    "extractionState": "manual",
+    "comment": "Button in the pending administration section that makes the current member the group administrator.",
+    "localizations": {
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Asumir"
+        }
+      }
+    }
+  },
   "Assume administration": {
     "extractionState": "manual",
     "localizations": {

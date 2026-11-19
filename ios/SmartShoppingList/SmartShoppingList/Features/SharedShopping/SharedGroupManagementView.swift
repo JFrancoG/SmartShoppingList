@@ -28,13 +28,14 @@ struct SharedGroupManagementView: View {
                         } else {
                             Text("You can still view the group. Your current plan does not allow purchases in this group.")
                         }
-                        Button("Assume administration") {
+                        Button("Assume") {
                             Task {
                                 await viewModel.claimGroupAdministration()
                             }
                         }
                         .buttonStyle(ShoppingActionButtonStyle())
                         .disabled(!viewModel.canMutate)
+                        .accessibilityLabel("Assume administration")
                     }
                     .listRowBackground(Color.surface)
                 }

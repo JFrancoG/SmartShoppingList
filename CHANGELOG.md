@@ -96,6 +96,8 @@
 
 ### Fixed
 
+- 2026-11-19 | 🐛 fix(ios): shorten the assume administration button
+
 - 2026-11-17 | 🐛 fix(ios): recover expired deletion preparation
 
 - 2026-11-16 | 🐛 fix(ios): preserve deletion identity and navigation
